@@ -1,0 +1,24 @@
+#!/usr/sbin/nft -f
+# =============================================================================
+#  Sisura - extra packet filter, loaded by sisura-netfilter.service.
+#
+#  Lives in its own table, independent of UFW: 'ufw reload' does not touch it
+#  and it is evaluated before conntrack and UFW's rules (raw priority).
+#  Check counters with:  sudo nft list table ip sisura
+# =============================================================================
+
+# Idempotent reload: create, then drop the whole table and redefine it.
+table ip sisura
+delete table ip sisura
+
+table ip sisura {
+    chain prerouting {
+        type filter hook prerouting priority raw; policy accept;
+
+        # IPv4 TCP segments carrying IP options (IHL > 5). No legitimate
+        # internet traffic needs them, and they are the entry point of TCP
+        # handshake bugs such as CVE-2026-98432. Other protocols are left
+        # alone: IGMP, for example, needs the Router Alert option.
+        ip protocol tcp ip hdrlength > 5 counter drop comment "tcp-ip-options"
+    }
+}

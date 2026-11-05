@@ -1,0 +1,3 @@
+/etc/default/grub.d/90-sisura.cfg
+/etc/grub.d/01_sisura_password
+/etc/grub.d/10_sisura_linux

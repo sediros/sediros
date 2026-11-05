@@ -1,0 +1,12 @@
+/etc/sysctl.d/99-sisura.conf
+/etc/modprobe.d/sisura-blacklist.conf
+/etc/security/limits.d/99-sisura.conf
+/etc/ssh/sshd_config.d/99-sisura.conf
+/etc/profile.d/sisura-umask.sh
+/etc/sisura/suid-allowlist
+/etc/apt/apt.conf.d/99-sisura-suid
+/etc/sisura/netfilter.nft
+/etc/apt/apt.conf.d/52sisura-unattended-upgrades
+/etc/profile.d/sisura-reboot-notice.sh
+/etc/sudoers.d/sisura
+/etc/security/pwquality.conf.d/90-sisura.conf

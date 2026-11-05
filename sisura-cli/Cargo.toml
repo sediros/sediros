@@ -1,0 +1,23 @@
+[package]
+name = "sisura-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Fast, isolated QEMU/KVM/HVF test runner for Sisura Linux images"
+publish = false
+
+[[bin]]
+name = "sisura"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+libc = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

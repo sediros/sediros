@@ -1,0 +1,118 @@
+# Sisura Linux
+
+A minimal, hardened Linux distribution based on Debian, plus the `sisura` CLI, which boots its images in QEMU within seconds for testing.
+
+## Quick start
+
+Requirements:
+- **macOS (Apple Silicon):** Docker, `brew install qemu`, Rust
+- **Linux:** `debootstrap zstd e2fsprogs qemu-utils qemu-system squashfs-tools xorriso mtools grub-*-bin`, Rust, `sudo`
+
+```bash
+make key        # development SSH key (id_sisura), never committed
+make build      # .deb packages + rootfs + qcow2 image + sisura binary
+make test       # boots a throwaway VM, runs the hardening checks, deletes it
+make launch     # starts the 'dev' VM
+make shell      # SSH into the 'dev' VM
+make iso        # live ISO
+make iso-run    # boots the ISO in QEMU with a serial console
+make help       # all targets
+```
+
+Settings live in `config/sisura.conf` and can be overridden on the command line: `make build RELEASE=13.2`.
+
+## sisura CLI
+
+```bash
+sisura build [--release 13.1] [--clean] [--rootfs-only|--image-only]
+sisura launch <vm> [--cpus N] [--memory MiB] [--port P]
+sisura shell  <vm> [-- command]
+sisura list
+sisura stop   <vm> [--force]
+sisura purge  [<vm>] [--images] [--yes]
+```
+
+- VMs are kept under `~/.local/share/sisura/` (override with `SISURA_HOME`). Each VM runs on its own copy-on-write disk on top of a read-only base image.
+- Acceleration is picked automatically: HVF on macOS, KVM on Linux, TCG (slow) otherwise.
+- SSH is only reachable on `127.0.0.1`. Each VM has its own `known_hosts` file.
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `scripts/build_rootfs.sh` | debootstrap minbase + hardening → `build/*.tar.zst` |
+| `scripts/build_image.sh` | rootfs → `build/*.qcow2` (ext4, `LABEL=sisura-root`) |
+| `scripts/build_iso.sh` | rootfs → squashfs + live-boot + GRUB → `build/*.iso` |
+| `packages/sisura-base-files/` | `os-release` (`ID=sisura`, `ID_LIKE=debian`); Debian's copy is kept with `dpkg-divert` |
+| `packages/sisura-hardening/` | Hardening package: sysctl, sshd, nftables, automatic security updates, sudo/PAM, modprobe, SUID removal, first-boot units |
+| `packages/sisura-boot-hardening/` | GRUB: kernel hardening parameters and an optional GRUB password (`sisura-grub-password`); inert without GRUB |
+| `scripts/build_packages.sh` | `packages/*` → `build/debs/*.deb` (fills in placeholders such as `@SISURA_RELEASE@`) |
+| `scripts/lib/release.sh` | Release → Debian suite mapping (13 → trixie) |
+| `config/iso/grub.cfg` | ISO boot menu template |
+| `sisura-cli/` | Rust CLI |
+| `tests/` | Smoke test and in-guest checks |
+
+## Profiles
+
+| | `PROFILE=vm` (default) | `PROFILE=install` |
+|---|---|---|
+| Used for | `sisura launch`, `make test`, CI | Systems installed to disk |
+| SSH | Key only (development key baked in) | Key only (no key baked in) |
+| User password | Locked | Empty and expired: set at the first console login |
+| sudo | Passwordless | Asks for the password |
+| Artifact name | `sisura-13.1-arm64.*` | `sisura-13.1-install-arm64.*` |
+
+With the `install` profile the SSH key is added by hand after the first login for now (`~/.ssh/authorized_keys`); a first-boot wizard will come with `sisura-install`. `make test` covers the `vm` profile only.
+
+## Release numbers
+
+Sisura follows Debian's major version: `<debian major>.<point>`.
+
+| Release | Base | Meaning |
+|---|---|---|
+| `13.1` | Debian 13 (trixie) | First Sisura 13 release |
+| `13.2` | Debian 13 (trixie) | Same base, rebuilt image/ISO (security updates + hardening changes) |
+| `14.1` | Debian 14 (forky) | Move to the next Debian base |
+
+- Security support lasts as long as Debian's.
+- The release is set in one place: `config/sisura.conf` → `RELEASE`. The suite is derived from it. Development builds on `sid`: `make build SUITE=sid`.
+- Artifact names: `build/sisura-<release>-<arch>.{qcow2,iso,vmlinuz,...}`.
+- Packages have their own versions (SemVer), e.g. `sisura-hardening 0.2.0`, CLI `0.1.0`. `sisura-base-files` carries the distribution release.
+
+## Hardening summary
+
+sysctl (63 keys on trixie / kernel 6.12), AppArmor (default profiles), UFW (incoming denied, rate-limited 22/tcp), removal of SUID/SGID bits outside an allowlist (re-applied after every `dpkg` run), key-only SSH with modern cryptography, an nftables rule dropping IPv4 TCP packets with IP options, automatic installation of Debian security updates (unattended-upgrades), a sudo policy (pty, `/var/log/sudo.log`, 5-minute timestamp), a 15-minute account lock after 5 failed authentications in 15 minutes (`pam_faillock`; with key-only SSH this affects sudo and the console only), passwords of at least 12 characters with a dictionary check (`pwquality`), a locked root password, unused kernel modules blocked and core dumps disabled. `make test` verifies all of this on a running VM.
+
+## GRUB password (installed systems)
+
+```bash
+sudo sisura-grub-password set       # set a password (at least 12 characters)
+sudo sisura-grub-password status
+sudo sisura-grub-password disable
+```
+
+With a password set:
+- The default entry boots without it, so unattended reboots do not hang.
+- Editing an entry (`e`, e.g. `init=/bin/bash`), the GRUB shell (`c`), recovery entries and "UEFI Firmware Settings" require it.
+- Only a PBKDF2 hash is stored (`/etc/sisura/grub-password`, mode 0600); `grub.cfg` becomes 0600 as well.
+
+A GRUB password does not stop booting from other media. With a remote console (IPMI, VPS panel), also use a firmware password, Secure Boot and disk encryption (LUKS).
+
+## Known limitations
+
+- Unprivileged user namespaces are disabled: rootless podman and the Chromium sandbox do not work.
+- `ptrace_scope=2`: regular users cannot attach gdb or strace to a process.
+- `PROFILE=vm` (the default) contains passwordless sudo and the development key; it is meant for throwaway VMs only. Systems to install are built with `PROFILE=install`.
+- unattended-upgrades only installs from the Debian-Security archive and never reboots. After a kernel update a "System restart required" notice appears at login. For automatic reboots on a server, set `Automatic-Reboot "true"` in `/etc/apt/apt.conf.d/52sisura-unattended-upgrades`.
+- unattended-upgrades pulls in python3: about 30-40 MB of disk and about 20 MB of RAM for its shutdown helper.
+- On macOS, Unix socket paths are limited to 104 characters: keep `SISURA_HOME` short.
+
+## Packages and updates
+
+The hardening settings ship in the `sisura-hardening` package. Once the Sisura apt repository is published, installed systems will receive new versions through `apt upgrade` (the repository does not exist yet). To change a setting:
+
+1. Edit the file under `packages/sisura-hardening/`.
+2. Bump `Version` in `DEBIAN/control`.
+3. Run `make build && make test`.
+
+dpkg never overwrites `/etc` files changed by the admin; they are marked as conffiles. Files owned by other packages (`/etc/login.defs`, `/etc/default/ufw`) are only set when the image is built and are not updated through `apt`.

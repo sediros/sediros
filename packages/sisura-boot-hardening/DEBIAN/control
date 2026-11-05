@@ -1,0 +1,16 @@
+Package: sisura-boot-hardening
+Version: 0.1.0
+Architecture: all
+Maintainer: Sisura Maintainers <packages@sisura.invalid>
+Section: admin
+Priority: optional
+Suggests: grub2-common
+Description: Sisura Linux boot loader hardening
+ GRUB configuration for installed Sisura systems:
+  - kernel hardening parameters (slab_nomerge, init_on_alloc, ...) on every
+    Linux boot entry
+  - optional GRUB password (sisura-grub-password): editing boot entries,
+    the GRUB shell and recovery entries require it, while the default
+    entry still boots unattended
+ .
+ Does nothing on systems without GRUB (VMs booted directly by QEMU).

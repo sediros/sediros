@@ -1,0 +1,14 @@
+Package: sisura-base-files
+Version: @SISURA_RELEASE@
+Architecture: all
+Maintainer: Sisura Maintainers <packages@sisura.invalid>
+Section: admin
+Priority: required
+Depends: base-files
+Description: Sisura Linux release identification
+ Identifies the system as Sisura Linux @SISURA_RELEASE@ (based on Debian
+ @SISURA_CODENAME@) through /usr/lib/os-release. ID_LIKE=debian keeps tools
+ that look for Debian working.
+ .
+ Debian's os-release is kept as /usr/lib/os-release.debian (dpkg-divert)
+ and restored when this package is removed.

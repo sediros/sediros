@@ -1,0 +1,94 @@
+# Sisura CI
+#   lint  : bash -n, shellcheck, rustfmt, clippy
+#   build : rootfs + qcow2 + ISO for amd64 (KVM smoke test) and arm64 (build only)
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sisura-cli
+      - run: rustup component add rustfmt clippy
+      - run: make lint
+
+  build:
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            grub: grub-pc-bin grub-efi-amd64-bin
+            smoke: true
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            grub: grub-efi-arm64-bin
+            smoke: false   # no KVM on hosted arm64 runners; TCG is too slow for the budget
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            debootstrap debian-archive-keyring zstd e2fsprogs qemu-utils \
+            squashfs-tools xorriso mtools grub-common ${{ matrix.grub }} \
+            qemu-system-x86 qemu-system-arm openssh-client
+
+      - name: Enable KVM
+        if: matrix.smoke
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sisura-cli
+
+      # Throwaway key for this run only; never uploaded.
+      - run: make key
+
+      - name: Build rootfs + image + cli
+        run: make build
+
+      - name: Smoke test
+        if: matrix.smoke
+        run: make test
+
+      - name: Build ISO
+        run: make iso
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sisura-${{ matrix.arch }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            build/*.qcow2
+            build/*.qcow2.sha256
+            build/*.iso
+            build/*.iso.sha256
+            build/*.manifest

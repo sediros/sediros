@@ -1,0 +1,16 @@
+# Build outputs
+/build/
+*.qcow2
+*.iso
+*.img
+*.tar.zst
+*.sha256
+
+# Rust
+/sisura-cli/target/
+
+# Secrets / local
+*.key
+# Dev SSH key pair (make key): generated per developer / CI run.
+id_*
+.env
