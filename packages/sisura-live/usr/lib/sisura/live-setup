@@ -1,0 +1,31 @@
+#!/bin/sh
+# Sisura live session setup (sisura-live.service, boot=live only).
+# /etc here is the live overlay: changes are lost at power-off and never
+# reach the squashfs that sisura-install copies.
+set -eu
+
+user="$(sed -n 's/^USER=//p' /etc/sisura/build-profile)"
+echo "$user" | grep -Eqx '[a-z_][a-z0-9_-]{0,31}' || { echo "sisura-live: no valid USER in build-profile" >&2; exit 1; }
+id "$user" >/dev/null
+
+# The install profile ships an empty, expired password (first login must set
+# one). In the live session the console logs in automatically instead.
+passwd -l "$user" >/dev/null
+chage -d -1 "$user"
+
+umask 0337
+printf '# Sisura live session (RAM only)\n%s ALL=(ALL:ALL) NOPASSWD: ALL\n' "$user" \
+    > /etc/sudoers.d/90-sisura-live
+visudo -cqf /etc/sudoers.d/90-sisura-live
+
+umask 022
+cat > /etc/motd <<MOTD
+
+  Sisura Linux live session - nothing is written to disk.
+  User '$user' has passwordless sudo here only.
+
+  Install to a disk (erases it, LUKS-encrypted):
+    sudo sisura-install disks
+    sudo sisura-install install --disk <name>
+
+MOTD

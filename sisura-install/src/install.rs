@@ -1,0 +1,435 @@
+//! The installation itself: partition, encrypt, copy, configure, boot loader.
+//!
+//! Layout (GPT, UEFI):
+//!   1  512 MiB  ESP    FAT32  /boot/efi
+//!   2    1 GiB  boot   ext4   /boot       (unencrypted: kernel + initramfs,
+//!                                         which asks for the LUKS passphrase)
+//!   3     rest  root   LUKS2 -> ext4 /
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use anyhow::{bail, Context, Result};
+
+use crate::cmd::{self, chroot, run, run_with_stdin};
+use crate::disk::{self, Disk};
+use crate::secret::Secret;
+
+/// Name of the unlocked root volume (/dev/mapper/<name>), also in crypttab.
+pub const CRYPT_NAME: &str = "sisura-root";
+/// Where live-boot mounts the read-only squashfs (the pristine system image).
+pub const LIVE_SQUASHFS: &str = "/run/live/rootfs/filesystem.squashfs";
+/// Live-session-only packages, removed from the installed system.
+const LIVE_PACKAGES: &[&str] = &[
+    "sisura-live",
+    "sisura-install",
+    "live-boot",
+    "live-boot-initramfs-tools",
+];
+
+pub struct Options {
+    pub disk: Disk,
+    pub source: PathBuf,
+    pub target: PathBuf,
+    pub hostname: String,
+    pub passphrase: Secret,
+}
+
+/// Undo mounts and close LUKS on every exit path (success, error, panic=abort
+/// excluded). Steps register what they set up; Drop tears down in reverse.
+struct Teardown {
+    target: PathBuf,
+    mounted: bool,
+    luks_open: bool,
+}
+
+impl Drop for Teardown {
+    fn drop(&mut self) {
+        if self.mounted {
+            println!("==> Unmounting {}", self.target.display());
+            let t = self.target.to_string_lossy().into_owned();
+            cmd::try_run("sync", &[]);
+            cmd::try_run("umount", &["-R", &t]);
+        }
+        if self.luks_open {
+            cmd::try_run("cryptsetup", &["close", CRYPT_NAME]);
+        }
+    }
+}
+
+fn step(msg: &str) {
+    println!("\n==> {msg}");
+}
+
+fn path_str(p: &Path) -> Result<&str> {
+    p.to_str()
+        .with_context(|| format!("non UTF-8 path {}", p.display()))
+}
+
+fn blkid(dev: &Path, tag: &str) -> Result<String> {
+    let value = cmd::output("blkid", &["-s", tag, "-o", "value", path_str(dev)?])?;
+    if value.is_empty() {
+        bail!("blkid: no {tag} on {}", dev.display());
+    }
+    Ok(value)
+}
+
+fn grub_target() -> Result<&'static str> {
+    match std::env::consts::ARCH {
+        "aarch64" => Ok("arm64-efi"),
+        "x86_64" => Ok("x86_64-efi"),
+        other => bail!("unsupported architecture {other}"),
+    }
+}
+
+/// Wait for udev to create partition nodes after re-partitioning.
+fn wait_for(paths: &[PathBuf]) -> Result<()> {
+    cmd::try_run("udevadm", &["settle", "--timeout=10"]);
+    for _ in 0..50 {
+        if paths.iter().all(|p| p.exists()) {
+            return Ok(());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    bail!("partition device nodes did not appear: {paths:?}");
+}
+
+pub fn preflight(opts: &Options) -> Result<()> {
+    if unsafe { libc::geteuid() } != 0 {
+        bail!("must run as root");
+    }
+    for tool in [
+        "sfdisk",
+        "wipefs",
+        "mkfs.vfat",
+        "mkfs.ext4",
+        "cryptsetup",
+        "blkid",
+        "tar",
+        "udevadm",
+    ] {
+        if cmd::output("sh", &["-c", &format!("command -v {tool}")]).is_err() {
+            bail!("required tool '{tool}' not found");
+        }
+    }
+    let src = &opts.source;
+    if !src.join("usr/lib/os-release").is_file() || !src.join("boot").is_dir() {
+        bail!(
+            "{} does not look like a Sisura root filesystem (usr/lib/os-release, boot/)",
+            src.display()
+        );
+    }
+    if fs::read_dir(src.join("boot"))?
+        .flatten()
+        .all(|e| !e.file_name().to_string_lossy().starts_with("vmlinuz-"))
+    {
+        bail!("no kernel in {}/boot", src.display());
+    }
+    if Path::new("/dev/mapper").join(CRYPT_NAME).exists() {
+        bail!("/dev/mapper/{CRYPT_NAME} already exists (close it first)");
+    }
+    if opts.target.exists() && fs::read_dir(&opts.target)?.next().is_some() {
+        bail!("target directory {} is not empty", opts.target.display());
+    }
+    disk::check_target(&opts.disk)
+}
+
+pub fn run_install(opts: &Options) -> Result<()> {
+    let disk = &opts.disk;
+    let dev = disk.path();
+    let (esp, boot, root) = (disk.partition(1), disk.partition(2), disk.partition(3));
+    let mapper = PathBuf::from("/dev/mapper").join(CRYPT_NAME);
+    let target = &opts.target;
+    let t = path_str(target)?;
+
+    let mut teardown = Teardown {
+        target: target.clone(),
+        mounted: false,
+        luks_open: false,
+    };
+
+    step(&format!("Partitioning {}", dev.display()));
+    run("wipefs", &["--all", "--force", path_str(&dev)?])?;
+    run_with_stdin(
+        "sfdisk",
+        &[
+            "--wipe",
+            "always",
+            "--wipe-partitions",
+            "always",
+            path_str(&dev)?,
+        ],
+        b"label: gpt\n\
+          size=512MiB, type=U, name=\"sisura-esp\"\n\
+          size=1GiB, type=L, name=\"sisura-boot\"\n\
+          type=L, name=\"sisura-root\"\n",
+    )?;
+    wait_for(&[esp.clone(), boot.clone(), root.clone()])?;
+
+    step("Creating file systems");
+    run(
+        "mkfs.vfat",
+        &["-F", "32", "-n", "SISURA-ESP", path_str(&esp)?],
+    )?;
+    run(
+        "mkfs.ext4",
+        &["-q", "-F", "-L", "sisura-boot", path_str(&boot)?],
+    )?;
+
+    step("Encrypting the root partition (LUKS2, argon2id)");
+    // 512 MiB argon2 memory: unlockable on small machines too (the default
+    // scales with the RAM of the machine that formats the volume).
+    run_with_stdin(
+        "cryptsetup",
+        &[
+            "luksFormat",
+            "--batch-mode",
+            "--type",
+            "luks2",
+            "--pbkdf",
+            "argon2id",
+            "--pbkdf-memory",
+            "524288",
+            "--iter-time",
+            "2000",
+            "--label",
+            "sisura-root",
+            "--key-file",
+            "-",
+            path_str(&root)?,
+        ],
+        opts.passphrase.bytes(),
+    )?;
+    run_with_stdin(
+        "cryptsetup",
+        &[
+            "open",
+            "--allow-discards",
+            "--key-file",
+            "-",
+            path_str(&root)?,
+            CRYPT_NAME,
+        ],
+        opts.passphrase.bytes(),
+    )?;
+    teardown.luks_open = true;
+    run(
+        "mkfs.ext4",
+        &["-q", "-F", "-L", "sisura-root", path_str(&mapper)?],
+    )?;
+
+    step(&format!("Mounting at {t}"));
+    fs::create_dir_all(target)?;
+    // Private self-bind first: "/" is a shared mount under systemd, so mounts
+    // made below the target would otherwise propagate to any other bind of
+    // "/" and keep the LUKS volume busy after 'umount -R'.
+    run("mount", &["--bind", t, t])?;
+    teardown.mounted = true;
+    run("mount", &["--make-rprivate", t])?;
+    run("mount", &[path_str(&mapper)?, t])?;
+    fs::create_dir_all(target.join("boot"))?;
+    run("mount", &[path_str(&boot)?, &format!("{t}/boot")])?;
+    fs::create_dir_all(target.join("boot/efi"))?;
+    run(
+        "mount",
+        &[
+            "-o",
+            "umask=0077",
+            path_str(&esp)?,
+            &format!("{t}/boot/efi"),
+        ],
+    )?;
+
+    step(&format!(
+        "Copying the system from {}",
+        opts.source.display()
+    ));
+    cmd::copy_tree(
+        &opts.source,
+        target,
+        // Empty in the squashfs; matter when --source is a running system.
+        &[
+            "./proc/*",
+            "./sys/*",
+            "./dev/*",
+            "./run/*",
+            "./tmp/*",
+            "./mnt/*",
+            "./media/*",
+            "./boot/efi/*",
+            "./boot/initrd.img-*",
+            "./etc/sudoers.d/90-sisura-live",
+        ],
+    )?;
+
+    step("Writing fstab, crypttab, hostname");
+    let luks_uuid = blkid(&root, "UUID")?;
+    let boot_uuid = blkid(&boot, "UUID")?;
+    let esp_uuid = blkid(&esp, "UUID")?;
+    write_fstab(target, &boot_uuid, &esp_uuid)?;
+    fs::write(
+        target.join("etc/crypttab"),
+        format!(
+            "# Written by sisura-install\n\
+             # <name>     <device>                                   <key>  <options>\n\
+             {CRYPT_NAME}  UUID={luks_uuid}  none   luks,discard\n"
+        ),
+    )?;
+    fs::create_dir_all(target.join("etc/cryptsetup-initramfs"))?;
+    fs::write(
+        target.join("etc/cryptsetup-initramfs/conf-hook"),
+        "# Written by sisura-install: root is on LUKS, always include cryptsetup.\nCRYPTSETUP=y\n",
+    )?;
+    write_hostname(target, &opts.hostname)?;
+
+    step("Preparing the chroot");
+    for (src, dst) in [("/dev", "dev"), ("/sys", "sys")] {
+        run("mount", &["--rbind", src, &format!("{t}/{dst}")])?;
+        run("mount", &["--make-rslave", &format!("{t}/{dst}")])?;
+    }
+    run("mount", &["-t", "proc", "proc", &format!("{t}/proc")])?;
+    // A private /run: maintainer scripts must not see the live system's
+    // systemd (they would start/stop its services). udev data is needed by
+    // grub-probe and the cryptsetup initramfs hook.
+    run(
+        "mount",
+        &[
+            "-t",
+            "tmpfs",
+            "-o",
+            "mode=0755,nosuid,nodev",
+            "tmpfs",
+            &format!("{t}/run"),
+        ],
+    )?;
+    fs::create_dir_all(target.join("run/udev"))?;
+    run("mount", &["--bind", "/run/udev", &format!("{t}/run/udev")])?;
+    // No service starts/stops from maintainer scripts while installing.
+    let policy = target.join("usr/sbin/policy-rc.d");
+    fs::write(&policy, "#!/bin/sh\nexit 101\n")?;
+    run("chmod", &["0755", path_str(&policy)?])?;
+
+    let result = configure_chroot(target);
+    let _ = fs::remove_file(&policy);
+    result?;
+
+    step("Done");
+    drop(teardown);
+    println!(
+        "\nSisura is installed on {}. Remove the installation medium and reboot.",
+        dev.display()
+    );
+    Ok(())
+}
+
+fn configure_chroot(target: &Path) -> Result<()> {
+    step("Removing live-session packages");
+    let installed: Vec<&str> = LIVE_PACKAGES
+        .iter()
+        .copied()
+        .filter(|p| {
+            cmd::output(
+                "chroot",
+                &[
+                    target.to_str().unwrap_or("/"),
+                    "dpkg-query",
+                    "-W",
+                    "-f=${Status}",
+                    p,
+                ],
+            )
+            .map(|s| s.ends_with(" installed"))
+            .unwrap_or(false)
+        })
+        .collect();
+    if !installed.is_empty() {
+        let mut args = vec!["--purge"];
+        args.extend(&installed);
+        chroot(target, "dpkg", &args)?;
+    }
+
+    step("Building the initramfs (cryptsetup)");
+    chroot(target, "update-initramfs", &["-c", "-k", "all"])?;
+
+    step("Installing GRUB (UEFI)");
+    let grub = grub_target()?;
+    let efivars = Path::new("/sys/firmware/efi/efivars")
+        .read_dir()
+        .map(|mut d| d.next().is_some())
+        .unwrap_or(false);
+    let mut args = vec![
+        format!("--target={grub}"),
+        "--efi-directory=/boot/efi".to_string(),
+        "--bootloader-id=sisura".to_string(),
+    ];
+    if !efivars {
+        // Not booted via UEFI (or no efivars): no NVRAM boot entry possible.
+        args.push("--no-nvram".to_string());
+    }
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    chroot(target, "grub-install", &refs)?;
+    // Also the fallback path EFI/BOOT/BOOT*.EFI: boots even when the firmware
+    // forgets (or never had) the NVRAM entry, e.g. VMs and moved disks.
+    chroot(
+        target,
+        "grub-install",
+        &[
+            &format!("--target={grub}"),
+            "--efi-directory=/boot/efi",
+            "--removable",
+            "--no-nvram",
+        ],
+    )?;
+    chroot(target, "update-grub", &[])?;
+    Ok(())
+}
+
+fn write_fstab(target: &Path, boot_uuid: &str, esp_uuid: &str) -> Result<()> {
+    let path = target.join("etc/fstab");
+    let old = fs::read_to_string(&path).unwrap_or_default();
+    // Keep the image's tmpfs lines, replace every disk mount.
+    let kept: Vec<&str> = old
+        .lines()
+        .filter(|l| l.split_whitespace().next() == Some("tmpfs"))
+        .collect();
+    let mut fstab = format!(
+        "# Written by sisura-install\n\
+         # <device>                 <mount>    <type> <options>                               <dump> <pass>\n\
+         /dev/mapper/{CRYPT_NAME}    /          ext4   defaults,noatime,errors=remount-ro       0 1\n\
+         UUID={boot_uuid}  /boot  ext4   defaults,noatime,nodev,nosuid,noexec     0 2\n\
+         UUID={esp_uuid}                             /boot/efi  vfat   umask=0077,shortname=winnt              0 1\n"
+    );
+    for l in kept {
+        fstab.push_str(l);
+        fstab.push('\n');
+    }
+    fs::write(path, fstab)?;
+    Ok(())
+}
+
+pub fn valid_hostname(h: &str) -> bool {
+    !h.is_empty()
+        && h.len() <= 63
+        && !h.starts_with('-')
+        && !h.ends_with('-')
+        && h.chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+fn write_hostname(target: &Path, hostname: &str) -> Result<()> {
+    fs::write(target.join("etc/hostname"), format!("{hostname}\n"))?;
+    let hosts = target.join("etc/hosts");
+    let old = fs::read_to_string(&hosts).unwrap_or_default();
+    let new: Vec<String> = old
+        .lines()
+        .map(|l| {
+            if l.starts_with("127.0.1.1") {
+                format!("127.0.1.1   {hostname}")
+            } else {
+                l.to_string()
+            }
+        })
+        .collect();
+    fs::write(hosts, new.join("\n") + "\n")?;
+    Ok(())
+}

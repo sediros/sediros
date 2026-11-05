@@ -14,7 +14,7 @@ make build      # .deb packages + rootfs + qcow2 image + sisura binary
 make test       # boots a throwaway VM, runs the hardening checks, deletes it
 make launch     # starts the 'dev' VM
 make shell      # SSH into the 'dev' VM
-make iso        # live ISO
+make iso        # live/installer ISO (install profile, no development key)
 make iso-run    # boots the ISO in QEMU with a serial console
 make help       # all targets
 ```
@@ -25,7 +25,7 @@ Settings live in `config/sisura.conf` and can be overridden on the command line:
 
 ```bash
 sisura build [--release 13.1] [--clean] [--rootfs-only|--image-only]
-sisura launch <vm> [--cpus N] [--memory MiB] [--port P]
+sisura launch <vm> [--cpus N] [--memory MiB] [--port P] [--data-disk 16G]
 sisura shell  <vm> [-- command]
 sisura list
 sisura stop   <vm> [--force]
@@ -35,6 +35,7 @@ sisura purge  [<vm>] [--images] [--yes]
 - VMs are kept under `~/.local/share/sisura/` (override with `SISURA_HOME`). Each VM runs on its own copy-on-write disk on top of a read-only base image.
 - Acceleration is picked automatically: HVF on macOS, KVM on Linux, TCG (slow) otherwise.
 - SSH is only reachable on `127.0.0.1`. Each VM has its own `known_hosts` file.
+- `--data-disk` attaches an empty second disk to a new VM (installer tests).
 
 ## Repository layout
 
@@ -46,17 +47,21 @@ sisura purge  [<vm>] [--images] [--yes]
 | `packages/sisura-base-files/` | `os-release` (`ID=sisura`, `ID_LIKE=debian`); Debian's copy is kept with `dpkg-divert` |
 | `packages/sisura-hardening/` | Hardening package: sysctl, sshd, nftables, automatic security updates, sudo/PAM, modprobe, SUID removal, first-boot units |
 | `packages/sisura-boot-hardening/` | GRUB: kernel hardening parameters and an optional GRUB password (`sisura-grub-password`); inert without GRUB |
+| `packages/sisura-live/` | Live ISO session: console autologin, passwordless sudo; only with `boot=live` and only in RAM |
+| `packages/sisura-install/` | Installer package (ISO only; removed from the installed system) |
 | `scripts/build_packages.sh` | `packages/*` → `build/debs/*.deb` (fills in placeholders such as `@SISURA_RELEASE@`) |
+| `scripts/build_installer.sh` | Builds `sisura-install` for Linux (Docker with `debian:trixie` on macOS) |
 | `scripts/lib/release.sh` | Release → Debian suite mapping (13 → trixie) |
 | `config/iso/grub.cfg` | ISO boot menu template |
 | `sisura-cli/` | Rust CLI |
+| `sisura-install/` | Rust installer: ISO to disk (UEFI, GPT, LUKS2) |
 | `tests/` | Smoke test and in-guest checks |
 
 ## Profiles
 
 | | `PROFILE=vm` (default) | `PROFILE=install` |
 |---|---|---|
-| Used for | `sisura launch`, `make test`, CI | Systems installed to disk |
+| Used for | `sisura launch`, `make test`, CI | Systems installed to disk, the ISO |
 | SSH | Key only (development key baked in) | Key only (no key baked in) |
 | User password | Locked | Empty and expired: set at the first console login |
 | sudo | Passwordless | Asks for the password |
@@ -82,6 +87,26 @@ Sisura follows Debian's major version: `<debian major>.<point>`.
 ## Hardening summary
 
 sysctl (63 keys on trixie / kernel 6.12), AppArmor (default profiles), UFW (incoming denied, rate-limited 22/tcp), removal of SUID/SGID bits outside an allowlist (re-applied after every `dpkg` run), key-only SSH with modern cryptography, an nftables rule dropping IPv4 TCP packets with IP options, automatic installation of Debian security updates (unattended-upgrades), a sudo policy (pty, `/var/log/sudo.log`, 5-minute timestamp), a 15-minute account lock after 5 failed authentications in 15 minutes (`pam_faillock`; with key-only SSH this affects sudo and the console only), passwords of at least 12 characters with a dictionary check (`pwquality`), a locked root password, unused kernel modules blocked and core dumps disabled. `make test` verifies all of this on a running VM.
+
+## Installing to disk
+
+The ISO logs in automatically on the console:
+
+```bash
+sudo sisura-install disks
+sudo sisura-install install --disk vda --hostname server1 [--dry-run]
+```
+
+| Partition | Size | Contents |
+|---|---|---|
+| 1 | 512 MiB | ESP (FAT32), GRUB EFI |
+| 2 | 1 GiB | `/boot` (ext4, unencrypted: kernel and initramfs) |
+| 3 | rest | LUKS2 (argon2id) → ext4 `/` |
+
+- The installer erases nothing until you confirm by typing the disk name. It refuses disks that are mounted, used as swap, hold the live medium, or are smaller than 8 GiB.
+- The LUKS passphrase is asked on the console at every boot. The keyboard layout is US for now; avoid characters whose position differs between layouts.
+- Trying it in QEMU: `SISURA_ISO_DISK=build/test-disk.qcow2 make iso-run`, after installing: `SISURA_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sisura-13.1-install-arm64.iso`.
+- Not yet available: user, password and SSH key questions, keyboard selection, unlocking the disk over SSH (dropbear). For now the password is set at the first console login on the installed system and the SSH key is added by hand.
 
 ## GRUB password (installed systems)
 

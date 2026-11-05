@@ -38,9 +38,9 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
                 vm.ssh_port
             );
         }
-        if args.image.is_some() {
+        if args.image.is_some() || args.data_disk.is_some() {
             bail!(
-                "VM '{}' already exists; --image only applies to new VMs (purge it first)",
+                "VM '{}' already exists; --image/--data-disk only apply to new VMs (purge it first)",
                 vm.name
             );
         }
@@ -94,6 +94,9 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
 
     if fresh {
         qemu::create_overlay(&platform, &image, &vm.overlay())?;
+        if let Some(size) = &args.data_disk {
+            qemu::create_blank(&platform, &vm.data_disk(), size)?;
+        }
     }
     vm.save()?;
     vm.clear_runtime();

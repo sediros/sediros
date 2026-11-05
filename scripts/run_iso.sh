@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  Sisura - boot a live ISO in QEMU with a serial console (Ctrl-A X to quit).
-#  Usage: scripts/run_iso.sh build/sisura-<release>-<arch>.iso
-#  SSH (if the image has your key): ssh -p 2223 -i id_sisura sisura@127.0.0.1
+#  Usage: scripts/run_iso.sh build/sisura-<release>-install-<arch>.iso
+#         scripts/run_iso.sh --no-iso build/sisura-<release>-install-<arch>.iso
+#  The live session logs in automatically on the serial console (sisura-live).
+#  The ISO has no SSH key; add one in the live session if you need SSH (port 2223).
+#
+#  Installer test: SISURA_ISO_DISK=build/test-disk.qcow2 attaches that disk
+#  (created empty, 16G, if missing) as /dev/vda. After installing, boot it
+#  with --no-iso (the ISO argument then only selects the architecture).
 # =============================================================================
 set -Eeuo pipefail
 
-ISO="${1:?usage: $0 <iso>}"
+NO_ISO=0
+if [[ "${1:-}" == --no-iso ]]; then NO_ISO=1; shift; fi
+ISO="${1:?usage: $0 [--no-iso] <iso>}"
 [[ -r "$ISO" ]] || { echo "ISO not found: $ISO" >&2; exit 1; }
 MEM="${SISURA_ISO_MEM:-2048}"
 PORT="${SISURA_ISO_SSH_PORT:-2223}"
@@ -39,13 +47,29 @@ if [[ "$arch" == arm64 ]]; then
     firmware=(-bios "$fw")
 fi
 
-echo "Booting $ISO ($arch, $accel, ${MEM}M) - SSH on 127.0.0.1:$PORT - quit: Ctrl-A X"
+media=()
+if ((NO_ISO == 0)); then
+    media+=(-device virtio-scsi-pci
+            -drive "if=none,id=cd,media=cdrom,readonly=on,file=$ISO"
+            -device scsi-cd,drive=cd,bootindex=0)
+fi
+if [[ -n "${SISURA_ISO_DISK:-}" ]]; then
+    if [[ ! -e "$SISURA_ISO_DISK" ]]; then
+        "$(dirname "$(command -v "$qemu")")/qemu-img" create -q -f qcow2 "$SISURA_ISO_DISK" 16G
+        echo "Created empty disk $SISURA_ISO_DISK (16G)"
+    fi
+    media+=(-drive "if=none,id=hd,format=qcow2,file=$SISURA_ISO_DISK"
+            -device virtio-blk-pci,drive=hd,bootindex=1)
+elif ((NO_ISO)); then
+    echo "--no-iso needs SISURA_ISO_DISK" >&2; exit 1
+fi
+
+what="$ISO"; ((NO_ISO)) && what="$SISURA_ISO_DISK"
+echo "Booting $what ($arch, $accel, ${MEM}M) - SSH on 127.0.0.1:$PORT - quit: Ctrl-A X"
 exec "$qemu" \
     -machine "$machine" -accel "$accel" -cpu "$cpu" -smp 2 -m "$MEM" \
     "${firmware[@]}" \
-    -device virtio-scsi-pci \
-    -drive "if=none,id=cd,media=cdrom,readonly=on,file=$ISO" \
-    -device scsi-cd,drive=cd \
+    "${media[@]}" \
     -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:${PORT}-:22" \
     -device virtio-net-pci,netdev=net0 \
     -device virtio-rng-pci \

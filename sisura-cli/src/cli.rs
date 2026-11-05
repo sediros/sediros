@@ -99,6 +99,11 @@ pub struct LaunchArgs {
     /// Return immediately after QEMU starts, without waiting for SSH
     #[arg(long)]
     pub no_wait: bool,
+
+    /// Attach an empty second disk of this size (e.g. 16G) to a new VM, as
+    /// /dev/vdb (installer tests). Kept with the VM, deleted by purge.
+    #[arg(long, value_name = "SIZE")]
+    pub data_disk: Option<String>,
 }
 
 #[derive(Args, Debug)]

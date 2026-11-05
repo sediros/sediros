@@ -71,6 +71,8 @@ BASE_PACKAGES=(
     # kernel + initramfs (zstd compressed). live-boot only activates with
     # 'boot=live' on the cmdline, so the same initrd boots disk and ISO.
     initramfs-tools zstd live-boot
+    # fsck.ext4 for the root filesystem at boot
+    e2fsprogs
     # security
     apparmor apparmor-profiles ufw
     # remote access (used by `sisura shell`)
@@ -83,6 +85,15 @@ BASE_PACKAGES=(
 # the hardening (sysctl, sshd, modprobe, SUID strip, first-boot units) so that
 # installed systems receive fixes through apt, not only fresh images.
 SISURA_PACKAGES=(sisura-base-files sisura-hardening sisura-boot-hardening)
+
+# install profile: the live ISO / installer and the system it installs.
+# grub-efi-* only installs files here; sisura-install runs grub-install.
+# console-setup: keyboard layout for the LUKS passphrase prompt (initramfs).
+INSTALL_PROFILE_PACKAGES=(
+    cryptsetup cryptsetup-initramfs dosfstools fdisk
+    console-setup keyboard-configuration
+)
+INSTALL_PROFILE_SISURA_PACKAGES=(sisura-live sisura-install)
 
 # Kernel parameters for the bootloader / QEMU -append (consumed by stage 2/3).
 # The hardening parameters live in sisura-boot-hardening (GRUB config of
@@ -259,6 +270,9 @@ preflight() {
         *) die "Unsupported suite: $SUITE" ;;
     esac
 
+    if [[ "$PROFILE" == install ]]; then
+        SISURA_PACKAGES+=("${INSTALL_PROFILE_SISURA_PACKAGES[@]}")
+    fi
     local pkg
     for pkg in "${SISURA_PACKAGES[@]}"; do
         [[ -n "$(sisura_deb "$pkg")" ]] \
@@ -286,12 +300,14 @@ preflight() {
 }
 
 # .deb to install for a Sisura package: sisura-base-files must carry exactly
-# this release (it writes os-release), the others: newest version built.
+# this release (it writes os-release), the others: newest version built
+# (Architecture: all, or the image architecture for compiled programs).
 sisura_deb() {
     if [[ "$1" == sisura-base-files ]]; then
         find "$DEBS_DIR" -maxdepth 1 -name "${1}_${RELEASE}_all.deb"
     else
-        find "$DEBS_DIR" -maxdepth 1 -name "${1}_*_all.deb" | sort -V | tail -n1
+        find "$DEBS_DIR" -maxdepth 1 \( -name "${1}_*_all.deb" -o -name "${1}_*_${ARCH}.deb" \) \
+            | sort -V | tail -n1
     fi
 }
 
@@ -431,7 +447,9 @@ EOF
 
     chroot_run apt-get update
     chroot_run apt-get -y dist-upgrade
-    chroot_run apt-get -y install "${BASE_PACKAGES[@]}" "linux-image-${ARCH}"
+    local extra=()
+    [[ "$PROFILE" == install ]] && extra=("${INSTALL_PROFILE_PACKAGES[@]}" "grub-efi-${ARCH}")
+    chroot_run apt-get -y install "${BASE_PACKAGES[@]}" "linux-image-${ARCH}" "${extra[@]+"${extra[@]}"}"
     chroot_run apt-get -y autoremove --purge
     ok "Packages installed"
 }
@@ -508,7 +526,10 @@ EOF
 [Resolve]
 LLMNR=no
 MulticastDNS=no
-DNSSEC=allow-downgrade
+# Not allow-downgrade: behind resolvers that strip RRSIGs (QEMU slirp, many
+# home routers and VPS resolvers) it fails signed zones with "no-signature"
+# and breaks apt / unattended-upgrades. Same as Debian's default.
+DNSSEC=no
 EOF
 
     # Low-RAM journald.
@@ -609,7 +630,8 @@ configure_users() {
     fi
     chroot_run visudo -c >/dev/null || die "Invalid sudoers configuration"
 
-    printf 'PROFILE=%s\n' "$PROFILE" | write_file 0644 /etc/sisura/build-profile
+    printf 'PROFILE=%s\nUSER=%s\nRELEASE=%s\n' "$PROFILE" "$ADMIN_USER" "$RELEASE" \
+        | write_file 0644 /etc/sisura/build-profile
 
     ok "Users configured (admin=${ADMIN_USER}, profile=${PROFILE})"
 }

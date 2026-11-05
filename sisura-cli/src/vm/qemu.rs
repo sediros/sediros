@@ -98,12 +98,27 @@ fn qemu_path(p: &Path) -> Result<String> {
 }
 
 pub fn create_overlay(platform: &Platform, base: &BaseImage, overlay: &Path) -> Result<()> {
-    let out = Command::new(platform.qemu_img())
-        .args(["create", "-q", "-f", "qcow2", "-F", "qcow2", "-b"])
+    let mut cmd = Command::new(platform.qemu_img());
+    cmd.args(["create", "-q", "-f", "qcow2", "-F", "qcow2", "-b"])
         .arg(base.disk())
-        .arg(overlay)
-        .output()
-        .context("running qemu-img")?;
+        .arg(overlay);
+    qemu_img(cmd)
+}
+
+/// Empty, sparse qcow2 disk (size as understood by qemu-img, e.g. 16G).
+pub fn create_blank(platform: &Platform, path: &Path, size: &str) -> Result<()> {
+    if size.is_empty() || !size.chars().all(|c| c.is_ascii_alphanumeric()) {
+        bail!("invalid disk size '{size}' (e.g. 16G)");
+    }
+    let mut cmd = Command::new(platform.qemu_img());
+    cmd.args(["create", "-q", "-f", "qcow2"])
+        .arg(path)
+        .arg(size);
+    qemu_img(cmd)
+}
+
+fn qemu_img(mut cmd: Command) -> Result<()> {
+    let out = cmd.output().context("running qemu-img")?;
     if !out.status.success() {
         bail!(
             "qemu-img create failed: {}",
@@ -164,7 +179,16 @@ pub fn spawn(platform: &Platform, vm: &VmState, image: &BaseImage) -> Result<()>
             "if=none,id=root,format=qcow2,discard=unmap,file={}",
             qemu_path(&vm.overlay())?
         ))
-        .args(["-device", "virtio-blk-pci,drive=root"])
+        .args(["-device", "virtio-blk-pci,drive=root"]);
+    if vm.data_disk().is_file() {
+        cmd.arg("-drive")
+            .arg(format!(
+                "if=none,id=data,format=qcow2,discard=unmap,file={}",
+                qemu_path(&vm.data_disk())?
+            ))
+            .args(["-device", "virtio-blk-pci,drive=data,serial=sisura-data"]);
+    }
+    cmd
         // User-mode networking: no root, no host bridge; SSH bound to loopback only.
         .arg("-netdev")
         .arg(format!(

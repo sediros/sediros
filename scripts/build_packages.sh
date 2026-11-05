@@ -11,7 +11,13 @@
 #
 #  Placeholders replaced in every package file (incl. DEBIAN/control):
 #    @SISURA_RELEASE@ (13.1)  @SISURA_MAJOR@ (13)  @SISURA_CODENAME@ (trixie)
+#    @SISURA_ARCH@ (dpkg architecture of the build host = image arch)
 #  taken from SISURA_RELEASE / SISURA_SUITE (scripts/lib/release.sh).
+#
+#  Compiled programs: packages/<name>/.sisura-binaries lists
+#    <path in package> <file relative to the project root>
+#  A package whose binaries are not built yet is skipped with a warning
+#  (scripts/build_installer.sh builds sisura-install).
 #
 #  Files are owned by root:root inside the package regardless of the
 #  checkout's owner (--root-owner-group); permissions are normalised here
@@ -52,6 +58,7 @@ if ! command -v dpkg-deb >/dev/null 2>&1; then
         "$DOCKER_IMAGE" ./scripts/build_packages.sh
 fi
 
+DEB_ARCH="$(dpkg --print-architecture)"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/sisura-pkg.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$OUT_DIR"
@@ -69,10 +76,29 @@ for src in "$PKG_SRC"/*/; do
     while IFS= read -r -d '' f; do
         sed -i -e "s|@SISURA_RELEASE@|${RELEASE}|g" \
                -e "s|@SISURA_MAJOR@|${RELEASE%%.*}|g" \
-               -e "s|@SISURA_CODENAME@|${SUITE}|g" "$f"
+               -e "s|@SISURA_CODENAME@|${SUITE}|g" \
+               -e "s|@SISURA_ARCH@|${DEB_ARCH}|g" "$f"
     done < <(grep -rlZ '@SISURA_[A-Z]*@' "$stage" || true)
     if leftover="$(grep -rl '@SISURA_[A-Z]*@' "$stage")"; then
         die "Unknown placeholder in: ${leftover//$stage/}"
+    fi
+
+    # Compiled programs built outside this script.
+    if [[ -f "$stage/.sisura-binaries" ]]; then
+        missing=""
+        while read -r dest from; do
+            [[ -z "$dest" || "$dest" == \#* ]] && continue
+            if [[ -f "$PROJECT_ROOT/$from" ]]; then
+                install -D -m 0755 "$PROJECT_ROOT/$from" "$stage/$dest"
+            else
+                missing+=" $from"
+            fi
+        done < "$stage/.sisura-binaries"
+        rm -f "$stage/.sisura-binaries"
+        if [[ -n "$missing" ]]; then
+            printf '  - skipping %s: not built yet:%s\n' "$(basename "$src")" "$missing"
+            continue
+        fi
     fi
 
     control="$stage/DEBIAN/control"
@@ -90,7 +116,7 @@ for src in "$PKG_SRC"/*/; do
     for f in "$stage"/DEBIAN/{preinst,postinst,prerm,postrm,config}; do
         [[ -f "$f" ]] && chmod 0755 "$f"
     done
-    for d in usr/bin usr/sbin usr/libexec; do
+    for d in usr/bin usr/sbin usr/libexec usr/lib/sisura usr/lib/systemd/system-generators; do
         [[ -d "$stage/$d" ]] && find "$stage/$d" -type f -exec chmod 0755 {} +
     done
     # sudoers drop-ins: 0440 like /etc/sudoers (sudo rejects writable ones).

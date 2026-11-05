@@ -5,14 +5,17 @@
 #  Usage : ./scripts/build_iso.sh [--rootfs <tar.zst>]
 #  Host  : Linux (root), or macOS with Docker (re-runs itself in a container).
 #
-#  Input : build/sisura-rootfs-<release>-<arch>.tar.zst  (must contain live-boot)
-#          build/sisura-<release>-<arch>.cmdline          (optional)
-#  Output: build/sisura-<release>-<arch>.iso (+ .sha256)
+#  Input : build/sisura-rootfs-<release>-install-<arch>.tar.zst
+#          (install profile: live-boot, sisura-live, installer tools)
+#          build/sisura-<release>-install-<arch>.cmdline  (optional)
+#  Output: build/sisura-<release>-install-<arch>.iso (+ .sha256)
 #          amd64: hybrid BIOS + UEFI, bootable from CD or USB
 #          arm64: UEFI
 #
-#  Same rootfs as the qcow2 image: one hardening source, no live-build config
-#  to keep in sync. Root is squashfs + tmpfs overlay (live-boot).
+#  Built from the same build_rootfs.sh as the qcow2 image (one hardening
+#  source, no live-build config). Root is squashfs + tmpfs overlay
+#  (live-boot). The squashfs is also what sisura-install copies to disk, so
+#  it keeps /boot (kernel, config) but not the live initrd.
 # =============================================================================
 set -Eeuo pipefail
 umask 022
@@ -125,7 +128,7 @@ ok "Kernel $(basename "$vmlinuz")"
 log "Creating squashfs (zstd)"
 mksquashfs "$WORK/root" "$WORK/iso/live/filesystem.squashfs" \
     -comp zstd -Xcompression-level 19 -b 1M -noappend -xattrs -no-progress \
-    -e boot >/dev/null
+    -wildcards -e 'boot/initrd.img-*' >/dev/null
 ok "squashfs $(du -h "$WORK/iso/live/filesystem.squashfs" | cut -f1)"
 
 cmdline=""

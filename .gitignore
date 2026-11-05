@@ -8,6 +8,7 @@
 
 # Rust
 /sisura-cli/target/
+/sisura-install/target/
 
 # Secrets / local
 *.key

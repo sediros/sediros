@@ -1,0 +1,13 @@
+Package: sisura-live
+Version: 0.1.0
+Architecture: all
+Maintainer: Sisura Maintainers <packages@sisura.invalid>
+Section: admin
+Priority: optional
+Depends: systemd, sudo, passwd, util-linux, init-system-helpers
+Description: Sisura Linux live session setup
+ Only active when the kernel command line contains boot=live (the ISO):
+  - console autologin for the admin user (tty1 and serial consoles)
+  - passwordless sudo for that user
+ Everything is written to the live overlay (RAM) at boot, never to the
+ squashfs that sisura-install copies to disk. Inert on installed systems.

@@ -26,6 +26,10 @@ impl VmState {
     pub fn overlay(&self) -> PathBuf {
         self.dir.join("disk.qcow2")
     }
+    /// Optional empty second disk (`launch --data-disk`), attached when present.
+    pub fn data_disk(&self) -> PathBuf {
+        self.dir.join("data.qcow2")
+    }
     pub fn pidfile(&self) -> PathBuf {
         self.dir.join("qemu.pid")
     }

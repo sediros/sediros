@@ -1,0 +1,13 @@
+Package: sisura-install
+Version: 0.1.0
+Architecture: @SISURA_ARCH@
+Maintainer: Sisura Maintainers <packages@sisura.invalid>
+Section: admin
+Priority: optional
+Depends: libc6, util-linux, fdisk, dosfstools, e2fsprogs, cryptsetup, cryptsetup-initramfs, tar, udev
+Description: Sisura Linux installer
+ Installs Sisura from the live ISO to a disk: GPT with an EFI system
+ partition, an unencrypted /boot and a LUKS2-encrypted root, GRUB for UEFI.
+ Run: sudo sisura-install disks; sudo sisura-install install --disk <disk>
+ .
+ Removed from the installed system by the installer itself.
