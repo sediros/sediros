@@ -14,9 +14,14 @@ use anyhow::{bail, Context, Result};
 use crate::cmd::{self, chroot, run, run_with_stdin};
 use crate::disk::{self, Disk};
 use crate::secret::Secret;
+use crate::setup::{self, Setup};
 
 /// Name of the unlocked root volume (/dev/mapper/<name>), also in crypttab.
 pub const CRYPT_NAME: &str = "sisura-root";
+/// Labels are distinct from the VM images' root (LABEL=sisura-root): a disk
+/// carrying both must never make the initramfs pick the wrong one.
+const LUKS_LABEL: &str = "sisura-crypt";
+const ROOT_FS_LABEL: &str = "sisura-system";
 /// Where live-boot mounts the read-only squashfs (the pristine system image).
 pub const LIVE_SQUASHFS: &str = "/run/live/rootfs/filesystem.squashfs";
 /// Live-session-only packages, removed from the installed system.
@@ -33,6 +38,7 @@ pub struct Options {
     pub target: PathBuf,
     pub hostname: String,
     pub passphrase: Secret,
+    pub setup: Setup,
 }
 
 /// Undo mounts and close LUKS on every exit path (success, error, panic=abort
@@ -193,7 +199,7 @@ pub fn run_install(opts: &Options) -> Result<()> {
             "--iter-time",
             "2000",
             "--label",
-            "sisura-root",
+            LUKS_LABEL,
             "--key-file",
             "-",
             path_str(&root)?,
@@ -215,7 +221,7 @@ pub fn run_install(opts: &Options) -> Result<()> {
     teardown.luks_open = true;
     run(
         "mkfs.ext4",
-        &["-q", "-F", "-L", "sisura-root", path_str(&mapper)?],
+        &["-q", "-F", "-L", ROOT_FS_LABEL, path_str(&mapper)?],
     )?;
 
     step(&format!("Mounting at {t}"));
@@ -281,6 +287,7 @@ pub fn run_install(opts: &Options) -> Result<()> {
         "# Written by sisura-install: root is on LUKS, always include cryptsetup.\nCRYPTSETUP=y\n",
     )?;
     write_hostname(target, &opts.hostname)?;
+    setup::write_keyboard(target, &opts.setup.keyboard)?;
 
     step("Preparing the chroot");
     for (src, dst) in [("/dev", "dev"), ("/sys", "sys")] {
@@ -309,9 +316,9 @@ pub fn run_install(opts: &Options) -> Result<()> {
     fs::write(&policy, "#!/bin/sh\nexit 101\n")?;
     run("chmod", &["0755", path_str(&policy)?])?;
 
-    let result = configure_chroot(target);
+    let result = configure_chroot(target, &opts.setup);
     let _ = fs::remove_file(&policy);
-    result?;
+    let unlock_fingerprint = result?;
 
     step("Done");
     drop(teardown);
@@ -319,10 +326,17 @@ pub fn run_install(opts: &Options) -> Result<()> {
         "\nSisura is installed on {}. Remove the installation medium and reboot.",
         dev.display()
     );
+    if let (Some(fp), Some(port)) = (unlock_fingerprint, opts.setup.ssh_unlock_port) {
+        println!(
+            "\nUnlock the disk over SSH at boot:\n  ssh -p {port} root@<address of this machine>\n\
+             Check the host key on first connect: {fp} (ED25519)"
+        );
+    }
     Ok(())
 }
 
-fn configure_chroot(target: &Path) -> Result<()> {
+/// Returns the initramfs SSH host key fingerprint when SSH unlock is enabled.
+fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
     step("Removing live-session packages");
     let installed: Vec<&str> = LIVE_PACKAGES
         .iter()
@@ -348,7 +362,31 @@ fn configure_chroot(target: &Path) -> Result<()> {
         chroot(target, "dpkg", &args)?;
     }
 
-    step("Building the initramfs (cryptsetup)");
+    step(&format!(
+        "Configuring the admin account '{}'",
+        setup.account.user
+    ));
+    setup::configure_account(target, &setup.account)?;
+
+    let fingerprint = match setup.ssh_unlock_port {
+        Some(port) if !setup.account.ssh_keys.is_empty() => {
+            step(&format!(
+                "Enabling SSH unlock in the initramfs (port {port})"
+            ));
+            Some(setup::enable_ssh_unlock(
+                target,
+                &setup.account.ssh_keys,
+                port,
+            )?)
+        }
+        _ => {
+            step("Removing dropbear (no SSH unlock)");
+            setup::remove_ssh_unlock(target)?;
+            None
+        }
+    };
+
+    step("Building the initramfs (cryptsetup, keyboard layout)");
     chroot(target, "update-initramfs", &["-c", "-k", "all"])?;
 
     step("Installing GRUB (UEFI)");
@@ -380,8 +418,14 @@ fn configure_chroot(target: &Path) -> Result<()> {
             "--no-nvram",
         ],
     )?;
-    chroot(target, "update-grub", &[])?;
-    Ok(())
+    match &setup.grub_password {
+        Some(pw) => {
+            step("Setting the GRUB password");
+            setup::set_grub_password(target, pw)?;
+        }
+        None => chroot(target, "update-grub", &[])?,
+    }
+    Ok(fingerprint)
 }
 
 fn write_fstab(target: &Path, boot_uuid: &str, esp_uuid: &str) -> Result<()> {

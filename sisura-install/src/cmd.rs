@@ -55,6 +55,32 @@ pub fn run_with_stdin(prog: &str, args: &[&str], input: &[u8]) -> Result<()> {
     Ok(())
 }
 
+/// Run a check that reads `input` on stdin (secrets, keys). Ok(stdout) on
+/// success, Err(stderr + stdout) when the command rejects the input.
+pub fn check_with_stdin(
+    prog: &str,
+    args: &[&str],
+    input: &[u8],
+) -> Result<std::result::Result<String, String>> {
+    let mut child = Command::new(prog)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("starting {prog}"))?;
+    // A rejected input may close stdin early: ignore EPIPE, judge by exit code.
+    let _ = child.stdin.take().context("stdin")?.write_all(input);
+    let out = child.wait_with_output()?;
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if out.status.success() {
+        Ok(Ok(stdout))
+    } else {
+        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Ok(Err(format!("{stderr} {stdout}").trim().to_string()))
+    }
+}
+
 /// Capture stdout of a read-only query.
 pub fn output(prog: &str, args: &[&str]) -> Result<String> {
     let out = Command::new(prog)

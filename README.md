@@ -67,7 +67,7 @@ sisura purge  [<vm>] [--images] [--yes]
 | sudo | Passwordless | Asks for the password |
 | Artifact name | `sisura-13.1-arm64.*` | `sisura-13.1-install-arm64.*` |
 
-With the `install` profile the SSH key is added by hand after the first login for now (`~/.ssh/authorized_keys`); a first-boot wizard will come with `sisura-install`. `make test` covers the `vm` profile only.
+On installed systems the account, password and SSH keys come from the installer (see below). `make test` covers the `vm` profile only.
 
 ## Release numbers
 
@@ -82,7 +82,7 @@ Sisura follows Debian's major version: `<debian major>.<point>`.
 - Security support lasts as long as Debian's.
 - The release is set in one place: `config/sisura.conf` → `RELEASE`. The suite is derived from it. Development builds on `sid`: `make build SUITE=sid`.
 - Artifact names: `build/sisura-<release>-<arch>.{qcow2,iso,vmlinuz,...}`.
-- Packages have their own versions (SemVer), e.g. `sisura-hardening 0.2.0`, CLI `0.1.0`. `sisura-base-files` carries the distribution release.
+- Packages have their own versions (SemVer), e.g. `sisura-hardening 0.3.0`, CLI `0.1.0`. `sisura-base-files` carries the distribution release.
 
 ## Hardening summary
 
@@ -90,23 +90,30 @@ sysctl (63 keys on trixie / kernel 6.12), AppArmor (default profiles), UFW (inco
 
 ## Installing to disk
 
-The ISO logs in automatically on the console:
+The ISO logs in automatically on the console. Start the installer with:
 
 ```bash
-sudo sisura-install disks
-sudo sisura-install install --disk vda --hostname server1 [--dry-run]
+sudo sisura-install install
 ```
+
+The installer asks for the disk, hostname, keyboard layout, admin user name, sudo password, SSH key (paste it, or `gh:<github-user>`), whether the disk may be unlocked over SSH, the LUKS passphrase and a GRUB password. Every answer is validated before the disk is touched:
+- Passwords are checked against the installed system's `pwquality` rules (`pwscore`).
+- SSH keys are checked with `ssh-keygen`; a pasted private key is rejected.
+
+Nothing is written until you confirm by typing the disk name.
 
 | Partition | Size | Contents |
 |---|---|---|
 | 1 | 512 MiB | ESP (FAT32), GRUB EFI |
 | 2 | 1 GiB | `/boot` (ext4, unencrypted: kernel and initramfs) |
-| 3 | rest | LUKS2 (argon2id) → ext4 `/` |
+| 3 | rest | LUKS2 (argon2id, label `sisura-crypt`) → ext4 `/` (`sisura-system`) |
 
-- The installer erases nothing until you confirm by typing the disk name. It refuses disks that are mounted, used as swap, hold the live medium, or are smaller than 8 GiB.
-- The LUKS passphrase is asked on the console at every boot. The keyboard layout is US for now; avoid characters whose position differs between layouts.
-- Trying it in QEMU: `SISURA_ISO_DISK=build/test-disk.qcow2 make iso-run`, after installing: `SISURA_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sisura-13.1-install-arm64.iso`.
-- Not yet available: user, password and SSH key questions, keyboard selection, unlocking the disk over SSH (dropbear). For now the password is set at the first console login on the installed system and the SSH key is added by hand.
+- **Keyboard layout:** applied to the live console, the installed system and the initramfs, so the LUKS passphrase is typed with the same layout at install time and at boot.
+- **Refused disks:** mounted, used as swap, holding the live medium, or smaller than 8 GiB.
+- **Unlocking over SSH:** with SSH keys, the disk can also be unlocked remotely at boot: `ssh -p 2222 root@<host>` reaches a small SSH server in the initramfs (dropbear). It accepts only the installer's keys, no passwords, no forwarding, and runs nothing but `cryptroot-unlock`. Every installation gets its own host key; the installer prints its fingerprint to check on first connect. The port uses a different host key than the system's SSH, hence not 22. The network is configured with DHCP; it is taken down again before the system starts. Without SSH unlock, dropbear is removed from the installed system. The live ISO never starts it.
+- **Unattended install:** `--disk --hostname --user --keyboard --password-file --ssh-key-file|--github-user --passphrase-file --grub-password-file [--no-ssh-unlock] [--unlock-port N] --yes`. See `sisura-install install --help`.
+- **Trying it in QEMU:** `SISURA_ISO_DISK=build/test-disk.qcow2 make iso-run`. After installing, boot the disk with `SISURA_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sisura-13.1-install-arm64.iso`.
+- **Not yet available:** a static IP address for SSH unlock (only DHCP for now).
 
 ## GRUB password (installed systems)
 

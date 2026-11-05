@@ -89,10 +89,20 @@ SISURA_PACKAGES=(sisura-base-files sisura-hardening sisura-boot-hardening)
 # install profile: the live ISO / installer and the system it installs.
 # grub-efi-* only installs files here; sisura-install runs grub-install.
 # console-setup: keyboard layout for the LUKS passphrase prompt (initramfs).
+# libpwquality-tools (pwscore): installer checks passwords with the target's
+# rules before touching the disk. curl: SSH keys from github.com/<user>.keys.
 INSTALL_PROFILE_PACKAGES=(
     cryptsetup cryptsetup-initramfs dosfstools fdisk
     console-setup keyboard-configuration
+    libpwquality-tools curl
+    dropbear-initramfs
 )
+
+# dropbear-initramfs files moved out of initramfs-tools' reach in the image
+# (see disable_initramfs_ssh); sisura-install moves them back when SSH unlock
+# is enabled. Keep in sync with sisura-install/src/setup.rs.
+DROPBEAR_INITRAMFS_FILES=(hooks/dropbear scripts/init-premount/dropbear scripts/init-bottom/dropbear)
+DROPBEAR_DIVERT_DIR=/usr/share/sisura/initramfs-dropbear
 INSTALL_PROFILE_SISURA_PACKAGES=(sisura-live sisura-install)
 
 # Kernel parameters for the bootloader / QEMU -append (consumed by stage 2/3).
@@ -454,6 +464,26 @@ EOF
     ok "Packages installed"
 }
 
+# install profile: dropbear-initramfs ships in the image for sisura-install,
+# but must not be active there. Left alone it would configure the network and
+# start an SSH server in every live ISO initrd, with host keys generated at
+# build time and shared by every installed system. Its initramfs files are
+# diverted away and its host keys deleted; the installer restores the files
+# and creates per-machine keys when the user enables SSH unlock.
+disable_initramfs_ssh() {
+    [[ "$PROFILE" == install ]] || return 0
+    log "Disabling dropbear in the image's initramfs"
+    local f
+    for f in "${DROPBEAR_INITRAMFS_FILES[@]}"; do
+        mkdir -p "${ROOTFS}${DROPBEAR_DIVERT_DIR}/$(dirname "$f")"
+        chroot_run dpkg-divert --local --rename \
+            --divert "${DROPBEAR_DIVERT_DIR}/$f" --add "/usr/share/initramfs-tools/$f" >/dev/null
+    done
+    rm -f "$ROOTFS"/etc/dropbear/initramfs/dropbear_*_host_key*
+    chroot_run update-initramfs -u -k all
+    ok "dropbear diverted, host keys removed"
+}
+
 # Sisura's own .debs, installed with apt so their Depends are resolved. Their
 # postinst enables the first-boot units and strips SUID bits.
 install_sisura_packages() {
@@ -789,6 +819,7 @@ main() {
     configure_apt
     mount_chroot
     install_packages
+    disable_initramfs_ssh
     install_sisura_packages
     configure_system
     configure_ssh
