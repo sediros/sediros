@@ -386,7 +386,11 @@ fn install(args: InstallArgs) -> Result<()> {
     println!("\nInstall plan:");
     println!("  disk      {}", opts.disk.describe());
     println!("            1: 512 MiB ESP  2: 1 GiB /boot  3: rest, LUKS2 -> ext4 /");
-    println!("  source    {}", opts.source.display());
+    println!(
+        "  source    {} (Sisura {})",
+        opts.source.display(),
+        install::build_label(&opts.source)
+    );
     println!("  hostname  {}", opts.hostname);
     println!("  user      {} (sudo)", s.account.user);
     println!(

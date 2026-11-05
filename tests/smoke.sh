@@ -71,6 +71,14 @@ got="$("$SISURA" shell "$VM" -- sha256sum /etc/sysctl.d/99-sisura.conf | awk '{p
 if [[ "$want" == "$got" ]]; then pass "image matches repo sysctl config"
 else fail "image freshness" "99-sisura.conf differs from repo - run 'make build'"; fi
 
+# Same build as build/<image>.build-info? (the VM runs a cached copy)
+if [[ -n "${SISURA_IMAGE:-}" && -f "${SISURA_IMAGE%.qcow2}.build-info" ]]; then
+    want_build="$(sed -n 's/^BUILD_ID=//p' "${SISURA_IMAGE%.qcow2}.build-info")"
+    got_build="$("$SISURA" shell "$VM" -- sed -n 's/^BUILD_ID=//p' /etc/sisura/build-info)"
+    if [[ -n "$want_build" && "$want_build" == "$got_build" ]]; then pass "build id: $got_build"
+    else fail "build id" "image ${want_build:-?}, VM ${got_build:-?}"; fi
+fi
+
 echo "==> Guest checks"
 if ! "$SISURA" shell "$VM" -- bash -s -- "$MAX_RAM" "$RELEASE" < "$PROJECT_ROOT/tests/guest_checks.sh"; then
     FAILS=$((FAILS + 1))

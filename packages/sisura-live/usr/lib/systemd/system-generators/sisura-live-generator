@@ -9,7 +9,7 @@ cmdline="${SISURA_LIVE_CMDLINE:-/proc/cmdline}"   # override for tests
 
 grep -qw 'boot=live' "$cmdline" || exit 0
 
-user="$(sed -n 's/^USER=//p' /etc/sisura/build-profile 2>/dev/null)"
+user="$(sed -n 's/^USER=//p' /etc/sisura/build-info 2>/dev/null)"
 echo "$user" | grep -Eqx '[a-z_][a-z0-9_-]{0,31}' || exit 0
 
 mkdir -p "$out/getty@tty1.service.d" "$out/serial-getty@.service.d"

@@ -287,6 +287,7 @@ pub fn run_install(opts: &Options) -> Result<()> {
         "# Written by sisura-install: root is on LUKS, always include cryptsetup.\nCRYPTSETUP=y\n",
     )?;
     write_hostname(target, &opts.hostname)?;
+    stamp_install(target)?;
     setup::write_keyboard(target, &opts.setup.keyboard)?;
 
     step("Preparing the chroot");
@@ -448,6 +449,29 @@ fn write_fstab(target: &Path, boot_uuid: &str, esp_uuid: &str) -> Result<()> {
         fstab.push('\n');
     }
     fs::write(path, fstab)?;
+    Ok(())
+}
+
+/// "13.1 build 20261105.1432-47888b3" of a root filesystem, from its
+/// /etc/sisura/build-info.
+pub fn build_label(root: &Path) -> String {
+    let info = fs::read_to_string(root.join("etc/sisura/build-info")).unwrap_or_default();
+    let get = |k: &str| {
+        info.lines()
+            .find_map(|l| l.strip_prefix(&format!("{k}=")))
+            .unwrap_or("?")
+            .to_string()
+    };
+    format!("{} build {}", get("RELEASE"), get("BUILD_ID"))
+}
+
+/// Record when this system was installed, next to the image's build id.
+fn stamp_install(target: &Path) -> Result<()> {
+    let path = target.join("etc/sisura/build-info");
+    let mut info = fs::read_to_string(&path).unwrap_or_default();
+    let now = cmd::output("date", &["-u", "+%Y-%m-%dT%H:%M:%SZ"])?;
+    info.push_str(&format!("INSTALLED={now}\n"));
+    fs::write(path, info)?;
     Ok(())
 }
 

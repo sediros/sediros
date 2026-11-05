@@ -150,7 +150,13 @@ else fail "unattended-upgrades" "${bad[*]}"; fi
 if [[ "$(sudo passwd -S root | awk '{print $2}')" == "L" ]]; then pass "root: password locked"
 else fail "root" "password not locked"; fi
 
-profile="$(sed -n 's/^PROFILE=//p' /etc/sisura/build-profile 2>/dev/null)"
+if grep -qE '^BUILD_ID=[0-9A-Za-z._-]+$' /etc/sisura/build-info 2>/dev/null; then
+    pass "build-info: $(sed -n 's/^RELEASE=//p' /etc/sisura/build-info) build $(sed -n 's/^BUILD_ID=//p' /etc/sisura/build-info)"
+else
+    fail "build-info" "/etc/sisura/build-info missing or without BUILD_ID"
+fi
+
+profile="$(sed -n 's/^PROFILE=//p' /etc/sisura/build-info 2>/dev/null)"
 if [[ "$profile" == vm && "$(sudo passwd -S "$USER" | awk '{print $2}')" == "L" ]] \
    && sudo test -f /etc/sudoers.d/90-sisura-vm; then
     pass "profile vm: $USER password locked, NOPASSWD sudo"

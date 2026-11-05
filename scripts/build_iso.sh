@@ -137,7 +137,15 @@ if [[ -r "$BUILD_DIR/${name}.cmdline" ]]; then
     # vsyscall= is x86-only.
     [[ "$arch" == "amd64" ]] || cmdline="$(sed -E 's/(^| )vsyscall=[^ ]*//g' <<<"$cmdline")"
 fi
-version="${name#sisura-} $(date -u +%Y-%m-%d)"
+# "13.1 build 20261105.1432-47888b3 (arm64)" from the image's build-info.
+info="$WORK/root/etc/sisura/build-info"
+release="$(sed -n 's/^RELEASE=//p' "$info" 2>/dev/null)"
+build_id="$(sed -n 's/^BUILD_ID=//p' "$info" 2>/dev/null)"
+if [[ -n "$release" && -n "$build_id" ]]; then
+    version="${release} build ${build_id} (${arch})"
+else
+    version="${name#sisura-} $(date -u +%Y-%m-%d)"
+fi
 sed -e "s|@VERSION@|${version}|g" \
     -e "s|@CONSOLE@|${console}|g" \
     -e "s|@CMDLINE@|${cmdline}|g" \

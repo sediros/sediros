@@ -82,6 +82,8 @@ Sisura follows Debian's major version: `<debian major>.<point>`.
 - Security support lasts as long as Debian's.
 - The release is set in one place: `config/sisura.conf` → `RELEASE`. The suite is derived from it. Development builds on `sid`: `make build SUITE=sid`.
 - Artifact names: `build/sisura-<release>-<arch>.{qcow2,iso,vmlinuz,...}`.
+- Every build also gets a build id, `<UTC yyyymmdd.HHMM>-<git commit>`, with `-dirty` when the tree had uncommitted changes, e.g. `20261105.1432-47888b3`. It is stored in `/etc/sisura/build-info` (with the build date, profile and, on installed systems, the install date) and in `build/*.build-info`, shown in the first line of `build/*.manifest`, in the ISO boot menu, in the installer's plan and in `sisura list`. Report bugs with release and build id.
+- A release that gets published is tagged in git (`git tag v13.1`); release builds should come from a clean tree (no `-dirty`).
 - Packages have their own versions (SemVer), e.g. `sisura-hardening 0.3.0`, CLI `0.1.0`. `sisura-base-files` carries the distribution release.
 
 ## Hardening summary

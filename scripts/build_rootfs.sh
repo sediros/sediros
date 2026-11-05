@@ -13,9 +13,12 @@
 #    sisura-<release>-<arch>.vmlinuz/.initrd.img  for QEMU direct kernel boot
 #    sisura-<release>-<arch>.cmdline              hardening kernel parameters
 #    sisura-<release>-<arch>.manifest             installed package list
+#    sisura-<release>-<arch>.build-info           release, build id, profile
+#                                                 (also /etc/sisura/build-info)
 #
 #  Environment overrides:
 #    SISURA_RELEASE         Sisura release, e.g. 13.1 (default: config/sisura.conf)
+#    SISURA_BUILD_ID        Build id (default: <UTC time>-<git sha>[-dirty])
 #    SISURA_SUITE           Debian suite override: sid/unstable only
 #                           (default: derived from the release, 13 -> trixie)
 #    SISURA_DEBS_DIR        Sisura .deb packages      (default: <repo>/build/debs)
@@ -46,6 +49,7 @@ readonly SCRIPT_DIR PROJECT_ROOT
 # shellcheck source=lib/release.sh
 source "${SCRIPT_DIR}/lib/release.sh"
 RELEASE=""  # set by sisura_resolve_release (main)
+BUILD_ID="" # set by sisura_build_id (main)
 SUITE=""
 ARCH="${SISURA_ARCH:-}"
 MIRROR="${SISURA_MIRROR:-http://deb.debian.org/debian}"
@@ -229,6 +233,7 @@ reexec_in_docker() {
     exec docker run --rm --privileged \
         -v "${PROJECT_ROOT}:/sisura" -w /sisura \
         -e SISURA_RELEASE="$RELEASE" \
+        -e SISURA_BUILD_ID="$BUILD_ID" \
         -e SISURA_SUITE="$SUITE" \
         -e SISURA_MIRROR \
         -e SISURA_HOSTNAME \
@@ -306,7 +311,7 @@ preflight() {
         *) die "Invalid SISURA_PROFILE: $PROFILE (vm|install)" ;;
     esac
     [[ "$ADMIN_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid SISURA_USER: $ADMIN_USER"
-    ok "Host OK (arch=$ARCH, release=$RELEASE, suite=$SUITE, profile=$PROFILE)"
+    ok "Host OK (arch=$ARCH, release=$RELEASE, build=$BUILD_ID, suite=$SUITE, profile=$PROFILE)"
 }
 
 # .deb to install for a Sisura package: sisura-base-files must carry exactly
@@ -660,8 +665,13 @@ configure_users() {
     fi
     chroot_run visudo -c >/dev/null || die "Invalid sudoers configuration"
 
-    printf 'PROFILE=%s\nUSER=%s\nRELEASE=%s\n' "$PROFILE" "$ADMIN_USER" "$RELEASE" \
-        | write_file 0644 /etc/sisura/build-profile
+    # Provenance of this image; sisura-install adds INSTALLED= on disk installs.
+    {
+        printf 'RELEASE=%s\n' "$RELEASE"
+        printf 'BUILD_ID=%s\n' "$BUILD_ID"
+        printf 'BUILD_DATE=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf 'SUITE=%s\nARCH=%s\nPROFILE=%s\nUSER=%s\n' "$SUITE" "$ARCH" "$PROFILE" "$ADMIN_USER"
+    } | write_file 0644 /etc/sisura/build-info
 
     ok "Users configured (admin=${ADMIN_USER}, profile=${PROFILE})"
 }
@@ -767,7 +777,10 @@ cleanup_rootfs() {
     rm -f "$ROOTFS/etc/resolv.conf"
     ln -s ../run/systemd/resolve/stub-resolv.conf "$ROOTFS/etc/resolv.conf"
 
-    chroot_run dpkg-query -W -f='${Package}\t${Version}\n' > "${ARTIFACT_PREFIX}.manifest"
+    {
+        printf '# Sisura %s build %s (%s, %s)\n' "$RELEASE" "$BUILD_ID" "$PROFILE" "$ARCH"
+        chroot_run dpkg-query -W -f='${Package}\t${Version}\n'
+    } > "${ARTIFACT_PREFIX}.manifest"
     ok "Cleanup done ($(wc -l < "${ARTIFACT_PREFIX}.manifest") packages)"
 }
 
@@ -783,6 +796,7 @@ export_artifacts() {
     [[ -n "$vmlinuz" && -n "$initrd" ]] || die "Kernel or initrd not found in $ROOTFS/boot"
     install -m 0644 "$vmlinuz" "${ARTIFACT_PREFIX}.vmlinuz"
     install -m 0644 "$initrd"  "${ARTIFACT_PREFIX}.initrd.img"
+    install -m 0644 "$ROOTFS/etc/sisura/build-info" "${ARTIFACT_PREFIX}.build-info"
 
     if ((DO_TAR)); then
         local out="${BUILD_DIR}/sisura-rootfs-${RELEASE}$(profile_tag)-${ARCH}.tar.zst"
@@ -801,6 +815,7 @@ summary() {
     printf '  initrd      : %s.initrd.img\n' "$ARTIFACT_PREFIX"
     printf '  cmdline     : %s.cmdline\n' "$ARTIFACT_PREFIX"
     printf '  manifest    : %s.manifest\n' "$ARTIFACT_PREFIX"
+    printf '  build       : %s %s (%s.build-info)\n' "$RELEASE" "$BUILD_ID" "$ARTIFACT_PREFIX"
     printf '  admin user  : %s\n' "$ADMIN_USER"
 }
 
@@ -808,6 +823,7 @@ summary() {
 main() {
     parse_args "$@"
     sisura_resolve_release || die "Release configuration error"
+    BUILD_ID="$(sisura_build_id)" || die "Build id error"
     if [[ "$(uname -s)" != "Linux" ]]; then
         reexec_in_docker "$@"
     fi

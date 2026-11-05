@@ -14,6 +14,19 @@ use anyhow::{bail, Context, Result};
 
 use crate::paths::{create_private_dir, Paths};
 
+/// BUILD_ID of a cached image (from <stem>.build-info, written by
+/// build_rootfs.sh), or "-" for images built before build ids existed.
+pub fn cached_build_id(paths: &Paths, key: &str) -> String {
+    fs::read_to_string(paths.images_dir().join(key).join("build-info"))
+        .ok()
+        .and_then(|t| {
+            t.lines()
+                .find_map(|l| l.strip_prefix("BUILD_ID="))
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "-".to_string())
+}
+
 pub struct BaseImage {
     pub key: String,
     pub arch: String,
@@ -101,6 +114,10 @@ impl BaseImage {
         let cmdline = src_dir.join(format!("{stem}.cmdline"));
         if cmdline.is_file() {
             copy_readonly(&cmdline, &staging.join("kernel-cmdline.txt"))?;
+        }
+        let info = src_dir.join(format!("{stem}.build-info"));
+        if info.is_file() {
+            copy_readonly(&info, &staging.join("build-info"))?;
         }
         fs::write(staging.join(".complete"), b"")?;
 

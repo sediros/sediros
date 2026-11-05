@@ -154,8 +154,8 @@ pub fn list(paths: &Paths) -> Result<()> {
         return Ok(());
     }
     println!(
-        "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} IMAGE",
-        "NAME", "STATE", "ARCH", "CPUS", "MEMORY", "SSH"
+        "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} BUILD",
+        "NAME", "STATE", "ARCH", "CPUS", "MEMORY", "SSH", "IMAGE"
     );
     for vm in vms {
         let state = if vm.is_running() {
@@ -164,14 +164,15 @@ pub fn list(paths: &Paths) -> Result<()> {
             "stopped"
         };
         println!(
-            "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {}",
+            "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} {}",
             vm.name,
             state,
             vm.arch,
             vm.cpus,
             format!("{}M", vm.memory_mib),
             vm.ssh_port,
-            vm.image_key
+            vm.image_key,
+            image::cached_build_id(paths, &vm.image_key)
         );
     }
     Ok(())

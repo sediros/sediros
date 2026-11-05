@@ -203,13 +203,13 @@ pub fn write_keyboard(target: &Path, kb: &Keyboard) -> Result<()> {
 }
 
 fn image_user(target: &Path) -> Result<String> {
-    let profile = fs::read_to_string(target.join("etc/sisura/build-profile"))
-        .context("reading /etc/sisura/build-profile of the copied system")?;
+    let profile = fs::read_to_string(target.join("etc/sisura/build-info"))
+        .context("reading /etc/sisura/build-info of the copied system")?;
     profile
         .lines()
         .find_map(|l| l.strip_prefix("USER="))
         .map(str::to_string)
-        .context("no USER= in /etc/sisura/build-profile")
+        .context("no USER= in /etc/sisura/build-info")
 }
 
 fn user_exists(target: &Path, user: &str) -> Result<bool> {
@@ -231,7 +231,7 @@ pub fn configure_account(target: &Path, account: &Account) -> Result<()> {
             &["-l", user, "-d", &format!("/home/{user}"), "-m", &old],
         )?;
         chroot(target, "groupmod", &["-n", user, &old])?;
-        let profile = target.join("etc/sisura/build-profile");
+        let profile = target.join("etc/sisura/build-info");
         let text = fs::read_to_string(&profile)?;
         let updated: Vec<String> = text
             .lines()

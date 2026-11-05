@@ -4,8 +4,8 @@
 # reach the squashfs that sisura-install copies.
 set -eu
 
-user="$(sed -n 's/^USER=//p' /etc/sisura/build-profile)"
-echo "$user" | grep -Eqx '[a-z_][a-z0-9_-]{0,31}' || { echo "sisura-live: no valid USER in build-profile" >&2; exit 1; }
+user="$(sed -n 's/^USER=//p' /etc/sisura/build-info)"
+echo "$user" | grep -Eqx '[a-z_][a-z0-9_-]{0,31}' || { echo "sisura-live: no valid USER in build-info" >&2; exit 1; }
 id "$user" >/dev/null
 
 # The install profile ships an empty, expired password (first login must set
