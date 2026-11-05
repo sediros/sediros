@@ -86,6 +86,24 @@ Sisura follows Debian's major version: `<debian major>.<point>`.
 - A release that gets published is tagged in git (`git tag v13.1`); release builds should come from a clean tree (no `-dirty`).
 - Packages have their own versions (SemVer), e.g. `sisura-hardening 0.3.0`, CLI `0.1.0`. `sisura-base-files` carries the distribution release.
 
+## Versions and releases
+
+Three numbers, each with its own rule:
+
+| Number | Example | Changes when |
+|---|---|---|
+| Release | `13.1` | A new ISO/image is published. Major = Debian major (13 trixie, 14 forky). Point (`13.1` → `13.2`): a Debian point release, a critical security fix in a package on the ISO, or an important installer/hardening fix. Development builds do not change it. |
+| Package / tool version (SemVer) | `sisura-hardening 0.3.0` | Any file of the package changes: patch for fixes, minor for new features, major (minor before 1.0) for changes that can break existing systems. Without a new version, apt never delivers the change. |
+| Build id | `20261105.1505-f69b925` | Every build, automatically. |
+
+`make lint` runs `scripts/check_versions.sh`, which fails when a package changed since the last release tag without a new version.
+
+Releasing:
+1. Update `RELEASE` in `config/sisura.conf` and `CHANGELOG.md`; check that changed packages have new versions (`make lint`).
+2. Commit, so the build id has no `-dirty` suffix.
+3. `make build && make test && make iso`.
+4. `git tag -a v13.2 -m "Sisura 13.2"`.
+
 ## Hardening summary
 
 sysctl (63 keys on trixie / kernel 6.12), AppArmor (default profiles), UFW (incoming denied, rate-limited 22/tcp), removal of SUID/SGID bits outside an allowlist (re-applied after every `dpkg` run), key-only SSH with modern cryptography, an nftables rule dropping IPv4 TCP packets with IP options, automatic installation of Debian security updates (unattended-upgrades), a sudo policy (pty, `/var/log/sudo.log`, 5-minute timestamp), a 15-minute account lock after 5 failed authentications in 15 minutes (`pam_faillock`; with key-only SSH this affects sudo and the console only), passwords of at least 12 characters with a dictionary check (`pwquality`), a locked root password, unused kernel modules blocked and core dumps disabled. `make test` verifies all of this on a running VM.

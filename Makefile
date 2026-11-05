@@ -122,7 +122,8 @@ test: $(CLI) $(IMAGE) ## Boot a throwaway VM and run the hardening smoke test (v
 	@test "$(PROFILE)" = vm || { echo "make test needs PROFILE=vm (install images have no key and no passwordless sudo)"; exit 1; }
 	SISURA_BIN=$(CLI) SISURA_IMAGE=$(IMAGE) tests/smoke.sh
 
-lint: ## bash -n + shellcheck (if installed) + rustfmt + clippy
+lint: ## bash -n + shellcheck (if installed) + rustfmt + clippy + package versions
+	@scripts/check_versions.sh
 	@for f in $(SHELL_SCRIPTS); do bash -n "$$f" || exit 1; done; echo "bash -n: ok"
 	@if command -v shellcheck >/dev/null; then shellcheck -x $(SHELL_SCRIPTS) && echo "shellcheck: ok"; \
 	 else echo "shellcheck: not installed, skipped"; fi
