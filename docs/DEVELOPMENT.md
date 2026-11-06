@@ -17,7 +17,7 @@ sisura-cli/ ──cargo──▶ sisura (runs the qcow2 images in QEMU)
 ## Requirements
 
 - **macOS (Apple Silicon):** Docker, `brew install qemu`, Rust. The build scripts re-run themselves in Docker; images are arm64.
-- **Linux:** `debootstrap zstd e2fsprogs qemu-utils qemu-system squashfs-tools xorriso mtools grub-*-bin`, Rust, `sudo`. Images match the host architecture (amd64 or arm64); cross builds are not supported.
+- **Linux:** `debootstrap zstd e2fsprogs qemu-utils qemu-system squashfs-tools xorriso mtools dosfstools grub-common`, `grub-pc-bin` (amd64), Rust, `sudo`; for `make iso-test` also `ovmf` (amd64) or `qemu-efi-aarch64` (arm64). Images match the host architecture (amd64 or arm64); cross builds are not supported.
 
 Building the rootfs and the installer downloads packages and crates, so Docker needs network access.
 
@@ -41,6 +41,8 @@ Settings are in `config/sisura.conf` and can be overridden on the command line, 
 | `make install` | installs the `sisura` CLI into `~/.cargo/bin` |
 | `make launch` / `shell` / `stop` | VM `dev` (or `VM=name`) |
 | `make iso-run` | boots the ISO in QEMU on a serial console (quit: Ctrl-A X) |
+| `make iso-test` | boots the ISO with Secure Boot enforced and checks it from the live session |
+| `make install-test` | installs from the ISO to an empty disk and boots it, both with Secure Boot enforced |
 
 ## Repository layout
 
@@ -48,7 +50,7 @@ Settings are in `config/sisura.conf` and can be overridden on the command line, 
 |---|---|
 | `scripts/build_rootfs.sh` | debootstrap minbase + packages + hardening → `build/*.tar.zst` |
 | `scripts/build_image.sh` | rootfs → `build/*.qcow2` (ext4, `LABEL=sisura-root`) |
-| `scripts/build_iso.sh` | rootfs → squashfs + live-boot + GRUB → `build/*.iso` |
+| `scripts/build_iso.sh` | rootfs → squashfs + live-boot + shim/signed GRUB (UEFI) + GRUB i386-pc (BIOS, amd64) → `build/*.iso` |
 | `scripts/build_packages.sh` | `packages/*` → `build/debs/*.deb`; fills in `@SISURA_RELEASE@`, `@SISURA_CODENAME@`, `@SISURA_ARCH@`; adds compiled programs listed in `packages/<pkg>/.sisura-binaries` |
 | `scripts/build_installer.sh` | builds `sisura-install` for Linux (Docker with `debian:trixie` on macOS) |
 | `scripts/check_versions.sh` | fails when a package changed since the last release tag without a new version |
@@ -75,12 +77,22 @@ One build script produces two kinds of root file systems:
 | SSH key | none in the image; `sisura launch` passes one at boot | none in the image; set by the installer |
 | Admin password | locked | empty and expired (the installer sets it) |
 | sudo | passwordless | asks for the password |
-| Extra packages | `sisura-guest` | `sisura-live`, `sisura-install`, cryptsetup, GRUB EFI, dropbear-initramfs (disabled), ... |
+| Extra packages | `sisura-guest` | `sisura-live`, `sisura-install`, cryptsetup, GRUB EFI with `shim-signed`, dropbear-initramfs (disabled), ... |
 | Artifact name | `sisura-13.1-arm64.*` | `sisura-13.1-install-arm64.*` |
 
 How a VM gets its key: the CLI keeps a key pair in `SISURA_HOME` (`~/.local/share/sisura/id_ed25519`) and adds `systemd.set_credential_binary=sisura.ssh.authorized_keys:<base64>` to the kernel command line; `sisura-guest` copies it into the admin user's `authorized_keys`. A public key is not secret, so the readable kernel command line is fine.
 
 How the ISO avoids an SSH server: `dropbear-initramfs` is installed for the installer, but its initramfs files are moved away with `dpkg-divert` and its host keys deleted (`disable_initramfs_ssh` in `build_rootfs.sh`). The installer restores them with new per-machine keys only when SSH unlock is chosen.
+
+## Secure Boot
+
+Sisura uses Debian's signed boot chain and signs nothing itself: UEFI firmware (Microsoft keys) → `shim-signed` (signed by Microsoft) → `grub-efi-*-signed` (signed by Debian) → Debian's signed kernel and modules. The install profile installs `shim-signed` and the signed GRUB; `build_iso.sh` copies shim and `gcd*.efi` from that rootfs into the ISO's EFI image, and `sisura-install` runs `grub-install --uefi-secure-boot`. Debian's package updates keep shim and GRUB current on installed systems.
+
+Consequences:
+- Signed GRUB cannot load modules: GRUB config (ISO `grub.cfg`, `/etc/grub.d` scripts) may only use commands built into it.
+- With Secure Boot on, the kernel runs in lockdown (integrity) mode; out-of-tree modules (DKMS) need a key enrolled with `mokutil`.
+
+`make iso-test` boots the ISO with firmware that enforces Secure Boot (Microsoft keys enrolled) and checks the `SecureBoot` EFI variable in the live session. `make install-test` runs `sisura-install --yes` (LUKS, admin and GRUB password) in that VM, then boots the installed disk with the same EFI variables, unlocks it on the serial console, logs in and checks Secure Boot and `dpkg --audit`. CI runs both on amd64 with KVM. On macOS they run under TCG (Debian's AAVMF hangs under HVF): copy `AAVMF_CODE.secboot.fd` and `AAVMF_VARS.ms.fd` from Debian's `qemu-efi-aarch64` into a directory and set `SISURA_FIRMWARE_DIR`.
 
 ## Testing
 

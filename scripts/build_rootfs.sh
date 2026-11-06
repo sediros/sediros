@@ -469,7 +469,10 @@ EOF
     chroot_run apt-get update
     chroot_run apt-get -y dist-upgrade
     local extra=()
-    [[ "$PROFILE" == install ]] && extra=("${INSTALL_PROFILE_PACKAGES[@]}" "grub-efi-${ARCH}")
+    # Secure Boot: Microsoft-signed shim -> Debian-signed GRUB -> Debian-signed
+    # kernel. build_iso.sh takes the ISO's boot files from this rootfs.
+    [[ "$PROFILE" == install ]] \
+        && extra=("${INSTALL_PROFILE_PACKAGES[@]}" "grub-efi-${ARCH}" "grub-efi-${ARCH}-signed" shim-signed)
     chroot_run apt-get -y install "${BASE_PACKAGES[@]}" "linux-image-${ARCH}" "${extra[@]+"${extra[@]}"}"
     chroot_run apt-get -y autoremove --purge
     ok "Packages installed"

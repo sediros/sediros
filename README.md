@@ -50,7 +50,7 @@ gh attestation verify sisura-13.1-install-amd64.iso --repo sisura-linux/sisura
 
 Requirements:
 - A 64-bit PC or server (amd64) or ARM machine (arm64) that boots with **UEFI**. Legacy BIOS/CSM boot is not supported; the installer stops if the ISO was started that way.
-- **Secure Boot must be disabled** for now.
+- **Secure Boot** can stay on: Sisura boots with Debian's signed boot chain (shim signed by Microsoft, Debian-signed GRUB and kernel), which machines with Microsoft's UEFI keys accept. With Secure Boot on, the kernel runs in lockdown mode, and kernel modules that are not part of Debian (DKMS) need a key enrolled with `mokutil`.
 - At least 8 GiB of disk space; the whole disk is used and erased. Installation has been tested with 2 GiB of RAM.
 
 1. **Put the ISO on a boot medium.**

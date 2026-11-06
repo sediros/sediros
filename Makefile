@@ -50,9 +50,9 @@ export SISURA_MAX_RAM_MB    := $(MAX_RAM_MB)
 ROOTFS_INPUTS := scripts/build_rootfs.sh scripts/lib/release.sh $(DEBS) $(if $(filter install,$(PROFILE)),$(INSTALL_DEBS)) $(filter-out config/sisura.conf config/iso/%,$(shell find config -type f))
 PKG_INPUTS    := scripts/build_packages.sh scripts/lib/release.sh config/sisura.conf $(shell find packages -type f ! -name .DS_Store)
 CLI_INPUTS    := sisura-cli/Cargo.toml $(shell find sisura-cli/src -name '*.rs')
-SHELL_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh)
+SHELL_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh tests/lib/*.sh)
 
-.PHONY: help deb rootfs image build iso iso-run cli installer install test lint fmt launch shell stop clean
+.PHONY: help deb rootfs image build iso iso-run iso-test install-test cli installer install test lint fmt launch shell stop clean
 
 help: ## Show this help
 	@echo "Sisura $(RELEASE) ($(ARCH), profile $(PROFILE)) - usage: make <target> [RELEASE=..] [PROFILE=vm|install] [VM=..]"
@@ -141,6 +141,12 @@ stop: $(CLI) ## Stop VM (VM=dev)
 
 iso-run: $(ISO) ## Boot the live ISO in QEMU (UEFI, serial console)
 	scripts/run_iso.sh $(ISO)
+
+iso-test: ## Boot the ISO with Secure Boot enforced and check the live session
+	tests/iso_secureboot.sh $(ISO)
+
+install-test: ## Install from the ISO and boot the installed disk, with Secure Boot
+	tests/install_secureboot.sh $(ISO)
 
 clean: ## Remove build/ artifacts and Rust target/ (VMs are kept)
 	$(SUDO) rm -rf --one-file-system $(BUILD) 2>/dev/null || $(SUDO) rm -rf $(BUILD)

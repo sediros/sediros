@@ -398,6 +398,11 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
         }
     };
 
+    // Plain `dpkg --purge` (above) leaves triggers it activated pending,
+    // e.g. shim-signed's; apt would run them at its end. Without this the
+    // installed system starts with packages that `dpkg --audit` reports.
+    chroot(target, "dpkg", &["--configure", "--pending"])?;
+
     step("Building the initramfs (cryptsetup, keyboard layout)");
     chroot(target, "update-initramfs", &["-c", "-k", "all"])?;
 
@@ -411,6 +416,9 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
         format!("--target={grub}"),
         "--efi-directory=/boot/efi".to_string(),
         "--bootloader-id=sisura".to_string(),
+        // shim (signed by Microsoft) + Debian's signed GRUB: boots with
+        // Secure Boot on, and without it.
+        "--uefi-secure-boot".to_string(),
     ];
     if !efivars {
         // Not booted via UEFI (or no efivars): no NVRAM boot entry possible.
@@ -427,6 +435,7 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
             &format!("--target={grub}"),
             "--efi-directory=/boot/efi",
             "--removable",
+            "--uefi-secure-boot",
             "--no-nvram",
         ],
     )?;

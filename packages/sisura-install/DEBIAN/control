@@ -1,5 +1,5 @@
 Package: sisura-install
-Version: 0.2.0
+Version: 0.3.0
 Architecture: @SISURA_ARCH@
 Maintainer: The Sisura Authors <ahmetatakan.tech@gmail.com>
 Section: admin

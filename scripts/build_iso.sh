@@ -12,6 +12,12 @@
 #          amd64: hybrid BIOS + UEFI, bootable from CD or USB
 #          arm64: UEFI
 #
+#  UEFI boots with Secure Boot: the EFI image holds Debian's shim (signed by
+#  Microsoft) and Debian's signed GRUB (gcd*.efi), both taken from the rootfs
+#  (shim-signed, grub-efi-*-signed in the install profile), so they match
+#  the packages the installer later puts on disk. The kernel is Debian's
+#  signed kernel. BIOS boot (amd64) uses GRUB from the build host.
+#
 #  Built from the same build_rootfs.sh as the qcow2 image (one hardening
 #  source, no live-build config). Root is squashfs + tmpfs overlay
 #  (live-boot). The squashfs is also what sisura-install copies to disk, so
@@ -61,12 +67,12 @@ if [[ "$(uname -s)" != "Linux" ]]; then
         "$DOCKER_IMAGE" bash -c '
             set -e
             case "$(dpkg --print-architecture)" in
-                amd64) grub="grub-pc-bin grub-efi-amd64-bin" ;;
-                arm64) grub="grub-efi-arm64-bin" ;;
+                amd64) grub="grub-pc-bin" ;;
+                arm64) grub="" ;;
             esac
             apt-get update -qq
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-                grub-common $grub xorriso mtools squashfs-tools zstd >/dev/null
+                grub-common $grub xorriso mtools dosfstools squashfs-tools zstd >/dev/null
             exec ./scripts/build_iso.sh "$@"' _ "${ORIG_ARGS[@]+"${ORIG_ARGS[@]}"}"
 fi
 
@@ -74,9 +80,9 @@ fi
 # Linux path
 # ----------------------------------------------------------------------------
 [[ $EUID -eq 0 ]] || die "Must run as root (file ownership inside the squashfs)."
-for cmd in mksquashfs grub-mkrescue xorriso mformat zstd tar; do
+for cmd in mksquashfs xorriso mcopy mkfs.vfat zstd tar; do
     command -v "$cmd" >/dev/null 2>&1 \
-        || die "Missing tool: $cmd (apt install grub-common grub-efi-*-bin xorriso mtools squashfs-tools zstd)"
+        || die "Missing tool: $cmd (apt install xorriso mtools dosfstools squashfs-tools zstd)"
 done
 [[ -r "$GRUB_TEMPLATE" ]] || die "Missing $GRUB_TEMPLATE"
 
@@ -95,13 +101,16 @@ name="$(basename "$ROOTFS_TAR" .tar.zst)"       # sisura-rootfs-13.1-arm64
 name="sisura-${name#sisura-rootfs-}"             # sisura-13.1-arm64
 arch="${name##*-}"
 case "$arch" in
-    amd64) console="console=tty0 console=ttyS0,115200"; grub_dirs=(i386-pc x86_64-efi) ;;
-    arm64) console="console=tty0 console=ttyAMA0";      grub_dirs=(arm64-efi) ;;
+    amd64) console="console=tty0 console=ttyS0,115200"; efi=x64;  grub_efi=x86_64-efi ;;
+    arm64) console="console=tty0 console=ttyAMA0";      efi=aa64; grub_efi=arm64-efi ;;
     *)     die "Cannot infer architecture from $name" ;;
 esac
-for d in "${grub_dirs[@]}"; do
-    [[ -d "/usr/lib/grub/$d" ]] || die "GRUB platform $d missing (install grub-*-bin for $arch)"
-done
+EFI_BOOT="BOOT${efi^^}.EFI"
+if [[ "$arch" == amd64 ]]; then
+    if [[ ! -d /usr/lib/grub/i386-pc ]] || ! command -v grub-mkimage >/dev/null; then
+        die "BIOS boot needs GRUB for i386-pc (apt install grub-common grub-pc-bin)"
+    fi
+fi
 OUT="${BUILD_DIR}/${name}.iso"
 
 WORK="$(mktemp -d /tmp/sisura-iso.XXXXXX)"
@@ -151,9 +160,61 @@ sed -e "s|@VERSION@|${version}|g" \
     -e "s|@CMDLINE@|${cmdline}|g" \
     "$GRUB_TEMPLATE" > "$WORK/iso/boot/grub/grub.cfg"
 
-log "Building ISO (grub-mkrescue: ${grub_dirs[*]})"
-grub-mkrescue -o "${OUT}.tmp" "$WORK/iso" >/dev/null 2>&1 \
-    || { grub-mkrescue -o "${OUT}.tmp" "$WORK/iso"; die "grub-mkrescue failed"; }
+# ---------------------------------------------------------------------------
+# UEFI (Secure Boot): FAT image with shim as the removable-media boot file
+# and signed GRUB next to it as grub<efi>.efi, which shim loads and verifies.
+# gcd*.efi finds the ISO by /.disk/info and reads /boot/grub/grub.cfg; the
+# grub.cfg in the EFI image is a fallback that finds this ISO by its id.
+# Signed GRUB cannot load modules, so the ISO's grub.cfg must only use
+# commands built into it.
+# ---------------------------------------------------------------------------
+shim="$WORK/root/usr/lib/shim/shim${efi}.efi.signed"
+mok="$WORK/root/usr/lib/shim/mm${efi}.efi.signed"
+gcd="$WORK/root/usr/lib/grub/${grub_efi}-signed/gcd${efi}.efi.signed"
+for f in "$shim" "$mok" "$gcd"; do
+    [[ -r "$f" ]] || die "Missing ${f#"$WORK/root"} in the rootfs (shim-signed, grub-efi-${arch}-signed)"
+done
+iso_id="sisura-${build_id:-$(date -u +%Y%m%d.%H%M%S)}"
+mkdir -p "$WORK/iso/.disk"
+printf 'Sisura Linux %s\n' "$version" > "$WORK/iso/.disk/info"
+: > "$WORK/iso/.disk/${iso_id}"
+cat > "$WORK/efi-grub.cfg" <<GRUBCFG
+search --no-floppy --set=root --file /.disk/${iso_id}
+set prefix=(\$root)/boot/grub
+configfile \$prefix/grub.cfg
+GRUBCFG
+
+log "Building EFI image (shim + signed GRUB)"
+efi_img="$WORK/iso/boot/grub/efi.img"
+truncate -s 8M "$efi_img"
+mkfs.vfat -n SISURA_EFI "$efi_img" >/dev/null
+mmd -i "$efi_img" ::/EFI ::/EFI/BOOT
+mcopy -i "$efi_img" "$shim" "::/EFI/BOOT/${EFI_BOOT}"
+mcopy -i "$efi_img" "$gcd" "::/EFI/BOOT/grub${efi}.efi"
+mcopy -i "$efi_img" "$mok" "::/EFI/BOOT/mm${efi}.efi"
+mcopy -i "$efi_img" "$WORK/efi-grub.cfg" ::/EFI/BOOT/grub.cfg
+ok "EFI: ${EFI_BOOT} (shim) -> grub${efi}.efi (signed GRUB)"
+
+xorriso_args=(-as mkisofs -o "${OUT}.tmp" -r -J -joliet-long -V "SISURA_${release//./_}")
+if [[ "$arch" == amd64 ]]; then
+    # BIOS: El Torito core image with GRUB's i386-pc modules on the ISO; the
+    # hybrid MBR boots the same core from a USB stick.
+    mkdir -p "$WORK/iso/boot/grub/i386-pc"
+    cp /usr/lib/grub/i386-pc/*.mod /usr/lib/grub/i386-pc/*.lst "$WORK/iso/boot/grub/i386-pc/"
+    grub-mkimage -O i386-pc-eltorito -p /boot/grub \
+        -o "$WORK/iso/boot/grub/i386-pc/eltorito.img" biosdisk iso9660
+    xorriso_args+=(-b boot/grub/i386-pc/eltorito.img -no-emul-boot
+                   -boot-load-size 4 -boot-info-table --grub2-boot-info
+                   --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img)
+    ok "BIOS: GRUB i386-pc (El Torito + hybrid MBR)"
+fi
+# The EFI image is both an El Torito entry (CD) and a GPT/MBR partition (USB).
+xorriso_args+=(--efi-boot boot/grub/efi.img -efi-boot-part --efi-boot-image
+               --protective-msdos-label "$WORK/iso")
+
+log "Building ISO (xorriso)"
+xorriso "${xorriso_args[@]}" >/dev/null 2>&1 \
+    || { xorriso "${xorriso_args[@]}"; die "xorriso failed"; }
 mv -f "${OUT}.tmp" "$OUT"
 (cd "$BUILD_DIR" && sha256sum "$(basename "$OUT")" > "$(basename "$OUT").sha256")
 ok "ISO: $OUT ($(du -h "$OUT" | cut -f1))"
