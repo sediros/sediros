@@ -103,6 +103,11 @@ struct InstallArgs {
     /// Check everything and show the plan, change nothing
     #[arg(long)]
     dry_run: bool,
+
+    /// Install although the running system was not booted via UEFI (VMs
+    /// started with a direct kernel boot). The target machine must boot UEFI.
+    #[arg(long, hide = true)]
+    skip_uefi_check: bool,
 }
 
 fn list_disks() -> Result<()> {
@@ -251,6 +256,7 @@ fn install(args: InstallArgs) -> Result<()> {
         target: args.target.clone(),
         hostname,
         passphrase: secret::Secret::empty(),
+        skip_uefi_check: args.skip_uefi_check,
         setup: setup::Setup {
             account: setup::Account {
                 user: String::new(),

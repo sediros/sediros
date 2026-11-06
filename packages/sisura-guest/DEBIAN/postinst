@@ -1,0 +1,7 @@
+#!/bin/sh
+# sisura-guest postinst
+set -e
+case "$1" in
+    configure) deb-systemd-helper enable sisura-guest-ssh-keys.service >/dev/null ;;
+esac
+exit 0

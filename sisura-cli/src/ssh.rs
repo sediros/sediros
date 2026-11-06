@@ -20,7 +20,13 @@ pub fn shell(paths: &Paths, args: &ShellArgs) -> Result<()> {
         );
     }
 
+    // The CLI's key (given to the VM at launch); a project id_sisura only
+    // matters for images built before keys were passed at boot.
     let identity = args.identity.clone().or_else(|| {
+        let own = paths.home.join("id_ed25519");
+        if own.is_file() {
+            return Some(own);
+        }
         paths
             .project()
             .ok()

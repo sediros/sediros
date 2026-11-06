@@ -108,6 +108,8 @@ INSTALL_PROFILE_PACKAGES=(
 DROPBEAR_INITRAMFS_FILES=(hooks/dropbear scripts/init-premount/dropbear scripts/init-bottom/dropbear)
 DROPBEAR_DIVERT_DIR=/usr/share/sisura/initramfs-dropbear
 INSTALL_PROFILE_SISURA_PACKAGES=(sisura-live sisura-install)
+# vm profile: SSH keys arrive at boot from `sisura launch` (systemd credential).
+VM_PROFILE_SISURA_PACKAGES=(sisura-guest)
 
 # Kernel parameters for the bootloader / QEMU -append (consumed by stage 2/3).
 # The hardening parameters live in sisura-boot-hardening (GRUB config of
@@ -285,9 +287,10 @@ preflight() {
         *) die "Unsupported suite: $SUITE" ;;
     esac
 
-    if [[ "$PROFILE" == install ]]; then
-        SISURA_PACKAGES+=("${INSTALL_PROFILE_SISURA_PACKAGES[@]}")
-    fi
+    case "$PROFILE" in
+        install) SISURA_PACKAGES+=("${INSTALL_PROFILE_SISURA_PACKAGES[@]}") ;;
+        vm)      SISURA_PACKAGES+=("${VM_PROFILE_SISURA_PACKAGES[@]}") ;;
+    esac
     local pkg
     for pkg in "${SISURA_PACKAGES[@]}"; do
         [[ -n "$(sisura_deb "$pkg")" ]] \
@@ -300,10 +303,10 @@ preflight() {
     fi
     case "$PROFILE" in
         vm)
-            if [[ -z "$SSH_PUBKEY_FILE" && -z "$DEBUG_PASSWORD" ]]; then
-                warn "Neither SISURA_SSH_PUBKEY nor SISURA_DEBUG_PASSWORD set:"
-                warn "the image will have no login path until a key is injected."
-            fi ;;
+            # No key in the image: `sisura launch` passes one at boot.
+            [[ -z "$SSH_PUBKEY_FILE" ]] \
+                || warn "SISURA_SSH_PUBKEY set: that key is baked into the image (do not publish it)."
+            ;;
         install)
             [[ -z "$SSH_PUBKEY_FILE" ]] \
                 || warn "install profile with SISURA_SSH_PUBKEY: that key is baked into the image."

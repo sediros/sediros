@@ -128,7 +128,29 @@ fn qemu_img(mut cmd: Command) -> Result<()> {
     Ok(())
 }
 
-fn kernel_cmdline(platform: &Platform, image: &BaseImage) -> String {
+/// Standard base64 (RFC 4648, with padding).
+fn base64(data: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
+        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(T[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
+fn kernel_cmdline(platform: &Platform, image: &BaseImage, authorized_key: &str) -> String {
     let mut parts = vec![
         "root=LABEL=sisura-root".to_string(),
         "rw".to_string(),
@@ -141,11 +163,22 @@ fn kernel_cmdline(platform: &Platform, image: &BaseImage) -> String {
         }
         parts.push(p.to_string());
     }
+    // SSH public key for the admin user, read by sisura-guest. A public key
+    // is not secret, so the world-readable kernel command line is fine.
+    parts.push(format!(
+        "systemd.set_credential_binary=sisura.ssh.authorized_keys:{}",
+        base64(format!("{}\n", authorized_key.trim()).as_bytes())
+    ));
     parts.join(" ")
 }
 
 /// Start QEMU daemonized. Returns once QEMU has forked into the background.
-pub fn spawn(platform: &Platform, vm: &VmState, image: &BaseImage) -> Result<()> {
+pub fn spawn(
+    platform: &Platform,
+    vm: &VmState,
+    image: &BaseImage,
+    authorized_key: &str,
+) -> Result<()> {
     let cpu = if platform.accel == Accel::Tcg {
         "max"
     } else {
@@ -173,7 +206,7 @@ pub fn spawn(platform: &Platform, vm: &VmState, image: &BaseImage) -> Result<()>
         .arg("-initrd")
         .arg(qemu_path(&image.initrd())?)
         .arg("-append")
-        .arg(kernel_cmdline(platform, image))
+        .arg(kernel_cmdline(platform, image, authorized_key))
         .arg("-drive")
         .arg(format!(
             "if=none,id=root,format=qcow2,discard=unmap,file={}",
@@ -261,4 +294,24 @@ fn qmp_command(
         }
     }
     bail!("no QMP reply for '{command}'")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::base64;
+
+    #[test]
+    fn base64_rfc4648_vectors() {
+        for (input, want) in [
+            ("", ""),
+            ("f", "Zg=="),
+            ("fo", "Zm8="),
+            ("foo", "Zm9v"),
+            ("foob", "Zm9vYg=="),
+            ("fooba", "Zm9vYmE="),
+            ("foobar", "Zm9vYmFy"),
+        ] {
+            assert_eq!(base64(input.as_bytes()), want);
+        }
+    }
 }

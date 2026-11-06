@@ -20,11 +20,11 @@ IMAGE      := $(BUILD)/sisura-$(RELEASE)$(PROFILE_TAG)-$(ARCH).qcow2
 INSTALL_ROOTFS_TAR := $(BUILD)/sisura-rootfs-$(RELEASE)-install-$(ARCH).tar.zst
 ISO        := $(BUILD)/sisura-$(RELEASE)-install-$(ARCH).iso
 CLI        := sisura-cli/target/release/sisura
-SSH_KEY    := id_sisura
 pkg_version = $(shell sed -n 's/^Version: *//p' packages/$(1)/DEBIAN/control)
 DEBS       := $(BUILD)/debs/sisura-base-files_$(RELEASE)_all.deb \
               $(BUILD)/debs/sisura-hardening_$(call pkg_version,sisura-hardening)_all.deb \
-              $(BUILD)/debs/sisura-boot-hardening_$(call pkg_version,sisura-boot-hardening)_all.deb
+              $(BUILD)/debs/sisura-boot-hardening_$(call pkg_version,sisura-boot-hardening)_all.deb \
+              $(BUILD)/debs/sisura-guest_$(call pkg_version,sisura-guest)_all.deb
 # Only in the install profile (live ISO + installer).
 INSTALLER_BIN := $(BUILD)/bin/sisura-install-$(ARCH)
 LIVE_DEB      := $(BUILD)/debs/sisura-live_$(call pkg_version,sisura-live)_all.deb
@@ -41,20 +41,18 @@ export SISURA_SUITE         := $(SUITE)
 endif
 export SISURA_USER          := $(GUEST_USER)
 export SISURA_PROFILE       := $(PROFILE)
-# The dev key only goes into vm images; install images get keys at first boot.
-ifeq ($(PROFILE),vm)
-export SISURA_SSH_PUBKEY    := $(SSH_KEY).pub
-endif
+# No SSH key is baked into any image: vm images get the sisura CLI's key at
+# boot (systemd credential), installed systems get keys from the installer.
 export SISURA_MAX_BOOT_SECS := $(MAX_BOOT_SECS)
 export SISURA_MAX_RAM_MB    := $(MAX_RAM_MB)
 
 # Inputs that change the rootfs (config/sisura.conf only holds make variables).
-ROOTFS_INPUTS := scripts/build_rootfs.sh scripts/lib/release.sh $(DEBS) $(if $(filter install,$(PROFILE)),$(INSTALL_DEBS)) $(filter-out config/sisura.conf config/iso/%,$(shell find config -type f)) $(SSH_KEY).pub
+ROOTFS_INPUTS := scripts/build_rootfs.sh scripts/lib/release.sh $(DEBS) $(if $(filter install,$(PROFILE)),$(INSTALL_DEBS)) $(filter-out config/sisura.conf config/iso/%,$(shell find config -type f))
 PKG_INPUTS    := scripts/build_packages.sh scripts/lib/release.sh config/sisura.conf $(shell find packages -type f ! -name .DS_Store)
 CLI_INPUTS    := sisura-cli/Cargo.toml $(shell find sisura-cli/src -name '*.rs')
 SHELL_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh)
 
-.PHONY: help key deb rootfs image build iso iso-run cli installer install test lint fmt launch shell stop clean
+.PHONY: help deb rootfs image build iso iso-run cli installer install test lint fmt launch shell stop clean
 
 help: ## Show this help
 	@echo "Sisura $(RELEASE) ($(ARCH), profile $(PROFILE)) - usage: make <target> [RELEASE=..] [PROFILE=vm|install] [VM=..]"
@@ -62,11 +60,6 @@ help: ## Show this help
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[1m%-10s\033[0m %s\n", $$1, $$2}'
 
 # --- artifacts ---------------------------------------------------------------
-
-$(SSH_KEY).pub:
-	@test -f $(SSH_KEY) || ssh-keygen -q -t ed25519 -N "" -C sisura-dev -f $(SSH_KEY)
-	@test -f $@ || ssh-keygen -y -f $(SSH_KEY) > $@
-	@echo "SSH key: $(SSH_KEY)"
 
 # One build_packages.sh run produces every .deb (grouped target emulation for make 3.81).
 $(firstword $(DEBS)): $(PKG_INPUTS)
@@ -91,9 +84,9 @@ $(INSTALLER_DEB): $(PKG_INPUTS) $(INSTALLER_BIN)
 	scripts/build_packages.sh
 
 ifneq ($(PROFILE),install)
-# Same recipe as $(ROOTFS_TAR), without the dev key.
+# Same recipe as $(ROOTFS_TAR), install profile.
 $(INSTALL_ROOTFS_TAR): $(ROOTFS_INPUTS) $(INSTALL_DEBS)
-	$(SUDO) env -u SISURA_SSH_PUBKEY SISURA_PROFILE=install scripts/build_rootfs.sh --clean
+	$(SUDO) env SISURA_PROFILE=install scripts/build_rootfs.sh --clean
 endif
 
 $(ISO): $(INSTALL_ROOTFS_TAR) scripts/build_iso.sh $(wildcard config/iso/*)
@@ -102,7 +95,6 @@ $(ISO): $(INSTALL_ROOTFS_TAR) scripts/build_iso.sh $(wildcard config/iso/*)
 $(CLI): $(CLI_INPUTS)
 	cargo build --release --manifest-path sisura-cli/Cargo.toml
 
-key: $(SSH_KEY).pub ## Generate the dev SSH key (id_sisura)
 deb: $(DEBS) ## Build Sisura .deb packages (build/debs)
 rootfs: $(ROOTFS_TAR) ## Build the hardened rootfs archive (only if inputs changed)
 image: $(IMAGE) ## Build the qcow2 base image

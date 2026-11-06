@@ -1,0 +1,12 @@
+Package: sisura-guest
+Version: 0.1.0
+Architecture: all
+Maintainer: Sisura Maintainers <packages@sisura.invalid>
+Section: admin
+Priority: optional
+Depends: systemd (>= 254), passwd, init-system-helpers
+Description: Sisura Linux VM guest integration
+ For VM images started by the sisura CLI. The image contains no SSH key:
+ sisura launch passes the user's public key as the systemd credential
+ sisura.ssh.authorized_keys, and this package adds it to the admin user's
+ ~/.ssh/authorized_keys at boot. Does nothing without that credential.

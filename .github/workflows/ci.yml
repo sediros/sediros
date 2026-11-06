@@ -67,9 +67,6 @@ jobs:
         with:
           workspaces: sisura-cli
 
-      # Throwaway key for this run only; never uploaded.
-      - run: make key
-
       - name: Build rootfs + image + cli
         run: make build
 

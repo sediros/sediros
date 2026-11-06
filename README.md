@@ -9,7 +9,6 @@ Requirements:
 - **Linux:** `debootstrap zstd e2fsprogs qemu-utils qemu-system squashfs-tools xorriso mtools grub-*-bin`, Rust, `sudo`
 
 ```bash
-make key        # development SSH key (id_sisura), never committed
 make build      # .deb packages + rootfs + qcow2 image + sisura binary
 make test       # boots a throwaway VM, runs the hardening checks, deletes it
 make launch     # starts the 'dev' VM
@@ -35,6 +34,7 @@ sisura purge  [<vm>] [--images] [--yes]
 - VMs are kept under `~/.local/share/sisura/` (override with `SISURA_HOME`). Each VM runs on its own copy-on-write disk on top of a read-only base image.
 - Acceleration is picked automatically: HVF on macOS, KVM on Linux, TCG (slow) otherwise.
 - SSH is only reachable on `127.0.0.1`. Each VM has its own `known_hosts` file.
+- Images contain no SSH key. The CLI creates its own key pair (`~/.local/share/sisura/id_ed25519`) and passes the public key to each VM at boot as a systemd credential; `sisura-guest` adds it to the admin user's `authorized_keys`.
 - `--data-disk` attaches an empty second disk to a new VM (installer tests).
 
 ## Repository layout
@@ -47,6 +47,7 @@ sisura purge  [<vm>] [--images] [--yes]
 | `packages/sisura-base-files/` | `os-release` (`ID=sisura`, `ID_LIKE=debian`); Debian's copy is kept with `dpkg-divert` |
 | `packages/sisura-hardening/` | Hardening package: sysctl, sshd, nftables, automatic security updates, sudo/PAM, modprobe, SUID removal, first-boot units |
 | `packages/sisura-boot-hardening/` | GRUB: kernel hardening parameters and an optional GRUB password (`sisura-grub-password`); inert without GRUB |
+| `packages/sisura-guest/` | VM images: adds the SSH key passed by `sisura launch` at boot |
 | `packages/sisura-live/` | Live ISO session: console autologin, passwordless sudo; only with `boot=live` and only in RAM |
 | `packages/sisura-install/` | Installer package (ISO only; removed from the installed system) |
 | `scripts/build_packages.sh` | `packages/*` → `build/debs/*.deb` (fills in placeholders such as `@SISURA_RELEASE@`) |
@@ -62,7 +63,7 @@ sisura purge  [<vm>] [--images] [--yes]
 | | `PROFILE=vm` (default) | `PROFILE=install` |
 |---|---|---|
 | Used for | `sisura launch`, `make test`, CI | Systems installed to disk, the ISO |
-| SSH | Key only (development key baked in) | Key only (no key baked in) |
+| SSH | Key only, passed by `sisura launch` at boot (none in the image) | Key only, set by the installer (none in the image) |
 | User password | Locked | Empty and expired: set at the first console login |
 | sudo | Passwordless | Asks for the password |
 | Artifact name | `sisura-13.1-arm64.*` | `sisura-13.1-install-arm64.*` |
@@ -154,7 +155,7 @@ A GRUB password does not stop booting from other media. With a remote console (I
 
 - Unprivileged user namespaces are disabled: rootless podman and the Chromium sandbox do not work.
 - `ptrace_scope=2`: regular users cannot attach gdb or strace to a process.
-- `PROFILE=vm` (the default) contains passwordless sudo and the development key; it is meant for throwaway VMs only. Systems to install are built with `PROFILE=install`.
+- `PROFILE=vm` (the default) has passwordless sudo; it is meant for VMs started by `sisura launch`, not for installing to disk. Systems to install are built with `PROFILE=install`.
 - unattended-upgrades only installs from the Debian-Security archive and never reboots. After a kernel update a "System restart required" notice appears at login. For automatic reboots on a server, set `Automatic-Reboot "true"` in `/etc/apt/apt.conf.d/52sisura-unattended-upgrades`.
 - unattended-upgrades pulls in python3: about 30-40 MB of disk and about 20 MB of RAM for its shutdown helper.
 - On macOS, Unix socket paths are limited to 104 characters: keep `SISURA_HOME` short.

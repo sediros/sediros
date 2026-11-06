@@ -103,7 +103,10 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     let _ = fs::remove_file(vm.serial_log());
 
     let started = Instant::now();
-    qemu::spawn(&platform, &vm, &image)?;
+    let key = crate::paths::ensure_ssh_key(&paths.home)?;
+    let pubkey = fs::read_to_string(key.with_extension("pub"))
+        .with_context(|| format!("reading {}.pub", key.display()))?;
+    qemu::spawn(&platform, &vm, &image, &pubkey)?;
     let accel = format!("{:?}", platform.accel).to_lowercase();
     println!(
         "Launched '{}' ({}, {accel}, {} vCPU, {} MiB) - ssh on 127.0.0.1:{}",

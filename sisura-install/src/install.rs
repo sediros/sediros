@@ -39,6 +39,8 @@ pub struct Options {
     pub hostname: String,
     pub passphrase: Secret,
     pub setup: Setup,
+    /// Install even though the running system did not boot via UEFI.
+    pub skip_uefi_check: bool,
 }
 
 /// Undo mounts and close LUKS on every exit path (success, error, panic=abort
@@ -103,6 +105,15 @@ fn wait_for(paths: &[PathBuf]) -> Result<()> {
 pub fn preflight(opts: &Options) -> Result<()> {
     if unsafe { libc::geteuid() } != 0 {
         bail!("must run as root");
+    }
+    // Only UEFI installs are supported (GPT + ESP, GRUB for EFI). A live ISO
+    // started in legacy BIOS/CSM mode would produce a disk that never boots
+    // on that machine.
+    if !opts.skip_uefi_check && !Path::new("/sys/firmware/efi").is_dir() {
+        bail!(
+            "this system was not booted in UEFI mode; Sisura installs for UEFI only.\n  \
+             Enable UEFI (disable legacy/CSM boot) in the firmware settings and boot the ISO again."
+        );
     }
     for tool in [
         "sfdisk",

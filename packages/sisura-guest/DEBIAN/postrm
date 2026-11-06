@@ -1,0 +1,7 @@
+#!/bin/sh
+# sisura-guest postrm
+set -e
+case "$1" in
+    purge) deb-systemd-helper purge sisura-guest-ssh-keys.service >/dev/null || true ;;
+esac
+exit 0

@@ -111,7 +111,7 @@ pub struct ShellArgs {
     /// VM name
     pub name: String,
 
-    /// SSH private key. Default: <project>/id_sisura if it exists
+    /// SSH private key. Default: the CLI key (<home>/id_ed25519), else <project>/id_sisura
     #[arg(short = 'i', long, env = "SISURA_SSH_KEY")]
     pub identity: Option<PathBuf>,
 

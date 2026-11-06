@@ -127,6 +127,26 @@ pub fn remove_dir_within(base: &Path, target: &Path) -> Result<()> {
     fs::remove_dir_all(&target_c).with_context(|| format!("deleting {}", target_c.display()))
 }
 
+/// The CLI's own SSH key pair (<home>/id_ed25519), created on first use.
+/// Its public key is handed to every VM at boot; images contain no key.
+pub fn ensure_ssh_key(home: &Path) -> Result<PathBuf> {
+    let key = home.join("id_ed25519");
+    if key.is_file() && key.with_extension("pub").is_file() {
+        return Ok(key);
+    }
+    create_private_dir(home)?;
+    let status = std::process::Command::new("ssh-keygen")
+        .args(["-q", "-t", "ed25519", "-N", "", "-C", "sisura-cli", "-f"])
+        .arg(&key)
+        .stdin(std::process::Stdio::null())
+        .status()
+        .context("running ssh-keygen")?;
+    if !status.success() {
+        bail!("ssh-keygen failed creating {}", key.display());
+    }
+    Ok(key)
+}
+
 /// Locate an executable on PATH.
 pub fn which(binary: &str) -> Option<PathBuf> {
     let path = env::var_os("PATH")?;

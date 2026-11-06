@@ -111,7 +111,7 @@ if ((${#bad[@]} == 0)); then pass "sshd: key-only, no root, no forwarding, Allow
 else fail "sshd" "missing: ${bad[*]}"; fi
 
 # --- Sisura packages --------------------------------------------------------------
-for p in sisura-base-files sisura-hardening sisura-boot-hardening; do
+for p in sisura-base-files sisura-hardening sisura-boot-hardening sisura-guest; do
     pkg="$(dpkg-query -W -f='${Status} ${Version}' "$p" 2>/dev/null)"
     if [[ "$pkg" != "install ok installed "* ]]; then
         fail "package" "$p not installed (${pkg:-missing})"
@@ -121,10 +121,19 @@ for p in sisura-base-files sisura-hardening sisura-boot-hardening; do
         pass "package: $p ${pkg##* } installed, files unmodified"
     fi
 done
-for unit in sisura-ssh-hostkeys.service sisura-firstboot-ufw.service sisura-netfilter.service; do
+for unit in sisura-ssh-hostkeys.service sisura-firstboot-ufw.service sisura-netfilter.service sisura-guest-ssh-keys.service; do
     [[ "$(systemctl is-enabled "$unit" 2>/dev/null)" == "enabled" ]] \
         || fail "units" "$unit not enabled"
 done
+
+# --- SSH key came from `sisura launch`, none was baked into the image ---------
+if systemctl is-active -q sisura-guest-ssh-keys.service \
+   && grep -q ' sisura-cli$' ~/.ssh/authorized_keys \
+   && ! grep -qv ' sisura-cli$' ~/.ssh/authorized_keys; then
+    pass "ssh key: only the sisura CLI key (passed at boot)"
+else
+    fail "ssh key" "authorized_keys: $(awk '{print $NF}' ~/.ssh/authorized_keys | tr '\n' ' ')"
+fi
 
 # --- extra packet filter (IPv4 TCP with IP options) ---------------------------------
 if systemctl is-active -q sisura-netfilter.service \
