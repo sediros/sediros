@@ -11,6 +11,15 @@ Sisura is a minimal, hardened Linux distribution based on Debian 13 (trixie). It
 - **Plain Debian underneath:** Sisura adds a few packages to Debian; it does not replace it. Your Debian knowledge, documentation and packages apply.
 - **Fast throwaway VMs:** `sisura launch` starts a Sisura VM on macOS (Apple Silicon) or Linux in a few seconds.
 
+## Two ways to use Sisura
+
+| I want to... | Use | Start here |
+|---|---|---|
+| run Sisura as the operating system of a server, PC or cloud VM | the installer ISO | [Installing to disk](#installing-to-disk) |
+| try Sisura, or get fast throwaway Linux VMs on my Mac or Linux machine | the `sisura` CLI | [Trying Sisura in a VM](#trying-sisura-in-a-vm) |
+
+The two are independent: an installed system does not need the CLI, and the CLI never installs anything to disk.
+
 ## Getting Sisura
 
 Releases will be published on the [GitHub releases page](https://github.com/sisura-linux/sisura/releases): an installer ISO and a VM image for amd64 and arm64, with `SHA256SUMS` to verify them. Until the first release, build the ISO yourself: see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
