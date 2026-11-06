@@ -33,6 +33,15 @@ readonly SCRIPT_DIR PROJECT_ROOT
 BUILD_DIR="${SISURA_BUILD_DIR:-${PROJECT_ROOT}/build}"
 GRUB_TEMPLATE="${PROJECT_ROOT}/config/iso/grub.cfg"
 DOCKER_IMAGE="${SISURA_DOCKER_IMAGE:-debian:bookworm}"
+# Containers run with the host's architecture: a local image tag that was
+# pulled for another platform would otherwise build for that one (emulated).
+docker_platform() {
+    case "$(uname -m)" in
+        arm64|aarch64) echo linux/arm64 ;;
+        x86_64|amd64)  echo linux/amd64 ;;
+        *)             uname -m ;;
+    esac
+}
 ROOTFS_TAR=""
 
 log() { printf '==> %s\n' "$*"; }
@@ -61,7 +70,7 @@ if [[ "$(uname -s)" != "Linux" ]]; then
     [[ "$BUILD_DIR" == "$PROJECT_ROOT"/* ]] \
         || die "On macOS SISURA_BUILD_DIR must be inside the project (bind-mounted)."
     log "Non-Linux host, re-running inside ${DOCKER_IMAGE}"
-    exec docker run --rm \
+    exec docker run --rm --platform "$(docker_platform)" \
         -v "${PROJECT_ROOT}:/sisura" -w /sisura \
         -e SISURA_BUILD_DIR="/sisura/${BUILD_DIR#"$PROJECT_ROOT"/}" \
         "$DOCKER_IMAGE" bash -c '

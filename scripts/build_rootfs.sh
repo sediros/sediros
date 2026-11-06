@@ -62,6 +62,15 @@ DEBUG_PASSWORD="${SISURA_DEBUG_PASSWORD:-}"
 PROFILE="${SISURA_PROFILE:-vm}"
 DEBS_DIR="${SISURA_DEBS_DIR:-${PROJECT_ROOT}/build/debs}"
 DOCKER_IMAGE="${SISURA_DOCKER_IMAGE:-debian:bookworm}"
+# Containers run with the host's architecture: a local image tag that was
+# pulled for another platform would otherwise build for that one (emulated).
+docker_platform() {
+    case "$(uname -m)" in
+        arm64|aarch64) echo linux/arm64 ;;
+        x86_64|amd64)  echo linux/amd64 ;;
+        *)             uname -m ;;
+    esac
+}
 
 DO_CLEAN=0
 DO_TAR=1
@@ -233,7 +242,7 @@ reexec_in_docker() {
 
     log "Non-Linux host, re-running inside a privileged ${DOCKER_IMAGE} container"
     # '-e VAR' without a value forwards the host value only if it is set.
-    exec docker run --rm --privileged \
+    exec docker run --rm --platform "$(docker_platform)" --privileged \
         -v "${PROJECT_ROOT}:/sisura" -w /sisura \
         -e SISURA_RELEASE="$RELEASE" \
         -e SISURA_BUILD_ID="$BUILD_ID" \

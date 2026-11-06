@@ -33,6 +33,15 @@ readonly SCRIPT_DIR PROJECT_ROOT
 PKG_SRC="${PROJECT_ROOT}/packages"
 OUT_DIR="${SISURA_DEBS_DIR:-${PROJECT_ROOT}/build/debs}"
 DOCKER_IMAGE="${SISURA_DOCKER_IMAGE:-debian:bookworm}"
+# Containers run with the host's architecture: a local image tag that was
+# pulled for another platform would otherwise build for that one (emulated).
+docker_platform() {
+    case "$(uname -m)" in
+        arm64|aarch64) echo linux/arm64 ;;
+        x86_64|amd64)  echo linux/amd64 ;;
+        *)             uname -m ;;
+    esac
+}
 
 # shellcheck source=scripts/lib/release.sh
 source "${SCRIPT_DIR}/lib/release.sh"
@@ -59,7 +68,7 @@ if ! command -v dpkg-deb >/dev/null 2>&1; then
     [[ "$(uname -s)" != "Linux" ]] || die "dpkg-deb not found (apt install dpkg)"
     command -v docker >/dev/null 2>&1 || die "Neither dpkg-deb nor docker found."
     log "No dpkg-deb on this host, re-running inside ${DOCKER_IMAGE}"
-    exec docker run --rm -v "${PROJECT_ROOT}:/sisura" -w /sisura \
+    exec docker run --rm --platform "$(docker_platform)" -v "${PROJECT_ROOT}:/sisura" -w /sisura \
         -e SISURA_RELEASE="$RELEASE" -e SISURA_SUITE="$SUITE" \
         "$DOCKER_IMAGE" ./scripts/build_packages.sh "$@"
 fi

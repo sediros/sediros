@@ -20,6 +20,15 @@ readonly SCRIPT_DIR PROJECT_ROOT
 CRATE="${PROJECT_ROOT}/sisura-install"
 OUT_DIR="${PROJECT_ROOT}/build/bin"
 DOCKER_IMAGE="${SISURA_RUST_DOCKER_IMAGE:-debian:trixie}"
+# Containers run with the host's architecture: a local image tag that was
+# pulled for another platform would otherwise build for that one (emulated).
+docker_platform() {
+    case "$(uname -m)" in
+        arm64|aarch64) echo linux/arm64 ;;
+        x86_64|amd64)  echo linux/amd64 ;;
+        *)             uname -m ;;
+    esac
+}
 
 log() { printf '==> %s\n' "$*"; }
 ok()  { printf '  ✓ %s\n' "$*"; }
@@ -48,7 +57,7 @@ fi
 
 command -v docker >/dev/null 2>&1 || die "Need cargo on a Debian-based Linux host, or docker."
 log "Building sisura-install in ${DOCKER_IMAGE}"
-docker run --rm \
+docker run --rm --platform "$(docker_platform)" \
     -v "${PROJECT_ROOT}:/sisura" \
     -v sisura-cargo-registry:/root/.cargo/registry \
     -e CARGO_TARGET_DIR=/sisura/build/cargo-installer \
