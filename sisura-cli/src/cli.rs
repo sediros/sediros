@@ -24,7 +24,9 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Build the hardened rootfs and the qcow2 base image
+    /// Download a released base image from GitHub (no source checkout needed)
+    Pull(PullArgs),
+    /// Build the hardened rootfs and the qcow2 base image (source checkout)
     Build(BuildArgs),
     /// Boot a VM in the background (creates it on first use)
     Launch(LaunchArgs),
@@ -36,6 +38,25 @@ pub enum Command {
     Stop(StopArgs),
     /// Stop VMs and delete their disks and state
     Purge(PurgeArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct PullArgs {
+    /// Release to download, e.g. 13.1 (default: the latest published release)
+    #[arg(long)]
+    pub release: Option<String>,
+
+    /// GitHub repository the releases come from
+    #[arg(long, env = "SISURA_REPO", default_value = "sisura-linux/sisura")]
+    pub repo: String,
+
+    /// Download again even if this release is already present
+    #[arg(long)]
+    pub force: bool,
+
+    /// Download from this base URL instead of GitHub (mirrors, tests)
+    #[arg(long, hide = true)]
+    pub url: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -88,7 +109,8 @@ pub struct LaunchArgs {
     #[arg(long)]
     pub port: Option<u16>,
 
-    /// Base image (.qcow2). Default: newest sisura-*.qcow2 in <project>/build
+    /// Base image (.qcow2). Default: newest sisura-*.qcow2 in <project>/build,
+    /// else the newest image from `sisura pull`
     #[arg(long)]
     pub image: Option<PathBuf>,
 

@@ -68,7 +68,13 @@ impl BaseImage {
             Some(p) => p
                 .canonicalize()
                 .with_context(|| format!("image {}", p.display()))?,
-            None => newest_image(&paths.build_dir()?)?,
+            // A source checkout's own build wins; otherwise the newest pull.
+            None => match paths.build_dir().ok().filter(|d| d.is_dir()) {
+                Some(dir) => newest_image(&dir)?,
+                None => crate::pull::newest_pulled(paths).context(
+                    "no base image: run `sisura pull` (or `sisura build` in a source checkout)",
+                )?,
+            },
         };
         let src_dir = qcow.parent().context("image has no parent directory")?;
         let arch = arch_from_name(&qcow)?;

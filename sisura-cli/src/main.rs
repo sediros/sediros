@@ -3,6 +3,7 @@
 mod builder;
 mod cli;
 mod paths;
+mod pull;
 mod purge;
 mod ssh;
 mod vm;
@@ -24,6 +25,7 @@ fn main() {
 fn run(cli: Cli) -> Result<()> {
     let paths = Paths::resolve(cli.project, cli.home)?;
     match cli.command {
+        Command::Pull(args) => pull::run(&paths, &args),
         Command::Build(args) => builder::run(&paths, &args),
         Command::Launch(args) => vm::launch(&paths, &args),
         Command::Shell(args) => ssh::shell(&paths, &args),

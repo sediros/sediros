@@ -53,6 +53,11 @@ impl Paths {
         self.home.join("images")
     }
 
+    /// Releases fetched by `sisura pull`: <home>/downloads/<release>/.
+    pub fn downloads_dir(&self) -> PathBuf {
+        self.home.join("downloads")
+    }
+
     pub fn vm_dir(&self, name: &str) -> PathBuf {
         self.vms_dir().join(name)
     }

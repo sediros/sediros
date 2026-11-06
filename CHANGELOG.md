@@ -27,9 +27,11 @@ First release, based on Debian 13 (trixie).
 - Keyboard layout applies to the LUKS prompt at boot.
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 
-### Tools (`sisura` CLI 0.2.0)
+### Tools (`sisura` CLI 0.3.0)
 - `sisura build/launch/shell/list/stop/purge`: QEMU VMs with HVF (macOS) or KVM (Linux), copy-on-write disks, SSH on localhost only.
 - `launch --data-disk` attaches an empty second disk; `list` shows each VM's build id.
+- `sisura pull` downloads a released VM image from GitHub and verifies it against the release's SHA256SUMS; no source checkout needed.
+- Images contain no SSH key: the CLI passes its own key to each VM at boot.
 - `make test` boots a throwaway VM and verifies the hardening, packages and build id.
 
 ### Known limitations

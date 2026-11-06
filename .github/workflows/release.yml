@@ -1,0 +1,203 @@
+# Sisura release
+#   Triggered by pushing a tag v<release> (e.g. v13.1) that matches RELEASE in
+#   config/sisura.conf. Builds and tests the images for amd64 and arm64, builds
+#   the sisura CLI for macOS and Linux, writes SHA256SUMS, attests the build
+#   provenance of every file and creates a DRAFT GitHub release: nothing is
+#   public until a maintainer reviews and publishes it.
+#   Run it manually (workflow_dispatch) for a dry run: everything is built and
+#   uploaded as workflow artifacts, no release is created.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: v
+        name: Tag must match RELEASE in config/sisura.conf
+        run: |
+          release="$(sed -n 's/^RELEASE[[:space:]]*?=[[:space:]]*//p' config/sisura.conf)"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$release" != "$tag" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match RELEASE=$release"
+            exit 1
+          fi
+          grep -q "^## \[$release\]" CHANGELOG.md \
+            || { echo "::error::CHANGELOG.md has no section for $release"; exit 1; }
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
+  images:
+    needs: check
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            grub: grub-pc-bin grub-efi-amd64-bin
+            smoke: true
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            grub: grub-efi-arm64-bin
+            smoke: false   # no KVM on hosted arm64 runners
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            debootstrap debian-archive-keyring zstd e2fsprogs qemu-utils \
+            squashfs-tools xorriso mtools grub-common ${{ matrix.grub }} \
+            qemu-system-x86 qemu-system-arm openssh-client
+
+      - name: Enable KVM
+        if: matrix.smoke
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build image, installer and ISO
+        run: make build iso
+
+      - name: Smoke test
+        if: matrix.smoke
+        run: |
+          sudo chmod 0666 /dev/kvm
+          make test
+
+      - name: Collect release files
+        run: |
+          release="${{ needs.check.outputs.release }}"
+          stem="sisura-${release}-${{ matrix.arch }}"
+          mkdir -p dist
+          # Compressed copy of the base image (the CLI uses it as a read-only
+          # backing file; compression costs nothing there).
+          qemu-img convert -c -O qcow2 "build/${stem}.qcow2" "dist/${stem}.qcow2"
+          for ext in vmlinuz initrd.img cmdline build-info manifest; do
+            cp "build/${stem}.${ext}" dist/
+          done
+          cp "build/sisura-${release}-install-${{ matrix.arch }}.iso" dist/
+          ls -la dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: images-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 3
+
+  cli:
+    needs: check
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-15
+          - target: x86_64-apple-darwin
+            runner: macos-15
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          rustup target add ${{ matrix.target }}
+          if [ "${{ runner.os }}" = Linux ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends musl-tools
+          fi
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }} --manifest-path sisura-cli/Cargo.toml
+
+      - name: Package
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' sisura-cli/Cargo.toml | head -n1)"
+          name="sisura-${version}-${{ matrix.target }}"
+          mkdir -p "pkg/$name" dist
+          cp "sisura-cli/target/${{ matrix.target }}/release/sisura" "pkg/$name/"
+          cp LICENSE NOTICE README.md "pkg/$name/"
+          tar -C pkg -czf "dist/$name.tar.gz" "$name"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: [check, images, cli]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write        # create the release
+      id-token: write        # sign the provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-checksums: dist/SHA256SUMS
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release="${{ needs.check.outputs.release }}"
+          # Release notes: this release's section of CHANGELOG.md.
+          awk -v r="$release" '
+            $0 ~ "^## \\[" r "\\]" {on=1; next}
+            on && /^## \[/ {exit}
+            on {print}' CHANGELOG.md > notes.md
+          cat >> notes.md <<'EOF'
+
+          ## Verifying downloads
+
+          ```bash
+          sha256sum -c SHA256SUMS --ignore-missing
+          gh attestation verify <file> --repo sisura-linux/sisura
+          ```
+          EOF
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --draft \
+            --title "Sisura $release" \
+            --notes-file notes.md
