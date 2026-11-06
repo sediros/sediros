@@ -1,7 +1,7 @@
 Package: sisura-base-files
 Version: @SISURA_RELEASE@
 Architecture: all
-Maintainer: Sisura Maintainers <packages@sisura.invalid>
+Maintainer: The Sisura Authors <packages@sisura.invalid>
 Section: admin
 Priority: required
 Depends: base-files

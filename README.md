@@ -169,3 +169,7 @@ The hardening settings ship in the `sisura-hardening` package. Once the Sisura a
 3. Run `make build && make test`.
 
 dpkg never overwrites `/etc` files changed by the admin; they are marked as conffiles. Files owned by other packages (`/etc/login.defs`, `/etc/default/ufw`) are only set when the image is built and are not updated through `apt`.
+
+## License
+
+Sisura's own code (build scripts, packages, `sisura-cli`, `sisura-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The Sisura Authors. The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a Sisura system.

@@ -4,6 +4,7 @@ version = "0.2.0"
 edition = "2021"
 rust-version = "1.74"
 description = "Install Sisura Linux from the live ISO to a disk (UEFI, LUKS2)"
+license = "Apache-2.0"
 publish = false
 
 [[bin]]
