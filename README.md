@@ -132,6 +132,8 @@ The `sisura` CLI starts Sisura VMs with QEMU on macOS and Linux (amd64 or arm64)
 
 **1. Install the CLI and QEMU.**
 
+> The Homebrew formula and the CLI downloads appear with the first release (13.1). Until then, build the CLI from a source checkout: `make install` (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
+
 *macOS* (Homebrew; also installs QEMU):
 
 ```bash
