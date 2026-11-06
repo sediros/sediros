@@ -406,6 +406,13 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
     step("Building the initramfs (cryptsetup, keyboard layout)");
     chroot(target, "update-initramfs", &["-c", "-k", "all"])?;
 
+    if let Some(tty) = serial_console() {
+        step(&format!(
+            "Serial console {tty} for GRUB, the kernel and the LUKS prompt"
+        ));
+        write_serial_console(target, &tty)?;
+    }
+
     step("Installing GRUB (UEFI)");
     let grub = grub_target()?;
     let efivars = Path::new("/sys/firmware/efi/efivars")
@@ -447,6 +454,41 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
         None => chroot(target, "update-grub", &[])?,
     }
     Ok(fingerprint)
+}
+
+/// Serial console the installer runs on (ttyS0, ttyAMA0, ...), if any:
+/// like the Debian installer, a system installed over a serial console
+/// (VPS, server, VM) keeps using it.
+fn serial_console() -> Option<String> {
+    (0..3).find_map(|fd| {
+        let link = fs::read_link(format!("/proc/self/fd/{fd}")).ok()?;
+        let name = link.strip_prefix("/dev").ok()?.to_str()?.to_string();
+        let unit = name
+            .strip_prefix("ttyS")
+            .or_else(|| name.strip_prefix("ttyAMA"))?;
+        (!unit.is_empty() && unit.chars().all(|c| c.is_ascii_digit())).then_some(name)
+    })
+}
+
+fn write_serial_console(target: &Path, tty: &str) -> Result<()> {
+    let mut cfg = format!(
+        "# Written by sisura-install: installed over the serial console {tty}.\n\
+         # Kernel messages go to the screen (tty0) and {tty}; the LUKS prompt\n\
+         # and the boot log go to {tty}, the last console listed.\n\
+         GRUB_CMDLINE_LINUX=\"${{GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }}console=tty0 console={tty},115200\"\n"
+    );
+    if let Some(unit) = tty.strip_prefix("ttyS") {
+        // PC serial port: GRUB's own menu on it as well (UEFI consoles on
+        // arm64 already include the serial port).
+        cfg.push_str(&format!(
+            "GRUB_TERMINAL=\"console serial\"\n\
+             GRUB_SERIAL_COMMAND=\"serial --unit={unit} --speed=115200\"\n"
+        ));
+    }
+    let dir = target.join("etc/default/grub.d");
+    fs::create_dir_all(&dir)?;
+    fs::write(dir.join("80-sisura-console.cfg"), cfg)?;
+    Ok(())
 }
 
 fn write_fstab(target: &Path, boot_uuid: &str, esp_uuid: &str) -> Result<()> {
