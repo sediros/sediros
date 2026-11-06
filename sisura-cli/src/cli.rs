@@ -6,7 +6,13 @@ use clap::{Args, Parser, Subcommand};
 #[command(
     name = "sisura",
     version,
-    about = "Build Sisura Linux images and run them as fast, isolated QEMU VMs"
+    about = "Build Sisura Linux images and run them as fast, isolated QEMU VMs",
+    after_help = "Getting started:\n  \
+        sisura pull               download the latest released VM image\n  \
+        sisura launch dev         start a VM named dev\n  \
+        sisura shell dev          log in (SSH key is set up automatically)\n  \
+        sisura stop dev\n\n\
+        Guide: https://github.com/sisura-linux/sisura#readme"
 )]
 pub struct Cli {
     /// Sisura project directory (contains scripts/ and build/). Auto-detected from cwd.
