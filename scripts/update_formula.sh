@@ -13,6 +13,7 @@
 #
 #  Users install with:
 #    brew tap sisura-linux/sisura https://github.com/sisura-linux/sisura
+#    brew trust sisura-linux/sisura
 #    brew install sisura
 # =============================================================================
 set -Eeuo pipefail

@@ -138,6 +138,7 @@ The `sisura` CLI starts Sisura VMs with QEMU on macOS and Linux (amd64 or arm64)
 
 ```bash
 brew tap sisura-linux/sisura https://github.com/sisura-linux/sisura
+brew trust sisura-linux/sisura      # Homebrew 7+: allow formulae from this tap
 brew install sisura
 ```
 
@@ -160,7 +161,7 @@ sudo dnf install qemu-kvm qemu-img openssh-clients curl            # Fedora
 sudo usermod -aG kvm $USER                                         # then log out and in again
 ```
 
-Homebrew on Linux works too (`brew tap ...` and `brew install sisura` as above).
+Homebrew on Linux works too (`brew tap`, `brew trust` and `brew install sisura` as above).
 
 *macOS without Homebrew:* download `sisura-<version>-aarch64-apple-darwin.tar.gz` (Apple Silicon) or `...-x86_64-apple-darwin.tar.gz` (Intel) the same way, verify it with `shasum -a 256 -c SHA256SUMS --ignore-missing`, put `sisura` on your `PATH`, and install QEMU (`brew install qemu` or MacPorts). A binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sisura` allows it.
 
