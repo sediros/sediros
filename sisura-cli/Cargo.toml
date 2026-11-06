@@ -5,6 +5,7 @@ edition = "2021"
 rust-version = "1.74"
 description = "Fast, isolated QEMU/KVM/HVF test runner for Sisura Linux images"
 license = "Apache-2.0"
+authors = ["The Sisura Authors <ahmetatakan.tech@gmail.com>"]
 publish = false
 
 [[bin]]

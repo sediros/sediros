@@ -1,7 +1,7 @@
 Package: sisura-boot-hardening
 Version: 0.1.0
 Architecture: all
-Maintainer: The Sisura Authors <packages@sisura.invalid>
+Maintainer: The Sisura Authors <ahmetatakan.tech@gmail.com>
 Section: admin
 Priority: optional
 Suggests: grub2-common

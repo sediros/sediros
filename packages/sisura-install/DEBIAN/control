@@ -1,7 +1,7 @@
 Package: sisura-install
 Version: 0.2.0
 Architecture: @SISURA_ARCH@
-Maintainer: The Sisura Authors <packages@sisura.invalid>
+Maintainer: The Sisura Authors <ahmetatakan.tech@gmail.com>
 Section: admin
 Priority: optional
 Depends: libc6, util-linux, fdisk, dosfstools, e2fsprogs, cryptsetup, cryptsetup-initramfs, tar, udev

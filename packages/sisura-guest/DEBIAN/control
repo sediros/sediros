@@ -1,7 +1,7 @@
 Package: sisura-guest
 Version: 0.1.0
 Architecture: all
-Maintainer: The Sisura Authors <packages@sisura.invalid>
+Maintainer: The Sisura Authors <ahmetatakan.tech@gmail.com>
 Section: admin
 Priority: optional
 Depends: systemd (>= 254), passwd, init-system-helpers

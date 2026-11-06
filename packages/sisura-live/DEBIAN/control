@@ -1,7 +1,7 @@
 Package: sisura-live
 Version: 0.2.0
 Architecture: all
-Maintainer: The Sisura Authors <packages@sisura.invalid>
+Maintainer: The Sisura Authors <ahmetatakan.tech@gmail.com>
 Section: admin
 Priority: optional
 Depends: systemd, sudo, passwd, util-linux, init-system-helpers
