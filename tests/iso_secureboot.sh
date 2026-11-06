@@ -29,6 +29,8 @@ sb_start -device virtio-scsi-pci \
 
 # Type only into the shell: keys at the GRUB menu would stop its timeout.
 sb_wait ':~\$' 300
+# Login banner from sisura-base-files' issue file, also with autologin.
+sb_banner_ok
 sb_mark
 sb_send "$SB_CHECK"
 sb_wait 'SISURA-SB-[01] ' 60

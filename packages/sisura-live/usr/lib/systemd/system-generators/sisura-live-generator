@@ -16,10 +16,10 @@ mkdir -p "$out/getty@tty1.service.d" "$out/serial-getty@.service.d"
 cat > "$out/getty@tty1.service.d/50-sisura-live.conf" <<UNIT
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty -o '-p -f -- \\\\u' --noclear --autologin $user %I \$TERM
+ExecStart=-/sbin/agetty -o '-p -f -- \\\\u' --noclear --issue-file /usr/share/sisura/issue --autologin $user %I \$TERM
 UNIT
 cat > "$out/serial-getty@.service.d/50-sisura-live.conf" <<UNIT
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty -o '-p -f -- \\\\u' --keep-baud --autologin $user 115200,57600,38400,9600 - \$TERM
+ExecStart=-/sbin/agetty -o '-p -f -- \\\\u' --keep-baud --issue-file /usr/share/sisura/issue --autologin $user 115200,57600,38400,9600 - \$TERM
 UNIT

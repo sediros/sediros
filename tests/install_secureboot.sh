@@ -58,6 +58,7 @@ sb_start "${hd[@]}"
 sb_wait 'Please unlock disk' 600
 sb_send "$PASSPHRASE"
 sb_wait 'login: *$' 600
+sb_banner_ok
 sb_send "sisura"
 sb_wait 'Password: *$' 60
 sb_mark

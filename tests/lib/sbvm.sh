@@ -93,6 +93,15 @@ sb_mark() { SB_FROM="$(wc -c < "$SB_LOG")"; }
 
 sb_send() { printf '%s\r' "$1" >&3; }
 
+# sb_banner_ok: the login banner seen so far is Sisura's (issue file from
+# sisura-base-files), not Debian's /etc/issue.
+sb_banner_ok() {
+    local out; out="$(sb_console)"
+    if ! grep -aq 'Sisura Linux' <<<"$out" || grep -aq 'Debian GNU/Linux' <<<"$out"; then
+        sb_fail "login banner is not Sisura's"
+    fi
+}
+
 # sb_stopped <seconds>: wait for the VM to power off.
 sb_stopped() {
     local start=$SECONDS
