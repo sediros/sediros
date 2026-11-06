@@ -130,14 +130,37 @@ shows the release, the build id (for example `13.1`, `20261105.1523-2d85457`) an
 
 The `sisura` CLI starts Sisura VMs with QEMU on macOS and Linux (amd64 or arm64). VMs use your machine's architecture. It is tested on Apple Silicon Macs and amd64/arm64 Linux; Intel Macs are untested.
 
-**1. Install the CLI** (it also installs QEMU):
+**1. Install the CLI and QEMU.**
+
+*macOS* (Homebrew; also installs QEMU):
 
 ```bash
 brew tap sisura-linux/sisura https://github.com/sisura-linux/sisura
 brew install sisura
 ```
 
-Without Homebrew: download `sisura-<version>-<platform>.tar.gz` from the release, verify it, extract it and put `sisura` on your `PATH` (e.g. `/usr/local/bin`). It needs QEMU: `brew install qemu` on macOS, `sudo apt install qemu-system qemu-utils` on Debian/Ubuntu. On Linux, your user must be able to open `/dev/kvm` (usually: member of the `kvm` group) or VMs run without acceleration and are very slow. On macOS, a binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sisura` allows it.
+*Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
+
+```bash
+VERSION=0.3.0 RELEASE=13.1 TARGET=x86_64-unknown-linux-musl
+URL=https://github.com/sisura-linux/sisura/releases/download/v$RELEASE
+curl -LO $URL/sisura-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing
+tar -xzf sisura-$VERSION-$TARGET.tar.gz
+sudo install -m 0755 sisura-$VERSION-$TARGET/sisura /usr/local/bin/sisura
+```
+
+Then install QEMU and allow your user to use KVM (without it VMs run very slowly):
+
+```bash
+sudo apt install qemu-system-x86 qemu-utils openssh-client curl   # Debian, Ubuntu (arm64: qemu-system-arm)
+sudo dnf install qemu-kvm qemu-img openssh-clients curl            # Fedora
+sudo usermod -aG kvm $USER                                         # then log out and in again
+```
+
+Homebrew on Linux works too (`brew tap ...` and `brew install sisura` as above).
+
+*macOS without Homebrew:* download `sisura-<version>-aarch64-apple-darwin.tar.gz` (Apple Silicon) or `...-x86_64-apple-darwin.tar.gz` (Intel) the same way, verify it with `shasum -a 256 -c SHA256SUMS --ignore-missing`, put `sisura` on your `PATH`, and install QEMU (`brew install qemu` or MacPorts). A binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sisura` allows it.
 
 **2. Download the VM image** (once per release, a few hundred MB):
 
