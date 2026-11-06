@@ -6,6 +6,9 @@
 #  Prints one PASS/FAIL line per check, exits non-zero if anything failed.
 # =============================================================================
 set -uo pipefail
+# Never "cmd | grep -q" here: grep -q exits at the first match, cmd may then
+# get SIGPIPE and pipefail turns a match into a failure (timing dependent).
+# Capture the output first: grep -q PATTERN <<<"$(cmd)".
 
 MAX_RAM_MB="${1:-256}"
 WANT_RELEASE="${2:-}"
@@ -144,7 +147,7 @@ fi
 
 # --- extra packet filter (IPv4 TCP with IP options) ---------------------------------
 if systemctl is-active -q sisura-netfilter.service \
-   && sudo nft list table ip sisura 2>/dev/null | grep -q 'ip hdrlength > 5 .*drop'; then
+   && grep -q 'ip hdrlength > 5 .*drop' <<<"$(sudo nft list table ip sisura 2>/dev/null)"; then
     pass "nftables: TCP with IP options dropped"
 else
     fail "nftables" "table ip sisura missing or sisura-netfilter.service inactive"
@@ -206,7 +209,7 @@ fi
 # --- kernel modules blacklisted ---------------------------------------------------
 bad=()
 for m in dccp sctp cramfs; do
-    sudo modprobe -n -v "$m" 2>&1 | grep -q '/bin/false' || bad+=("$m")
+    grep -q '/bin/false' <<<"$(sudo modprobe -n -v "$m" 2>&1)" || bad+=("$m")
 done
 if ((${#bad[@]} == 0)); then pass "modprobe: blacklist active"
 else fail "modprobe" "loadable: ${bad[*]}"; fi

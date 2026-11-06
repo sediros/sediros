@@ -352,7 +352,9 @@ prepare_rootfs_dir() {
         if ((DO_CLEAN)); then
             log "Removing previous rootfs ($ROOTFS)"
             umount_chroot
-            if findmnt -rn -o TARGET | grep -q "^${ROOTFS}/"; then
+            # Output captured first: with pipefail, "findmnt | grep -q" can fail
+            # by SIGPIPE exactly when there IS a match, skipping this guard.
+            if grep -q "^${ROOTFS}/" <<<"$(findmnt -rn -o TARGET)"; then
                 die "Stale mounts still present under $ROOTFS, aborting rm."
             fi
             rm -rf --one-file-system "$ROOTFS"
