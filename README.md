@@ -172,4 +172,4 @@ dpkg never overwrites `/etc` files changed by the admin; they are marked as conf
 
 ## License
 
-Sisura's own code (build scripts, packages, `sisura-cli`, `sisura-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The Sisura Authors. The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a Sisura system.
+Sisura's own code (build scripts, packages, `sisura-cli`, `sisura-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The Sisura Authors (see [NOTICE](NOTICE)). The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a Sisura system.
