@@ -459,15 +459,68 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
 /// Serial console the installer runs on (ttyS0, ttyAMA0, ...), if any:
 /// like the Debian installer, a system installed over a serial console
 /// (VPS, server, VM) keeps using it.
+///
+/// sudo with `use_pty` (Sisura's policy) runs the installer on a new
+/// pseudo-terminal, so this walks up the parent processes to the first
+/// one attached to a real terminal: a serial port, or a virtual console
+/// (screen, no serial setup).
 fn serial_console() -> Option<String> {
-    (0..3).find_map(|fd| {
-        let link = fs::read_link(format!("/proc/self/fd/{fd}")).ok()?;
-        let name = link.strip_prefix("/dev").ok()?.to_str()?.to_string();
-        let unit = name
-            .strip_prefix("ttyS")
-            .or_else(|| name.strip_prefix("ttyAMA"))?;
-        (!unit.is_empty() && unit.chars().all(|c| c.is_ascii_digit())).then_some(name)
-    })
+    let mut pid = std::process::id();
+    for _ in 0..16 {
+        for fd in 0..3 {
+            let Ok(link) = fs::read_link(format!("/proc/{pid}/fd/{fd}")) else {
+                continue;
+            };
+            let Some(name) = link.strip_prefix("/dev").ok().and_then(|n| n.to_str()) else {
+                continue;
+            };
+            match console_kind(name) {
+                Some(true) => return Some(name.to_string()),
+                Some(false) => return None,
+                None => {}
+            }
+        }
+        let status = fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
+        pid = status
+            .lines()
+            .find_map(|l| l.strip_prefix("PPid:"))?
+            .trim()
+            .parse()
+            .ok()?;
+        if pid <= 1 {
+            return None;
+        }
+    }
+    None
+}
+
+/// Some(true): serial port, Some(false): virtual console, None: anything
+/// else (pseudo-terminal, pipe, file).
+fn console_kind(dev: &str) -> Option<bool> {
+    let digits = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit());
+    if let Some(unit) = dev
+        .strip_prefix("ttyS")
+        .or_else(|| dev.strip_prefix("ttyAMA"))
+    {
+        return digits(unit).then_some(true);
+    }
+    dev.strip_prefix("tty").filter(|n| digits(n)).map(|_| false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::console_kind;
+
+    #[test]
+    fn console_kinds() {
+        assert_eq!(console_kind("ttyS0"), Some(true));
+        assert_eq!(console_kind("ttyAMA0"), Some(true));
+        assert_eq!(console_kind("tty1"), Some(false));
+        assert_eq!(console_kind("pts/0"), None);
+        assert_eq!(console_kind("ttyS"), None);
+        assert_eq!(console_kind("tty"), None);
+        assert_eq!(console_kind("null"), None);
+    }
 }
 
 fn write_serial_console(target: &Path, tty: &str) -> Result<()> {

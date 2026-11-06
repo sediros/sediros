@@ -43,6 +43,10 @@ sb_send "printf '%s\\n' '$PASSPHRASE' > /tmp/pp; printf '%s\\n' '$PASSWORD' > /t
 sb_send "sudo sisura-install install --yes --disk vda --passphrase-file /tmp/pp --password-file /tmp/pw --grub-password-file /tmp/pw; echo SISURA-INSTALL-RC-\$?"
 sb_wait 'SISURA-INSTALL-RC-[0-9]+' 2400
 grep -aq 'SISURA-INSTALL-RC-0' <<<"$(sb_console)" || sb_fail "sisura-install failed"
+# The live session runs on the serial console, so the installed system must
+# use it too (otherwise the LUKS prompt only appears on the screen).
+grep -aqE 'Serial console tty(S|AMA)0' <<<"$(sb_console)" \
+    || sb_fail "sisura-install did not detect the serial console"
 echo "      installed in $((SECONDS - start))s"
 sb_send "sudo poweroff"
 sb_stopped 120
