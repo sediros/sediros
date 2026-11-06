@@ -2,6 +2,11 @@
 # sisura-guest postrm
 set -e
 case "$1" in
-    purge) deb-systemd-helper purge sisura-guest-ssh-keys.service >/dev/null || true ;;
+    purge)
+        for unit in sisura-guest-ssh-keys.service sisura-guest-ufw.service; do
+            deb-systemd-helper purge "$unit" >/dev/null || true
+        done
+        rm -f /var/lib/sisura/guest-ufw-initialized
+        ;;
 esac
 exit 0

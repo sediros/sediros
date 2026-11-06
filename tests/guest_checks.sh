@@ -81,6 +81,13 @@ else
     fail "ufw" "$(tr '\n' ' ' <<<"$ufw")"
 fi
 
+# vm profile: the VM host may reconnect quickly; all other sources stay limited.
+if grep -qE '^22/tcp +ALLOW IN +10\.0\.2\.2 ' <<<"$ufw" && grep -qE '^22/tcp +LIMIT IN +Anywhere' <<<"$ufw"; then
+    pass "ufw: VM host 10.0.2.2 exempt from the SSH rate limit, others limited"
+else
+    fail "ufw vm exemption" "$(grep '^22/tcp' <<<"$ufw" | tr '\n' ';')"
+fi
+
 # --- only SSH listens on non-loopback TCP --------------------------------------
 external="$(ss -tlnH | awk '{print $4}' \
     | grep -vE '^(127\.|\[::1\]|\[::ffff:127\.)|%lo:' \
@@ -121,7 +128,7 @@ for p in sisura-base-files sisura-hardening sisura-boot-hardening sisura-guest; 
         pass "package: $p ${pkg##* } installed, files unmodified"
     fi
 done
-for unit in sisura-ssh-hostkeys.service sisura-firstboot-ufw.service sisura-netfilter.service sisura-guest-ssh-keys.service; do
+for unit in sisura-ssh-hostkeys.service sisura-firstboot-ufw.service sisura-netfilter.service sisura-guest-ssh-keys.service sisura-guest-ufw.service; do
     [[ "$(systemctl is-enabled "$unit" 2>/dev/null)" == "enabled" ]] \
         || fail "units" "$unit not enabled"
 done

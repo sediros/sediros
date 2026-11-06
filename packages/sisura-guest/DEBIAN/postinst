@@ -2,6 +2,10 @@
 # sisura-guest postinst
 set -e
 case "$1" in
-    configure) deb-systemd-helper enable sisura-guest-ssh-keys.service >/dev/null ;;
+    configure)
+        for unit in sisura-guest-ssh-keys.service sisura-guest-ufw.service; do
+            deb-systemd-helper enable "$unit" >/dev/null
+        done
+        ;;
 esac
 exit 0
