@@ -21,8 +21,8 @@ PORT="${SISURA_ISO_SSH_PORT:-2223}"
 
 arch="$(basename "$ISO" .iso)"; arch="${arch##*-}"
 case "$arch" in
-    arm64) qemu=qemu-system-aarch64; machine=virt; native=aarch64 ;;
-    amd64) qemu=qemu-system-x86_64;  machine=q35;  native=x86_64 ;;
+    arm64) qemu="qemu-system-aarch64"; machine="virt"; native="aarch64" ;;
+    amd64) qemu="qemu-system-x86_64";  machine="q35";  native="x86_64" ;;
     *) echo "Cannot infer architecture from $ISO" >&2; exit 1 ;;
 esac
 command -v "$qemu" >/dev/null || { echo "$qemu not found (install qemu)" >&2; exit 1; }
@@ -36,7 +36,10 @@ fi
 firmware=()
 if [[ "$arch" == arm64 ]]; then
     # UEFI is mandatory on arm64 virt. Homebrew ships edk2; Debian: qemu-efi-aarch64.
-    qemu_share="$(cd "$(dirname "$(command -v "$qemu")")/../share/qemu" 2>/dev/null && pwd || true)"
+    qemu_share=""
+    if d="$(cd "$(dirname "$(command -v "$qemu")")/../share/qemu" 2>/dev/null && pwd)"; then
+        qemu_share="$d"
+    fi
     fw=""
     for f in "$qemu_share/edk2-aarch64-code.fd" \
              /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
@@ -49,9 +52,9 @@ fi
 
 media=()
 if ((NO_ISO == 0)); then
-    media+=(-device virtio-scsi-pci
+    media+=(-device "virtio-scsi-pci"
             -drive "if=none,id=cd,media=cdrom,readonly=on,file=$ISO"
-            -device scsi-cd,drive=cd,bootindex=0)
+            -device "scsi-cd,drive=cd,bootindex=0")
 fi
 if [[ -n "${SISURA_ISO_DISK:-}" ]]; then
     if [[ ! -e "$SISURA_ISO_DISK" ]]; then
@@ -59,7 +62,7 @@ if [[ -n "${SISURA_ISO_DISK:-}" ]]; then
         echo "Created empty disk $SISURA_ISO_DISK (16G)"
     fi
     media+=(-drive "if=none,id=hd,format=qcow2,file=$SISURA_ISO_DISK"
-            -device virtio-blk-pci,drive=hd,bootindex=1)
+            -device "virtio-blk-pci,drive=hd,bootindex=1")
 elif ((NO_ISO)); then
     echo "--no-iso needs SISURA_ISO_DISK" >&2; exit 1
 fi

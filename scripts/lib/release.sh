@@ -1,4 +1,5 @@
 # shellcheck shell=bash
+# shellcheck disable=SC2034  # RELEASE and SUITE are outputs for the sourcing script
 # =============================================================================
 #  Sisura - release <-> Debian suite mapping (sourced by the build scripts).
 #

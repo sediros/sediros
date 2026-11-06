@@ -46,7 +46,7 @@ readonly SCRIPT_DIR PROJECT_ROOT
 # ----------------------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------------------
-# shellcheck source=lib/release.sh
+# shellcheck source=scripts/lib/release.sh
 source "${SCRIPT_DIR}/lib/release.sh"
 RELEASE=""  # set by sisura_resolve_release (main)
 BUILD_ID="" # set by sisura_build_id (main)
@@ -141,8 +141,9 @@ usage() {
 parse_args() {
     while (($#)); do
         case "$1" in
-            --release) [[ $# -ge 2 ]] || die "--release needs a value"; SISURA_RELEASE="$2"; shift 2 ;;
-            --suite)   [[ $# -ge 2 ]] || die "--suite needs a value"; SISURA_SUITE="$2"; shift 2 ;;
+            # Read by sisura_resolve_release (scripts/lib/release.sh).
+            --release) [[ $# -ge 2 ]] || die "--release needs a value"; export SISURA_RELEASE="$2"; shift 2 ;;
+            --suite)   [[ $# -ge 2 ]] || die "--suite needs a value"; export SISURA_SUITE="$2"; shift 2 ;;
             --clean)   DO_CLEAN=1; shift ;;
             --no-tar)  DO_TAR=0; shift ;;
             -h|--help) usage 0 ;;
@@ -508,6 +509,7 @@ install_sisura_packages() {
     rm -rf "${ROOTFS:?}${stage}"
 
     chroot_run dpkg --verify "${SISURA_PACKAGES[@]}" || die "dpkg --verify failed for Sisura packages"
+    # shellcheck disable=SC2016  # ${Package} is a dpkg-query format, not shell
     ok "Sisura packages installed: $(chroot_run dpkg-query -W -f='${Package} ${Version}  ' "${SISURA_PACKAGES[@]}")"
 }
 
@@ -782,6 +784,7 @@ cleanup_rootfs() {
 
     {
         printf '# Sisura %s build %s (%s, %s)\n' "$RELEASE" "$BUILD_ID" "$PROFILE" "$ARCH"
+        # shellcheck disable=SC2016  # dpkg-query format, not shell
         chroot_run dpkg-query -W -f='${Package}\t${Version}\n'
     } > "${ARTIFACT_PREFIX}.manifest"
     ok "Cleanup done ($(wc -l < "${ARTIFACT_PREFIX}.manifest") packages)"
@@ -802,7 +805,8 @@ export_artifacts() {
     install -m 0644 "$ROOTFS/etc/sisura/build-info" "${ARTIFACT_PREFIX}.build-info"
 
     if ((DO_TAR)); then
-        local out="${BUILD_DIR}/sisura-rootfs-${RELEASE}$(profile_tag)-${ARCH}.tar.zst"
+        local out
+        out="${BUILD_DIR}/sisura-rootfs-${RELEASE}$(profile_tag)-${ARCH}.tar.zst"
         # --xattrs keeps file capabilities (security.capability), e.g. ping.
         tar --numeric-owner --xattrs --xattrs-include='*' --acls \
             -C "$ROOTFS" -cpf - . | zstd -T0 -19 -q -f -o "$out"

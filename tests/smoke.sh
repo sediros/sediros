@@ -18,7 +18,7 @@ SISURA="${SISURA_BIN:-${PROJECT_ROOT}/sisura-cli/target/release/sisura}"
 MAX_BOOT="${SISURA_MAX_BOOT_SECS:-30}"
 MAX_RAM="${SISURA_MAX_RAM_MB:-256}"
 VM="smoke-$$"
-# shellcheck source=../scripts/lib/release.sh
+# shellcheck source=scripts/lib/release.sh
 source "${PROJECT_ROOT}/scripts/lib/release.sh"
 RELEASE="${SISURA_RELEASE:-$(sisura_default_release)}"
 IMAGE_ARGS=()
@@ -56,7 +56,7 @@ if ! out="$("$SISURA" launch "$VM" --timeout 120 "${IMAGE_ARGS[@]+"${IMAGE_ARGS[
     echo "FAIL  launch"
     exit 1
 fi
-echo "$out" | sed 's/^/    /'
+while IFS= read -r line; do printf '    %s\n' "$line"; done <<<"$out"
 
 boot="$(sed -n 's/.*ready in \([0-9.]*\)s.*/\1/p' <<<"$out")"
 if [[ -n "$boot" ]] && awk -v b="$boot" -v m="$MAX_BOOT" 'BEGIN {exit !(b <= m)}'; then

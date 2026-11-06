@@ -34,7 +34,7 @@ PKG_SRC="${PROJECT_ROOT}/packages"
 OUT_DIR="${SISURA_DEBS_DIR:-${PROJECT_ROOT}/build/debs}"
 DOCKER_IMAGE="${SISURA_DOCKER_IMAGE:-debian:bookworm}"
 
-# shellcheck source=lib/release.sh
+# shellcheck source=scripts/lib/release.sh
 source "${SCRIPT_DIR}/lib/release.sh"
 
 log() { printf '==> %s\n' "$*"; }
