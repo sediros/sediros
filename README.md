@@ -2,7 +2,7 @@
 
 Sisura is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sisura`, a small CLI that boots Sisura VMs in seconds.
 
-> **Status:** Sisura 13.1 is in development and has not been released yet. There are no downloads yet; to try it, build it from source (see [Development](docs/DEVELOPMENT.md)).
+> **Status:** Sisura 13.1 is in development and has not been released yet. The steps below describe the released version; until then, build from source (see [Development](docs/DEVELOPMENT.md)).
 
 ## What you get
 
@@ -22,23 +22,53 @@ The two are independent: an installed system does not need the CLI, and the CLI 
 
 ## Getting Sisura
 
-Releases will be published on the [GitHub releases page](https://github.com/sisura-linux/sisura/releases): an installer ISO and a VM image for amd64 and arm64, with `SHA256SUMS` to verify them. Until the first release, build the ISO yourself: see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Everything is published on the [GitHub releases page](https://github.com/sisura-linux/sisura/releases). Each release has, for `amd64` (most PCs and servers) and `arm64` (ARM servers, Apple Silicon VMs):
 
-Requirements for installing:
-- A 64-bit PC (amd64) or ARM machine (arm64) that boots with **UEFI**. Legacy BIOS/CSM boot is not supported; the installer stops if the ISO was started that way.
-- **Secure Boot must be disabled** for now.
-- At least 8 GiB of disk space (the whole disk is used and erased). Installation has been tested with 2 GiB of RAM.
+| File | What it is |
+|---|---|
+| `sisura-13.1-install-<arch>.iso` | live system and installer (path 1) |
+| `sisura-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sisura pull` (path 2) |
+| `sisura-<version>-<platform>.tar.gz` | the `sisura` CLI for macOS and Linux (path 2) |
+| `SHA256SUMS` | checksums of all files |
+
+> Until the first release (13.1) is published, these downloads do not exist yet; build from source instead ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
+
+**Verify what you downloaded** before using it:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing          # Linux
+shasum -a 256 -c SHA256SUMS --ignore-missing      # macOS
+```
+
+To also check that a file was built by this repository's release workflow (needs the GitHub CLI):
+
+```bash
+gh attestation verify sisura-13.1-install-amd64.iso --repo sisura-linux/sisura
+```
 
 ## Installing to disk
 
-1. Boot the ISO. The live session logs in automatically; nothing is written to disk.
-2. Start the installer:
+Requirements:
+- A 64-bit PC or server (amd64) or ARM machine (arm64) that boots with **UEFI**. Legacy BIOS/CSM boot is not supported; the installer stops if the ISO was started that way.
+- **Secure Boot must be disabled** for now.
+- At least 8 GiB of disk space; the whole disk is used and erased. Installation has been tested with 2 GiB of RAM.
+
+1. **Put the ISO on a boot medium.**
+   - USB stick on Linux: `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress` (`lsblk` shows which `/dev/sdX` is the stick; everything on it is erased).
+   - USB stick on macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
+   - Or a graphical tool such as balenaEtcher.
+   - Virtual machine or VPS: attach the ISO as a CD/DVD drive (most VPS panels have "mount ISO").
+2. **Boot from it.** The live session logs in automatically; nothing is written to disk yet.
+3. **Start the installer:**
    ```bash
    sudo sisura-install install
    ```
-3. Answer the questions: disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written.
-4. Confirm by typing the disk name. The installation takes under a minute.
-5. Remove the ISO and reboot. Enter the disk encryption passphrase at the prompt (or over SSH, see below) and log in with your SSH key.
+4. **Answer the questions:** disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written.
+5. **Confirm** by typing the disk name. The installation takes under a minute.
+6. **Remove the ISO and reboot.** Enter the disk encryption passphrase at the prompt (or over SSH, see below), then log in:
+   ```bash
+   ssh <admin user>@<address of the machine>
+   ```
 
 What the installer creates:
 
@@ -98,10 +128,29 @@ shows the release, the build id (for example `13.1`, `20261105.1523-2d85457`) an
 
 ## Trying Sisura in a VM
 
-The `sisura` CLI starts Sisura VMs with QEMU (HVF on macOS, KVM on Linux):
+The `sisura` CLI starts Sisura VMs with QEMU on macOS and Linux (amd64 or arm64). VMs use your machine's architecture. It is tested on Apple Silicon Macs and amd64/arm64 Linux; Intel Macs are untested.
+
+**1. Install the CLI** (it also installs QEMU):
 
 ```bash
-sisura launch dev          # start a VM (created on first use)
+brew tap sisura-linux/sisura https://github.com/sisura-linux/sisura
+brew install sisura
+```
+
+Without Homebrew: download `sisura-<version>-<platform>.tar.gz` from the release, verify it, extract it and put `sisura` on your `PATH` (e.g. `/usr/local/bin`). It needs QEMU: `brew install qemu` on macOS, `sudo apt install qemu-system qemu-utils` on Debian/Ubuntu. On Linux, your user must be able to open `/dev/kvm` (usually: member of the `kvm` group) or VMs run without acceleration and are very slow. On macOS, a binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sisura` allows it.
+
+**2. Download the VM image** (once per release, a few hundred MB):
+
+```bash
+sisura pull                # latest release; or: sisura pull --release 13.1
+```
+
+Every file is checked against the release's `SHA256SUMS`.
+
+**3. Use VMs:**
+
+```bash
+sisura launch dev          # start a VM (created on first use), ready in a few seconds
 sisura shell dev           # SSH into it
 sisura shell dev -- uname -a
 sisura list                # VMs, their state and build id
@@ -109,11 +158,10 @@ sisura stop dev
 sisura purge dev           # delete the VM
 ```
 
-- Each VM runs on its own copy-on-write disk on top of a read-only base image, and its SSH port is reachable on `127.0.0.1` only.
-- Images contain no SSH key: the CLI creates its own key pair (in `~/.local/share/sisura/`) and gives the public key to each VM when it starts.
-- VMs have passwordless `sudo`; they are meant for testing, not for installing to disk.
-
-> For now the CLI needs a Sisura source checkout with a built image. Prebuilt CLI binaries, a Homebrew formula and `sisura pull` (downloading released images) are planned.
+- Each VM runs on its own copy-on-write disk on top of the read-only image, so `purge` and a new `launch` give you a fresh system.
+- The VM's SSH port is reachable on `127.0.0.1` only. Images contain no SSH key: the CLI creates its own key pair in `~/.local/share/sisura/` and gives the public key to each VM when it starts.
+- VMs have passwordless `sudo`; they are meant for testing and development, not for installing to disk.
+- Everything (images, VMs, the key) lives in `~/.local/share/sisura/`; set `SISURA_HOME` to use another place.
 
 ## Security defaults and their side effects
 

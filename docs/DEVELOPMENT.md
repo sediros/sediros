@@ -121,10 +121,16 @@ SISURA_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sisura-1
 - `make lint` runs `scripts/check_versions.sh`: every package and Rust tool that changed since the last `v*` tag needs a new version; `sisura-base-files` needs a new `RELEASE`.
 
 Releasing:
-1. Update `RELEASE` in `config/sisura.conf` and `CHANGELOG.md`; `make lint`.
-2. Commit, so the build id has no `-dirty` suffix.
-3. `make build && make test && make iso`, and an install from the ISO.
-4. `git tag -a v13.2 -m "Sisura 13.2" && git push origin v13.2`.
+1. Update `RELEASE` in `config/sisura.conf` and the `CHANGELOG.md` section `## [<release>]`; `make lint`.
+2. Commit and push, so the build id has no `-dirty` suffix.
+3. Optional dry run: run the `release` workflow manually (Actions → release → Run workflow). It builds everything and keeps the files as workflow artifacts, without creating a release.
+4. `git tag -a v13.2 -m "Sisura 13.2" && git push origin v13.2`. The `release` workflow checks that the tag matches `RELEASE` and the changelog, builds and smoke-tests the images (amd64, arm64), builds the CLI for macOS (arm64, x86_64) and Linux (musl, amd64, arm64), writes `SHA256SUMS`, attests the build provenance and creates a **draft** release with the changelog section as notes.
+5. Review the draft on GitHub (files, notes) and publish it.
+6. Update the Homebrew formula from the published release and commit it:
+   ```bash
+   scripts/update_formula.sh v13.2
+   git add Formula/sisura.rb && git commit -m "Formula: sisura for v13.2" && git push
+   ```
 
 ## Changing a hardening setting
 
@@ -136,7 +142,18 @@ Files under `/etc` in Sisura packages are conffiles: dpkg never overwrites an ad
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push and pull request: `make lint`, then a build for amd64 (with KVM and the smoke test) and arm64 (build only), uploading the images, ISOs and manifests as artifacts for 7 days.
+- `.github/workflows/ci.yml` runs on every push and pull request: `make lint`, then a build for amd64 (with KVM and the smoke test) and arm64 (build only), uploading the images, ISOs and manifests as artifacts for 7 days.
+- `.github/workflows/release.yml` runs on `v*` tags (and manually, as a dry run); see "Releasing" above.
+
+## Distribution
+
+| What | Where | How users get it |
+|---|---|---|
+| ISO, VM image, kernel files | GitHub release | download, or `sisura pull` for the VM image |
+| `sisura` CLI | GitHub release (`sisura-<version>-<target>.tar.gz`) | Homebrew (`Formula/sisura.rb`, tap of this repository) or manual download |
+| Checksums, provenance | `SHA256SUMS` in the release, GitHub attestations | `sha256sum -c`, `gh attestation verify` |
+
+`sisura pull` downloads `sisura-<release>-<arch>.{qcow2,vmlinuz,initrd.img,cmdline,build-info}` and `SHA256SUMS` with `curl` into `SISURA_HOME/downloads/<release>/`, and verifies each file. Outside a source checkout, `sisura launch` uses the newest pulled release.
 
 ## Conventions
 
