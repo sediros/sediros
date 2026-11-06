@@ -81,7 +81,7 @@ $(INSTALLER_BIN): sisura-install/Cargo.toml sisura-install/Cargo.lock $(shell fi
 $(LIVE_DEB): $(firstword $(DEBS))
 	@test -f $@ || { echo "$@ missing after build_packages.sh"; exit 1; }
 $(INSTALLER_DEB): $(PKG_INPUTS) $(INSTALLER_BIN)
-	scripts/build_packages.sh
+	scripts/build_packages.sh sisura-install
 
 ifneq ($(PROFILE),install)
 # Same recipe as $(ROOTFS_TAR), install profile.

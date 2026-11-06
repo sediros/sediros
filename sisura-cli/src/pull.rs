@@ -30,7 +30,12 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
         None if args.url.is_some() => bail!("--url needs --release"),
         None => latest_tag(repo)?,
     };
-    let release = tag.trim_start_matches('v').to_string();
+    // A pre-release such as v13.1-rc1 has the same file names as 13.1.
+    let label = tag.trim_start_matches('v').to_string();
+    let release = label
+        .split_once("-rc")
+        .map_or(label.as_str(), |(r, _)| r)
+        .to_string();
     let valid_release = release.split('.').count() == 2
         && release
             .split('.')
@@ -46,9 +51,12 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
     };
 
     let dest = paths.downloads_dir().join(&release);
-    if dest.join(".complete").is_file() && !args.force {
+    // .complete holds the tag that was downloaded: a final release replaces
+    // an earlier pre-release of the same version.
+    let have = fs::read_to_string(dest.join(".complete")).unwrap_or_default();
+    if have.trim() == tag && !args.force {
         println!(
-            "Sisura {release} ({arch}) is already downloaded: {}",
+            "Sisura {label} ({arch}) is already downloaded: {}",
             dest.display()
         );
         return Ok(());
@@ -63,7 +71,7 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
     }
     create_private_dir(&staging)?;
 
-    println!("Downloading Sisura {release} ({arch}) from {base}");
+    println!("Downloading Sisura {label} ({arch}) from {base}");
     download(
         &format!("{base}/SHA256SUMS"),
         &staging.join("SHA256SUMS"),
@@ -91,7 +99,7 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
         }
         println!("  ✓ {name}");
     }
-    fs::write(staging.join(".complete"), b"")?;
+    fs::write(staging.join(".complete"), format!("{tag}\n"))?;
 
     if dest.exists() {
         fs::remove_dir_all(&dest)?;
@@ -105,7 +113,7 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
                 .find_map(|l| l.strip_prefix("BUILD_ID=").map(str::to_string))
         })
         .unwrap_or_else(|| "?".into());
-    println!("\nSisura {release} build {build} is ready. Start a VM: sisura launch <name>");
+    println!("\nSisura {label} build {build} is ready. Start a VM: sisura launch <name>");
     Ok(())
 }
 
@@ -157,18 +165,30 @@ fn download(url: &str, to: &Path, progress: bool) -> Result<()> {
 
 /// Tag of the latest published release (drafts and pre-releases excluded).
 fn latest_tag(repo: &str) -> Result<String> {
-    let out = curl()
-        .args(["-sS", "-H", "Accept: application/vnd.github+json"])
-        .arg(format!(
-            "https://api.github.com/repos/{repo}/releases/latest"
-        ))
-        .stdin(Stdio::null())
-        .output()
-        .context("running curl (is it installed?)")?;
-    if !out.status.success() {
+    let api = |path: &str| {
+        curl()
+            .args(["-sS", "-H", "Accept: application/vnd.github+json"])
+            .arg(format!("https://api.github.com/repos/{repo}/{path}"))
+            .stdin(Stdio::null())
+            .output()
+            .context("running curl (is it installed?)")
+    };
+    let out = api("releases/latest")?;
+    if out.status.success() {
+        return tag_name(&String::from_utf8_lossy(&out.stdout));
+    }
+    // No final release yet: the newest pre-release (drafts are never listed).
+    let out = api("releases?per_page=1")?;
+    let body = String::from_utf8_lossy(&out.stdout);
+    if !out.status.success() || !body.contains("\"tag_name\"") {
         bail!("no published release found for {repo} (use --release)");
     }
-    let body = String::from_utf8_lossy(&out.stdout);
+    let tag = tag_name(&body)?;
+    println!("No final release yet, using pre-release {tag}");
+    Ok(tag)
+}
+
+fn tag_name(body: &str) -> Result<String> {
     // "tag_name": "v13.1" - a full JSON parser is not needed for one field.
     let after = body
         .split_once("\"tag_name\"")

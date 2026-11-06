@@ -2,7 +2,7 @@
 # =============================================================================
 #  Sisura Linux - build the Sisura .deb packages
 #
-#  Usage : ./scripts/build_packages.sh
+#  Usage : ./scripts/build_packages.sh [package...]   (default: all packages)
 #  Host  : Linux with dpkg-deb, or macOS with Docker (re-runs itself in a
 #          container; dpkg-deb ships with the base image, no network needed).
 #
@@ -41,11 +41,17 @@ log() { printf '==> %s\n' "$*"; }
 ok()  { printf '  ✓ %s\n' "$*"; }
 die() { printf '  ✗ %s\n' "$*" >&2; exit 1; }
 
-case "${1:-}" in
-    -h|--help) awk 'NR>2 && /^# =====/ {exit} NR>2 {sub(/^#/, ""); sub(/^ /, ""); print}' "$0"; exit 0 ;;
-    "") ;;
-    *) die "Unknown argument: $1" ;;
-esac
+# Only the named packages (rebuilding a .deb makes everything built from it
+# look outdated to make, e.g. the VM image when only the installer changed).
+ONLY=()
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) awk 'NR>2 && /^# =====/ {exit} NR>2 {sub(/^#/, ""); sub(/^ /, ""); print}' "$0"; exit 0 ;;
+        -*) die "Unknown option: $arg" ;;
+        *) [[ -f "$PKG_SRC/$arg/DEBIAN/control" ]] || die "No package '$arg' under $PKG_SRC"
+           ONLY+=("$arg") ;;
+    esac
+done
 
 sisura_resolve_release || die "Release configuration error"
 
@@ -55,7 +61,7 @@ if ! command -v dpkg-deb >/dev/null 2>&1; then
     log "No dpkg-deb on this host, re-running inside ${DOCKER_IMAGE}"
     exec docker run --rm -v "${PROJECT_ROOT}:/sisura" -w /sisura \
         -e SISURA_RELEASE="$RELEASE" -e SISURA_SUITE="$SUITE" \
-        "$DOCKER_IMAGE" ./scripts/build_packages.sh
+        "$DOCKER_IMAGE" ./scripts/build_packages.sh "$@"
 fi
 
 DEB_ARCH="$(dpkg --print-architecture)"
@@ -67,6 +73,9 @@ built=0
 for src in "$PKG_SRC"/*/; do
     src="${src%/}"
     [[ -f "$src/DEBIAN/control" ]] || continue
+    if ((${#ONLY[@]})) && [[ " ${ONLY[*]} " != *" $(basename "$src") "* ]]; then
+        continue
+    fi
 
     stage="$WORK/$(basename "$src")"
     cp -R "$src" "$stage"

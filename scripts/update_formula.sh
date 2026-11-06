@@ -19,7 +19,7 @@ set -Eeuo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TAG="${1:?usage: $0 v<release>}"
-[[ "$TAG" =~ ^v[0-9]+\.[0-9]+$ ]] || { echo "tag must look like v13.1" >&2; exit 1; }
+[[ "$TAG" =~ ^v[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]] || { echo "tag must look like v13.1 or v13.1-rc1" >&2; exit 1; }
 REPO="${SISURA_REPO:-sisura-linux/sisura}"
 BASE="${SISURA_RELEASE_URL:-https://github.com/${REPO}/releases/download/${TAG}}"
 

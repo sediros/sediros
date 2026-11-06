@@ -1,6 +1,7 @@
 # Sisura release
 #   Triggered by pushing a tag v<release> (e.g. v13.1) that matches RELEASE in
-#   config/sisura.conf. Builds and tests the images for amd64 and arm64, builds
+#   config/sisura.conf, or v<release>-rc<N> for a pre-release (same files,
+#   marked "Pre-release" on GitHub, for testing before the final release). Builds and tests the images for amd64 and arm64, builds
 #   the sisura CLI for macOS and Linux, writes SHA256SUMS, attests the build
 #   provenance of every file and creates a DRAFT GitHub release: nothing is
 #   public until a maintainer reviews and publishes it.
@@ -25,6 +26,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       release: ${{ steps.v.outputs.release }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
       - id: v
@@ -32,6 +34,10 @@ jobs:
         run: |
           release="$(sed -n 's/^RELEASE[[:space:]]*?=[[:space:]]*//p' config/sisura.conf)"
           tag="${GITHUB_REF_NAME#v}"
+          prerelease=false
+          case "$tag" in
+            *-rc[0-9]*) tag="${tag%-rc*}"; prerelease=true ;;
+          esac
           if [ "$GITHUB_REF_TYPE" = tag ] && [ "$release" != "$tag" ]; then
             echo "::error::tag $GITHUB_REF_NAME does not match RELEASE=$release"
             exit 1
@@ -39,6 +45,7 @@ jobs:
           grep -q "^## \[$release\]" CHANGELOG.md \
             || { echo "::error::CHANGELOG.md has no section for $release"; exit 1; }
           echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
   images:
     needs: check
@@ -75,14 +82,19 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Build image, installer and ISO
-        run: make build iso
+      # Same order as ci.yml: building the ISO after the test keeps the image
+      # build (which resets /dev/kvm permissions) from running in between.
+      - name: Build image
+        run: make build
 
       - name: Smoke test
         if: matrix.smoke
         run: |
           sudo chmod 0666 /dev/kvm
           make test
+
+      - name: Build installer and ISO
+        run: make iso
 
       - name: Collect release files
         run: |
@@ -197,7 +209,12 @@ jobs:
           gh attestation verify <file> --repo sisura-linux/sisura
           ```
           EOF
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --draft \
-            --title "Sisura $release" \
+          title="Sisura $release"
+          flags=(--draft)
+          if [ "${{ needs.check.outputs.prerelease }}" = true ]; then
+            title="Sisura ${GITHUB_REF_NAME#v} (pre-release)"
+            flags+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/* "${flags[@]}" \
+            --title "$title" \
             --notes-file notes.md
