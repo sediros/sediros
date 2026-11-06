@@ -35,6 +35,8 @@ pub struct Platform {
     pub machine: &'static str,
     pub accel: Accel,
     pub console: &'static str,
+    /// Why no hardware acceleration is used (when accel is TCG).
+    pub tcg_reason: Option<String>,
 }
 
 impl Platform {
@@ -51,20 +53,28 @@ impl Platform {
             (image_arch, std::env::consts::ARCH),
             ("arm64", "aarch64") | ("amd64", "x86_64")
         );
-        let accel = if !native {
-            Accel::Tcg
+        let (accel, tcg_reason) = if !native {
+            (
+                Accel::Tcg,
+                Some(format!(
+                    "{image_arch} image on a {} host",
+                    std::env::consts::ARCH
+                )),
+            )
         } else if cfg!(target_os = "macos") {
-            Accel::Hvf
-        } else if kvm_usable() {
-            Accel::Kvm
+            (Accel::Hvf, None)
         } else {
-            Accel::Tcg
+            match kvm_usable() {
+                Ok(()) => (Accel::Kvm, None),
+                Err(reason) => (Accel::Tcg, Some(reason)),
+            }
         };
         Ok(Self {
             binary,
             machine,
             accel,
             console,
+            tcg_reason,
         })
     }
 
@@ -78,12 +88,13 @@ impl Platform {
     }
 }
 
-fn kvm_usable() -> bool {
+fn kvm_usable() -> std::result::Result<(), String> {
     OpenOptions::new()
         .read(true)
         .write(true)
         .open("/dev/kvm")
-        .is_ok()
+        .map(|_| ())
+        .map_err(|e| format!("cannot open /dev/kvm: {e}"))
 }
 
 /// QEMU splits -drive/-qmp options on ',', so paths must not contain one.

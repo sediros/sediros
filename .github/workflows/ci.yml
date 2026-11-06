@@ -72,7 +72,12 @@ jobs:
 
       - name: Smoke test
         if: matrix.smoke
-        run: make test
+        run: |
+          # The image build (chroot with /dev bound, package scripts) can
+          # leave /dev/kvm with other permissions than set above.
+          sudo chmod 0666 /dev/kvm
+          ls -l /dev/kvm
+          make test
 
       - name: Build ISO
         run: make iso

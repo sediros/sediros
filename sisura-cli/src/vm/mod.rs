@@ -87,8 +87,9 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     let platform = Platform::detect(&vm.arch)?;
     if platform.accel == Accel::Tcg {
         eprintln!(
-            "warning: no hardware acceleration for {} on this host, using TCG (slow)",
-            vm.arch
+            "warning: no hardware acceleration for {} ({}), using TCG (slow)",
+            vm.arch,
+            platform.tcg_reason.as_deref().unwrap_or("unknown reason")
         );
     }
 
