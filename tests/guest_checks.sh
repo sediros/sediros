@@ -148,6 +148,9 @@ if systemctl is-active -q sisura-netfilter.service \
     pass "nftables: TCP with IP options dropped"
 else
     fail "nftables" "table ip sisura missing or sisura-netfilter.service inactive"
+    # Diagnostics for CI logs.
+    sudo systemctl status sisura-netfilter.service --no-pager -n 15 2>&1 | sed 's/^/      /'
+    sudo nft list tables 2>&1 | sed 's/^/      nft: /'
 fi
 
 # --- automatic security updates ---------------------------------------------------
