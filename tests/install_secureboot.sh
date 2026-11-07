@@ -51,6 +51,9 @@ if grep -aq 'Unknown X keysym' <<<"$(sb_console)"; then
 fi
 # tar warnings while copying the system: the squashfs has no xattr table
 # (EOPNOTSUPP for every file), the ESP mount point takes no ACLs.
+if grep -aq 'dpkg-divert: warning' <<<"$(sb_console)"; then
+    sb_fail "dpkg-divert warnings shown during the install"
+fi
 if grep -aq 'Operation not supported' <<<"$(sb_console)"; then
     sb_fail "'Operation not supported' warnings shown during the install"
 fi

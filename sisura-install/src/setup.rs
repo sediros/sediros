@@ -449,7 +449,13 @@ pub fn remove_ssh_unlock(target: &Path) -> Result<()> {
         )
         .unwrap_or_default();
         if !listed.is_empty() {
-            chroot(target, "dpkg-divert", &["--local", "--remove", &path])?;
+            // The purge above removed the diverted files: nothing to move
+            // back. Explicit, as dpkg-divert warns that its default changes.
+            chroot(
+                target,
+                "dpkg-divert",
+                &["--local", "--no-rename", "--remove", &path],
+            )?;
         }
     }
     Ok(())

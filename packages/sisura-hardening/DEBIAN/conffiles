@@ -11,3 +11,4 @@
 /etc/sudoers.d/sisura
 /etc/security/pwquality.conf.d/90-sisura.conf
 /etc/ssh/sshd_config.d/05-sisura-enroll.conf
+/etc/profile.d/sisura-ssh-hint.sh
