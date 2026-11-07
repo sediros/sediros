@@ -292,11 +292,26 @@ sisura purge dev           # delete the VM
 |---|---|
 | Unprivileged user namespaces disabled | Rootless podman and the Chromium sandbox do not work |
 | `kernel.yama.ptrace_scope=2` | Regular users cannot attach `gdb` or `strace` to running processes |
-| Firewall denies incoming traffic | Only SSH (22/tcp, rate-limited) is open; open other ports with `ufw` |
+| Firewall denies incoming traffic | Only SSH (22/tcp) is open; open other ports with `ufw` (see below) |
+| SSH rate limit | More than 6 SSH connections from one address within 30 seconds are refused for a while ("Connection refused"); wait half a minute |
 | SUID bits removed outside an allowlist | Some rarely used tools that need SUID stop working (see `/etc/sisura/suid-allowlist`) |
 | unattended-upgrades | About 30-40 MB of disk and 20 MB of RAM for Python |
 
 Files under `/etc` that you change are kept: package updates never overwrite them.
+
+### Opening a port
+
+A service you install (nginx, PostgreSQL, ...) runs, but is not reachable from outside until you allow its port:
+
+```bash
+sudo ufw allow http                                            # port 80 from anywhere
+sudo ufw allow https                                           # port 443
+sudo ufw allow from 192.168.1.0/24 to any port 5432 proto tcp  # only from your local network
+sudo ufw status numbered                                       # list the rules
+sudo ufw delete <number>                                       # remove one
+```
+
+If `curl http://<address>` works from your computer but the browser does not open the page, the browser has probably switched to `https://`, which has no listener: type the address with `http://`, or use a private window. VMs started with the `sisura` CLI use [`sisura forward`](#trying-sisura-in-a-vm) instead, which also opens the port in the VM's firewall.
 
 ## More
 
