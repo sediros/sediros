@@ -163,7 +163,8 @@ pub fn load_all(vms_dir: &Path) -> Result<Vec<VmState>> {
     };
     for entry in entries {
         let entry = entry?;
-        if !entry.file_type()?.is_dir() {
+        // A VM being created has its directory before its vm.conf.
+        if !entry.file_type()?.is_dir() || !entry.path().join(STATE_FILE).is_file() {
             continue;
         }
         match VmState::load(&entry.path()) {
