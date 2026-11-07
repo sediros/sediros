@@ -117,6 +117,7 @@ UTM on a Mac, step by step:
 4. Start the VM: it asks for the disk encryption passphrase on the screen.
 
 Known issues:
+- UTM on a Mac with Apple Silicon: the amd64 ISO needs **Emulate** (Intel ICH9 / x86_64), which is very slow (minutes to boot, an empty screen for a while is normal); **Virtualize** creates an ARM64 VM, which needs the arm64 ISO and otherwise stops at "No bootable option".
 - UTM: with the guest type "Other" the screen stays at "Display output is not active". Choose "Linux".
 - Installed from 13.1-rc7 in a VM with a virtio-gpu display (UTM's default): the screen shows "Display output is not active" while the disk passphrase is asked. Type it blind and press Enter; after `sudo apt update && sudo apt upgrade` the prompt appears on the screen. Installed from rc6 or earlier: the prompt goes to the serial console; reinstall from the current ISO.
 
@@ -124,13 +125,13 @@ Known issues:
 
 ### Logging in
 
-SSH accepts keys only, for members of the `sudo` group (the admin user) and of `sisura-ssh`. Passwords are never accepted over SSH; the admin password is for `sudo` and the local console. After 5 failed password attempts in 15 minutes the account is locked for 15 minutes.
+SSH accepts keys only, for members of the `sudo` group (the admin user) and of `sisura-ssh`. Passwords are not accepted over SSH (except in the short window `sisura-ssh-enroll` opens, below); the admin password is for `sudo` and the local console. After 5 failed password attempts in 15 minutes the account is locked for 15 minutes.
 
 ```bash
 ssh <admin user>@<address of the machine>     # port 22; find the address with: ip -4 -br addr
 ```
 
-No SSH key given to the installer? Log in on the console and run
+No SSH key given to the installer? Logging in on the console reminds you; run
 
 ```bash
 sudo sisura-ssh-enroll
@@ -236,7 +237,7 @@ brew install sisura
 *Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
 
 ```bash
-VERSION=0.6.0 RELEASE=13.1-rc8 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
+VERSION=0.6.0 RELEASE=13.1-rc11 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
 URL=https://github.com/sisura-linux/sisura/releases/download/v$RELEASE
 curl -LO $URL/sisura-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
@@ -293,6 +294,7 @@ sisura purge dev           # delete the VM
 | Unprivileged user namespaces disabled | Rootless podman and the Chromium sandbox do not work |
 | `kernel.yama.ptrace_scope=2` | Regular users cannot attach `gdb` or `strace` to running processes |
 | Firewall denies incoming traffic | Only SSH (22/tcp) is open; open other ports with `ufw` (see below) |
+| No SSH over vsock or local sockets | systemd's `systemd-ssh-generator` is masked, so SSH is reachable only through port 22, which the firewall controls; `ssh` to a VM through the hypervisor's vsock does not work |
 | SSH rate limit | More than 6 SSH connections from one address within 30 seconds are refused for a while ("Connection refused"); wait half a minute |
 | SUID bits removed outside an allowlist | Some rarely used tools that need SUID stop working (see `/etc/sisura/suid-allowlist`) |
 | unattended-upgrades | About 30-40 MB of disk and 20 MB of RAM for Python |

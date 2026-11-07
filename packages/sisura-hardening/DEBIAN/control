@@ -12,6 +12,9 @@ Description: Sisura Linux security hardening
   - kernel sysctl hardening (info leaks, eBPF, ptrace, ASLR, network stack)
   - blacklist of rarely used / historically vulnerable kernel modules
   - key-only OpenSSH with modern crypto, per-machine host keys
+  - sisura-ssh-enroll: adds the first SSH key through a short password
+    window; a console reminder for users without a key
+  - systemd-ssh-generator masked: no SSH on vsock or local sockets
   - default-deny UFW policy applied on first boot
   - nftables filter dropping IPv4 TCP packets with IP options
   - automatic installation of Debian security updates
