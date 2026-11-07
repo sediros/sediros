@@ -20,11 +20,11 @@ First release, based on Debian 13 (trixie).
 - SUID/SGID removal outside an allowlist, re-applied after every dpkg run; kernel module blacklist; core dumps disabled.
 - Kernel hardening parameters on every GRUB entry; optional GRUB password (`sisura-grub-password`) that protects entry editing while the default entry still boots unattended.
 
-### Updates (`sisura-archive-keyring` 0.1.0, `sisura-hardening` 0.5.0)
+### Updates (`sisura-archive-keyring` 0.1.0, `sisura-hardening` 0.5.1)
 - Sisura apt repository (`https://sisura-linux.github.io/sisura/apt`), built from the packages of each published release and signed in CI; Sisura's own packages now receive fixes through apt, not only with a new image.
 - `sisura-archive-keyring`: the repository's signing key and source, bound to each other with `Signed-By`, and an apt pin that only accepts `sisura-*` packages from the repository (matched by host name), so even a stolen signing key cannot replace Debian packages.
 - unattended-upgrades also installs updates of Sisura's packages.
-- `sudo sisura-ssh-enroll`: adds the first SSH key with `ssh-copy-id` through a short password login window (calling user only, local networks only unless `--anywhere`, closed when the key arrives, after 10 minutes or on reboot).
+- `sudo sisura-ssh-enroll`: adds the first SSH key with `ssh-copy-id` through a short password login window (calling user only, local networks only unless `--anywhere`, closed when the key arrives, after 10 minutes or on reboot). In the live ISO session it refuses and says to install or boot the installed disk.
 - `make apt-test` updates a VM through a test repository: signature accepted, unattended update installed, foreign package refused by the pin, repository signed with another key rejected, hardening intact afterwards.
 
 ### Audit (`sisura-audit` 0.2.0)
@@ -32,11 +32,11 @@ First release, based on Debian 13 (trixie).
 - In every image; the smoke test runs it next to its own checks.
 - Warns while a `sisura-ssh-enroll` window is open.
 
-### Installer (`sisura-install` 0.3.1, `sisura-live` 0.2.2)
+### Installer (`sisura-install` 0.3.2, `sisura-live` 0.2.2)
 - Live session with console autologin and the Sisura login banner; nothing written to disk. It warns when a disk already holds a Sisura installation (the ISO was booted again instead of the installed system), and the installer's last message says what to do without an SSH key.
 - Installs to disk with GPT, an EFI system partition, an unencrypted `/boot` and a LUKS2 (argon2id) root.
 - Asks for disk, hostname, keyboard layout, admin user, sudo password, SSH keys (pasted or from GitHub) and GRUB password; validates every answer before touching the disk. All answers are also available as flags.
-- Keyboard layout applies to the LUKS prompt at boot. The layout chosen in the wizard also applies to the live console right away (it did not when the installer ran under sudo), and the dozens of harmless `ckbcomp` warnings it caused while building the initramfs are no longer shown.
+- Keyboard layout applies to the LUKS prompt at boot. The layout chosen in the wizard also applies to the live console right away (it did not when the installer ran under sudo), and the dozens of harmless `ckbcomp` warnings it caused while building the initramfs are no longer shown. Copying the system no longer prints "Operation not supported" for the EFI partition's mount point (vfat has no ACLs; harmless).
 - Installed over a serial console (VPS, server, VM): the installed system keeps using it for GRUB, kernel messages and the LUKS prompt.
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 - Secure Boot: the ISO and installed systems boot with Debian's signed chain (Microsoft-signed `shim`, Debian-signed GRUB and kernel); tested with firmware that enforces Secure Boot, for the live ISO, the installation and the installed system.

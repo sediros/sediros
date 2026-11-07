@@ -54,6 +54,11 @@ while (($#)); do
 done
 
 [[ $EUID -eq 0 ]] || die "run it with sudo: sudo sisura-ssh-enroll"
+# The live ISO session keeps nothing: a key added here would be lost.
+[[ ! -d /run/live/rootfs ]] \
+    || die "this is the live session (booted from the ISO), not an installed system.
+  Install first (sudo sisura-install), or if it is installed: remove the ISO
+  and boot from the disk, then run this command there."
 user="${SUDO_USER:-}"
 [[ -n "$user" && "$user" != root ]] || die "run it with sudo as the user who wants SSH access"
 home="$(getent passwd "$user" | cut -d: -f6)"

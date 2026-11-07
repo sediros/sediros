@@ -85,6 +85,15 @@ Good to know:
 - The installer refuses disks that are mounted, used as swap, hold the live medium, or are smaller than 8 GiB.
 - For automated installs every question has a flag: `sisura-install install --help`.
 
+### Installing in a virtual machine
+
+To install from the ISO in a hypervisor (UTM, VirtualBox, VMware, Proxmox, virt-manager, ...) rather than with the `sisura` CLI (see [Trying Sisura in a VM](#trying-sisura-in-a-vm)):
+- Choose **UEFI** firmware and **Linux / Debian 64-bit** as the guest type, not "Other".
+- **Remove the ISO after installing**, otherwise the VM boots the live session again. A prompt of `sisura@sisura` means you are in the live session, not in the installed system; the live login banner also warns when the disk already holds a Sisura installation.
+
+Known issues:
+- UTM: with the guest type "Other" the screen stays at "Display output is not active". Choose "Linux".
+
 ## After installation
 
 ### Logging in

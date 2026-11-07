@@ -273,7 +273,9 @@ pub fn run_install(opts: &Options) -> Result<()> {
             "./tmp/*",
             "./mnt/*",
             "./media/*",
-            "./boot/efi/*",
+            // The ESP mount point itself too: tar would try to set POSIX
+            // ACLs on it, which vfat rejects ("Operation not supported").
+            "./boot/efi",
             "./boot/initrd.img-*",
             "./etc/sudoers.d/90-sisura-live",
         ],
