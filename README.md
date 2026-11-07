@@ -2,7 +2,7 @@
 
 Sisura is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sisura`, a small CLI that boots Sisura VMs in seconds.
 
-> **Status:** Sisura 13.1 is in development and has not been released yet. The steps below describe the released version; until then, build from source (see [Development](docs/DEVELOPMENT.md)).
+> **Status:** Sisura 13.1 is in testing. Release candidates are on the [download page](https://sisura-linux.github.io/sisura/); the final 13.1 follows once they hold up.
 
 ## What you get
 
@@ -23,16 +23,27 @@ The two are independent: an installed system does not need the CLI, and the CLI 
 
 ## Getting Sisura
 
-Everything is published on the [GitHub releases page](https://github.com/sisura-linux/sisura/releases). Each release has, for `amd64` (most PCs and servers) and `arm64` (ARM servers, Apple Silicon VMs):
+**Download page: <https://sisura-linux.github.io/sisura/>**: the newest installer ISOs with their checksums, nothing else. Which one:
+
+| Your machine | ISO |
+|---|---|
+| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sisura-13.1-install-amd64.iso` |
+| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sisura-13.1-install-arm64.iso` |
+
+For the `sisura` CLI you download nothing by hand: see [Trying Sisura in a VM](#trying-sisura-in-a-vm).
+
+<details>
+<summary>All release files, and verifying them</summary>
+
+Everything is published on the [GitHub releases page](https://github.com/sisura-linux/sisura/releases). Each release has, for `amd64` and `arm64`:
 
 | File | What it is |
 |---|---|
-| `sisura-13.1-install-<arch>.iso` | live system and installer (path 1) |
-| `sisura-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sisura pull` (path 2) |
-| `sisura-<version>-<platform>.tar.gz` | the `sisura` CLI for macOS and Linux (path 2) |
+| `sisura-13.1-install-<arch>.iso` | live system and installer |
+| `sisura-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sisura pull` |
+| `sisura-<version>-<platform>.tar.gz` | the `sisura` CLI for macOS and Linux |
+| `sisura-*.deb` | Sisura's packages (also in the [apt repository](https://sisura-linux.github.io/sisura/apt/)) |
 | `SHA256SUMS` | checksums of all files |
-
-> Until the first release (13.1) is published, these downloads do not exist yet; build from source instead ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
 
 **Verify what you downloaded** before using it:
 
@@ -47,29 +58,38 @@ To also check that a file was built by this repository's release workflow (needs
 gh attestation verify sisura-13.1-install-amd64.iso --repo sisura-linux/sisura
 ```
 
+</details>
+
 ## Installing to disk
 
-Requirements:
+### Quick steps
+
+1. **Download** the ISO for your machine from the [download page](https://sisura-linux.github.io/sisura/).
+2. **Boot it:**
+   - PC or server: write it to a USB stick ([how](#writing-the-usb-stick)) and boot from the stick in **UEFI** mode.
+   - VM: attach it as a CD/DVD, with **UEFI** firmware and the guest type **Linux** ([details](#installing-in-a-virtual-machine)).
+3. **Install:** in the live session that opens, run `sudo sisura-install install` and answer the questions ([what it asks](#the-installers-questions)).
+4. **Power off and remove the ISO** or the USB stick. In a VM, clear the CD/DVD drive *while the VM is off*.
+5. **Boot from the disk:** enter the disk encryption passphrase, then log in with your user and password.
+6. **SSH:** if you gave an SSH key, log in with `ssh <user>@<address>`. If not, run `sudo sisura-ssh-enroll` on the console and follow it ([details](#logging-in)).
+
+### Requirements
+
 - A 64-bit PC or server (amd64) or ARM machine (arm64) that boots with **UEFI**. Legacy BIOS/CSM boot is not supported; the installer stops if the ISO was started that way.
 - **Secure Boot** can stay on: Sisura boots with Debian's signed boot chain (shim signed by Microsoft, Debian-signed GRUB and kernel), which machines with Microsoft's UEFI keys accept. With Secure Boot on, the kernel runs in lockdown mode, and kernel modules that are not part of Debian (DKMS) need a key enrolled with `mokutil`.
 - At least 8 GiB of disk space; the whole disk is used and erased. Installation has been tested with 2 GiB of RAM.
 
-1. **Put the ISO on a boot medium.**
-   - USB stick on Linux: `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress` (`lsblk` shows which `/dev/sdX` is the stick; everything on it is erased).
-   - USB stick on macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
-   - Or a graphical tool such as balenaEtcher.
-   - Virtual machine or VPS: attach the ISO as a CD/DVD drive (most VPS panels have "mount ISO").
-2. **Boot from it.** The live session logs in automatically; nothing is written to disk yet.
-3. **Start the installer:**
-   ```bash
-   sudo sisura-install install
-   ```
-4. **Answer the questions:** disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written.
-5. **Confirm** by typing the disk name. The installation takes under a minute.
-6. **Remove the ISO and reboot.** Enter the disk encryption passphrase at the prompt (or over SSH, see below), then log in:
-   ```bash
-   ssh <admin user>@<address of the machine>
-   ```
+### Writing the USB stick
+
+Everything on the stick is erased.
+- Any system: a graphical tool such as [balenaEtcher](https://etcher.balena.io/).
+- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
+- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
+- VPS: most panels have "mount ISO"; attach it and boot from it.
+
+### The installer's questions
+
+Disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written; you confirm by typing the disk name, and the installation takes under a minute. For automated installs every question has a flag: `sisura-install install --help`.
 
 What the installer creates:
 
@@ -83,16 +103,22 @@ Good to know:
 - **The passphrase cannot be recovered.** Without it, the data on the disk is lost.
 - **Keyboard layout:** the layout you choose is also used at the passphrase prompt during boot, so type the passphrase with the same layout during installation.
 - The installer refuses disks that are mounted, used as swap, hold the live medium, or are smaller than 8 GiB.
-- For automated installs every question has a flag: `sisura-install install --help`.
 
 ### Installing in a virtual machine
 
-To install from the ISO in a hypervisor (UTM, VirtualBox, VMware, Proxmox, virt-manager, ...) rather than with the `sisura` CLI (see [Trying Sisura in a VM](#trying-sisura-in-a-vm)):
+For a hypervisor such as UTM, VirtualBox, VMware, Proxmox or virt-manager (for throwaway VMs, the `sisura` CLI is quicker: see [Trying Sisura in a VM](#trying-sisura-in-a-vm)):
 - Choose **UEFI** firmware and **Linux / Debian 64-bit** as the guest type, not "Other".
-- **Remove the ISO after installing**, otherwise the VM boots the live session again. A prompt of `sisura@sisura` means you are in the live session, not in the installed system; the live login banner also warns when the disk already holds a Sisura installation.
+- **Remove the ISO after installing, while the VM is off**, otherwise the VM boots the live session again. A prompt of `sisura@sisura` with "live session" in the login banner means you are not in the installed system; the banner also warns when the disk already holds a Sisura installation.
+
+UTM on a Mac, step by step:
+1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sisura-13.1-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
+2. Start the VM and install (`sudo sisura-install install`), then `sudo poweroff`.
+3. With the VM off: right-click it → **Edit** → under **Drives** select the **USB Drive** that holds the ISO → **Clear** → **Save**. (Ejecting it from the toolbar while the VM runs lasts only until the next start.)
+4. Start the VM: it asks for the disk encryption passphrase on the screen.
 
 Known issues:
 - UTM: with the guest type "Other" the screen stays at "Display output is not active". Choose "Linux".
+- Installed from 13.1-rc7 in a VM with a virtio-gpu display (UTM's default): the screen shows "Display output is not active" while the disk passphrase is asked. Type it blind and press Enter; after `sudo apt update && sudo apt upgrade` the prompt appears on the screen. Installed from rc6 or earlier: the prompt goes to the serial console; reinstall from the current ISO.
 
 ## After installation
 
@@ -197,8 +223,6 @@ The `sisura` CLI starts Sisura VMs with QEMU on macOS and Linux (amd64 or arm64)
 
 **1. Install the CLI and QEMU.**
 
-> The Homebrew formula and the CLI downloads appear with the first release (13.1). Until then, build the CLI from a source checkout: `make install` (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
-
 *macOS* (Homebrew; also installs QEMU):
 
 ```bash
@@ -210,7 +234,7 @@ brew install sisura
 *Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
 
 ```bash
-VERSION=0.3.0 RELEASE=13.1 TARGET=x86_64-unknown-linux-musl
+VERSION=0.6.0 RELEASE=13.1-rc8 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
 URL=https://github.com/sisura-linux/sisura/releases/download/v$RELEASE
 curl -LO $URL/sisura-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing

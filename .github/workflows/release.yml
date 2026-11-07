@@ -212,11 +212,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           release="${{ needs.check.outputs.release }}"
-          # Release notes: this release's section of CHANGELOG.md.
+          # Release notes: which file to download, then this release's
+          # section of CHANGELOG.md.
+          cat > notes.md <<'EOF'
+          ## Which file do I need?
+
+          | To... | Download |
+          |---|---|
+          | install on a PC or server (Intel/AMD), or a VM on one | `sisura-@RELEASE@-install-amd64.iso` |
+          | install in a VM on a Mac with Apple Silicon (UTM, Parallels), or on an ARM server | `sisura-@RELEASE@-install-arm64.iso` |
+          | run Sisura VMs with the `sisura` CLI | nothing here: `brew install sisura` (see the README) downloads what it needs |
+
+          Everything else is used by the CLI, the apt repository or for verification. Easier: [sisura-linux.github.io/sisura](https://sisura-linux.github.io/sisura/) lists only the ISOs, with their checksums.
+
+          EOF
+          sed -i "s/@RELEASE@/$release/g" notes.md
           awk -v r="$release" '
             $0 ~ "^## \\[" r "\\]" {on=1; next}
             on && /^## \[/ {exit}
-            on {print}' CHANGELOG.md > notes.md
+            on {print}' CHANGELOG.md >> notes.md
           cat >> notes.md <<'EOF'
 
           ## Verifying downloads

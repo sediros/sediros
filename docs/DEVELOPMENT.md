@@ -57,6 +57,7 @@ Settings are in `config/sisura.conf` and can be overridden on the command line, 
 | `scripts/build_packages.sh` | `packages/*` → `build/debs/*.deb`; fills in `@SISURA_RELEASE@`, `@SISURA_CODENAME@`, `@SISURA_ARCH@`; adds compiled programs listed in `packages/<pkg>/.sisura-binaries` |
 | `scripts/build_installer.sh [crate]` | builds `sisura-install` or `sisura-audit` for Linux (Docker with `debian:trixie` on macOS) |
 | `scripts/build_apt_repo.sh` | `.deb` files → signed apt repository (`pool/`, `dists/`, `index.html`); used by `apt-repo.yml` and `make apt-test` |
+| `scripts/build_download_page.sh` | newest release → download page (`https://sisura-linux.github.io/sisura/`, ISO links and checksums); used by `apt-repo.yml` |
 | `scripts/update_formula.sh` | Homebrew formula from a published release's `SHA256SUMS` |
 | `scripts/check_versions.sh` | fails when a package changed since the last release tag without a new version |
 | `scripts/lib/release.sh` | release → Debian suite mapping, build id |
@@ -146,7 +147,7 @@ Releasing:
 3. Optional dry run: run the `release` workflow manually (Actions → release → Run workflow). It builds everything and keeps the files as workflow artifacts, without creating a release.
    To test the published flow (downloads, Homebrew, `sisura pull`) before the final release, tag a pre-release instead: `v13.2-rc1`. It is built the same way, published as a GitHub "Pre-release", and `sisura pull` uses it while no final release exists.
 4. `git tag -a v13.2 -m "Sisura 13.2" && git push origin v13.2`. The `release` workflow checks that the tag matches `RELEASE` and the changelog, builds and smoke-tests the images (amd64, arm64), builds the CLI for macOS (arm64, x86_64) and Linux (musl, amd64, arm64), writes `SHA256SUMS`, attests the build provenance and creates a **draft** release with the changelog section as notes.
-5. Review the draft on GitHub (files, notes) and publish it. Publishing starts the `apt-repo` workflow, which puts the release's packages into the apt repository (see below).
+5. Review the draft on GitHub (files, notes) and publish it. Publishing starts the `apt-repo` workflow, which puts the release's packages into the apt repository (see below) and points the download page at the new release.
 6. Update the Homebrew formula from the published release and commit it:
    ```bash
    scripts/update_formula.sh v13.2

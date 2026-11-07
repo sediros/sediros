@@ -1,7 +1,9 @@
 # Sisura apt repository
 #   Rebuilds the repository from the .deb files of every published release
 #   (pre-releases included), signs it with APT_SIGNING_KEY and deploys it to
-#   GitHub Pages: https://sisura-linux.github.io/sisura/apt
+#   GitHub Pages: https://sisura-linux.github.io/sisura/apt, together with
+#   the download page at https://sisura-linux.github.io/sisura/ (links to
+#   the newest release's ISOs).
 #   Runs when a release is published (drafts are not), or manually.
 #   The repository has no state of its own: each run builds it from the
 #   releases, so it can always be rebuilt from scratch.
@@ -55,6 +57,17 @@ jobs:
           (umask 077; printf '%s\n' "$APT_SIGNING_KEY" > "$key")
           scripts/build_apt_repo.sh --debs debs --out site/apt --key "$key"
           rm -f "$key"
+
+      - name: Download page (newest published release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release list --exclude-drafts --limit 50 --json tagName,publishedAt \
+              -q 'sort_by(.publishedAt) | last | .tagName')"
+          gh release view "$tag" --json tagName,url,publishedAt,isPrerelease,assets > release.json
+          gh release download "$tag" --pattern SHA256SUMS --dir "$RUNNER_TEMP" --clobber
+          scripts/build_download_page.sh --release release.json \
+              --sums "$RUNNER_TEMP/SHA256SUMS" --out site/index.html
 
       - uses: actions/upload-pages-artifact@v5
         with:
