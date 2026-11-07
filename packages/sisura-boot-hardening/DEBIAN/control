@@ -1,5 +1,5 @@
 Package: sisura-boot-hardening
-Version: 0.1.0
+Version: 0.2.0
 Architecture: all
 Maintainer: The Sisura Authors <ahmetatakan.tech@gmail.com>
 Section: admin
@@ -12,5 +12,8 @@ Description: Sisura Linux boot loader hardening
   - optional GRUB password (sisura-grub-password): editing boot entries,
     the GRUB shell and recovery entries require it, while the default
     entry still boots unattended
+  - virtio-gpu driver in the initramfs, so the LUKS prompt is visible on
+    the screen of VMs with a virtio-gpu display (UTM, QEMU)
  .
- Does nothing on systems without GRUB (VMs booted directly by QEMU).
+ The GRUB parts do nothing on systems without GRUB (VMs booted directly
+ by QEMU).

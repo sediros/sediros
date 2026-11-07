@@ -1,0 +1,19 @@
+#!/bin/sh
+# sisura-boot-hardening: virtio-gpu driver in the initramfs.
+#
+# In VMs with a virtio-gpu display (UTM, QEMU, ...) the UEFI driver offers
+# no linear framebuffer, so efifb cannot show anything and the screen stays
+# dark ("Display output is not active") until the DRM driver loads - which,
+# without this hook, happens only after the root disk is unlocked. The
+# LUKS prompt then has no screen to appear on.
+set -e
+
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in
+    prereqs) prereqs; exit 0 ;;
+esac
+
+# shellcheck source=/dev/null
+. /usr/share/initramfs-tools/hook-functions
+manual_add_modules virtio_gpu

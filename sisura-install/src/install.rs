@@ -422,6 +422,9 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
             "Serial console {tty} for GRUB, the kernel and the LUKS prompt"
         ));
         write_serial_console(target, &tty)?;
+    } else {
+        step("Screen console (tty0) for the kernel and the LUKS prompt");
+        write_screen_console(target)?;
     }
 
     step("Installing GRUB (UEFI)");
@@ -538,6 +541,21 @@ fn write_serial_console(target: &Path, tty: &str) -> Result<()> {
              GRUB_SERIAL_COMMAND=\"serial --unit={unit} --speed=115200\"\n"
         ));
     }
+    let dir = target.join("etc/default/grub.d");
+    fs::create_dir_all(&dir)?;
+    fs::write(dir.join("80-sisura-console.cfg"), cfg)?;
+    Ok(())
+}
+
+/// Installed from the screen: keep the LUKS prompt there. Without any
+/// console= the kernel takes the firmware's serial console (ACPI SPCR on
+/// arm64 VMs and servers) as /dev/console, and the prompt only appears on a
+/// serial port nobody is looking at.
+fn write_screen_console(target: &Path) -> Result<()> {
+    let cfg = "# Written by sisura-install: installed from the screen.\n\
+               # The LUKS prompt and the boot log go to the screen (tty0),\n\
+               # not to a serial console named by the firmware.\n\
+               GRUB_CMDLINE_LINUX=\"${GRUB_CMDLINE_LINUX:+$GRUB_CMDLINE_LINUX }console=tty0\"\n";
     let dir = target.join("etc/default/grub.d");
     fs::create_dir_all(&dir)?;
     fs::write(dir.join("80-sisura-console.cfg"), cfg)?;
