@@ -32,11 +32,11 @@ First release, based on Debian 13 (trixie).
 - In every image; the smoke test runs it next to its own checks.
 - Warns while a `sisura-ssh-enroll` window is open.
 
-### Installer (`sisura-install` 0.3.2, `sisura-live` 0.2.2)
+### Installer (`sisura-install` 0.3.3, `sisura-live` 0.2.2)
 - Live session with console autologin and the Sisura login banner; nothing written to disk. It warns when a disk already holds a Sisura installation (the ISO was booted again instead of the installed system), and the installer's last message says what to do without an SSH key.
 - Installs to disk with GPT, an EFI system partition, an unencrypted `/boot` and a LUKS2 (argon2id) root.
 - Asks for disk, hostname, keyboard layout, admin user, sudo password, SSH keys (pasted or from GitHub) and GRUB password; validates every answer before touching the disk. All answers are also available as flags.
-- Keyboard layout applies to the LUKS prompt at boot. The layout chosen in the wizard also applies to the live console right away (it did not when the installer ran under sudo), and the dozens of harmless `ckbcomp` warnings it caused while building the initramfs are no longer shown. Copying the system no longer prints "Operation not supported" for the EFI partition's mount point (vfat has no ACLs; harmless).
+- Keyboard layout applies to the LUKS prompt at boot. The layout chosen in the wizard also applies to the live console right away (it did not when the installer ran under sudo), and the dozens of harmless `ckbcomp` warnings it caused while building the initramfs are no longer shown. Copying the system no longer prints hundreds of harmless "Operation not supported" warnings: the live squashfs has no extended attributes to copy, and the EFI partition's mount point (vfat) takes no ACLs.
 - Installed over a serial console (VPS, server, VM): the installed system keeps using it for GRUB, kernel messages and the LUKS prompt.
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 - Secure Boot: the ISO and installed systems boot with Debian's signed chain (Microsoft-signed `shim`, Debian-signed GRUB and kernel); tested with firmware that enforces Secure Boot, for the live ISO, the installation and the installed system.

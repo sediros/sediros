@@ -49,6 +49,13 @@ grep -aq 'SISURA-INSTALL-RC-0' <<<"$(sb_console)" || sb_fail "sisura-install fai
 if grep -aq 'Unknown X keysym' <<<"$(sb_console)"; then
     sb_fail "ckbcomp keymap warnings shown during the install"
 fi
+# tar warnings while copying the system: the squashfs has no xattr table
+# (EOPNOTSUPP for every file), the ESP mount point takes no ACLs.
+if grep -aq 'Operation not supported' <<<"$(sb_console)"; then
+    sb_fail "'Operation not supported' warnings shown during the install"
+fi
+grep -aq 'source has no extended attributes' <<<"$(sb_console)" \
+    || echo "      note: source squashfs has extended attributes"
 # The live session runs on the serial console, so the installed system must
 # use it too (otherwise the LUKS prompt only appears on the screen).
 grep -aqE 'Serial console tty(S|AMA)0' <<<"$(sb_console)" \

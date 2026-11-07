@@ -171,6 +171,7 @@ pub fn chroot_filtered(target: &Path, prog: &str, args: &[&str]) -> Result<()> {
 /// `tar -c src | tar -x dst`, preserving owners, modes, ACLs and xattrs
 /// (file capabilities such as ping's cap_net_raw live in xattrs).
 pub fn copy_tree(src: &Path, dst: &Path, excludes: &[&str]) -> Result<()> {
+    let xattrs = has_xattr_support(src);
     let src = src.to_str().context("non UTF-8 source path")?;
     let dst = dst.to_str().context("non UTF-8 target path")?;
     let common = [
@@ -181,7 +182,15 @@ pub fn copy_tree(src: &Path, dst: &Path, excludes: &[&str]) -> Result<()> {
     ];
 
     let mut create: Vec<String> = vec!["-C".into(), src.into()];
-    create.extend(common.iter().map(|s| s.to_string()));
+    if xattrs {
+        create.extend(common.iter().map(|s| s.to_string()));
+    } else {
+        // A squashfs built from files without any xattr has no xattr table,
+        // and the kernel then answers every listxattr with EOPNOTSUPP: tar
+        // would print one warning per file although there is nothing to copy.
+        println!("  (source has no extended attributes: none to copy)");
+        create.push("--numeric-owner".into());
+    }
     create.extend(excludes.iter().map(|e| format!("--exclude={e}")));
     create.extend(["-cpf".into(), "-".into(), ".".into()]);
     let mut extract: Vec<String> = vec!["-C".into(), dst.into()];
@@ -205,6 +214,25 @@ pub fn copy_tree(src: &Path, dst: &Path, excludes: &[&str]) -> Result<()> {
         bail!("copying {src} -> {dst} failed (create: {read_status}, extract: {writer})");
     }
     Ok(())
+}
+
+/// Whether the file system at `path` supports listing extended attributes
+/// (false only for EOPNOTSUPP; other errors leave tar to report them).
+#[cfg(target_os = "linux")]
+fn has_xattr_support(path: &Path) -> bool {
+    use std::os::unix::ffi::OsStrExt;
+    let Ok(c) = std::ffi::CString::new(path.as_os_str().as_bytes()) else {
+        return true;
+    };
+    // SAFETY: c is a valid NUL-terminated path; a NULL buffer of size 0
+    // only asks for the size of the list.
+    let r = unsafe { libc::listxattr(c.as_ptr(), std::ptr::null_mut(), 0) };
+    !(r < 0 && std::io::Error::last_os_error().raw_os_error() == Some(libc::EOPNOTSUPP))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn has_xattr_support(_path: &Path) -> bool {
+    true
 }
 
 #[cfg(test)]
