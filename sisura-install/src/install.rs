@@ -335,9 +335,17 @@ pub fn run_install(opts: &Options) -> Result<()> {
     step("Done");
     drop(teardown);
     println!(
-        "\nSisura is installed on {}. Remove the installation medium and reboot.",
+        "\nSisura is installed on {}. Remove the installation medium (ISO, USB stick)\n\
+         and reboot; otherwise the installer starts again instead of Sisura.",
         dev.display()
     );
+    if opts.setup.account.ssh_keys.is_empty() {
+        println!(
+            "\nNo SSH key was given, and SSH accepts keys only. After the reboot, log in\n\
+             on this console and run\n  sudo sisura-ssh-enroll\n\
+             then follow its instructions (ssh-copy-id from your computer)."
+        );
+    }
     if let (Some(fp), Some(port)) = (unlock_fingerprint, opts.setup.ssh_unlock_port) {
         println!(
             "\nUnlock the disk over SSH at boot:\n  ssh -p {port} root@<address of this machine>\n\

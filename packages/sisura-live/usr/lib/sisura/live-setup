@@ -18,8 +18,25 @@ printf '# Sisura live session (RAM only)\n%s ALL=(ALL:ALL) NOPASSWD: ALL\n' "$us
     > /etc/sudoers.d/90-sisura-live
 visudo -cqf /etc/sudoers.d/90-sisura-live
 
+# A disk that sisura-install already installed to (LUKS label set by the
+# installer): the machine probably booted this ISO again by mistake.
+installed=""
+for part in $(blkid -t LABEL=sisura-crypt -o device 2>/dev/null); do
+    disk="$(lsblk -dno PKNAME "$part" 2>/dev/null || true)"
+    installed="${installed:+$installed, }${disk:-$part}"
+done
+
 umask 022
-cat > /etc/motd <<MOTD
+{
+if [ -n "$installed" ]; then
+    cat <<WARN
+
+  !! Sisura is already installed on: $installed
+  !! This is the installer ISO again, not the installed system: remove the
+  !! ISO / USB stick (or move the disk first in the boot order) and reboot.
+WARN
+fi
+cat <<MOTD
 
   Sisura Linux live session - nothing is written to disk.
   User '$user' has passwordless sudo here only.
@@ -29,3 +46,4 @@ cat > /etc/motd <<MOTD
     sudo sisura-install install --disk <name>
 
 MOTD
+} > /etc/motd

@@ -289,8 +289,22 @@ fn ssh() -> Finding {
         return Finding::fail(ID, "SSH hardening weakened")
             .with(fail.into_iter().chain(warn).collect());
     }
+    // sisura-ssh-enroll's temporary window; sshd -T (no Match context) does
+    // not show it.
+    if fs::read_dir("/run/sisura")
+        .map(|rd| {
+            rd.flatten()
+                .any(|e| e.file_name().to_string_lossy().starts_with("ssh-enroll"))
+        })
+        .unwrap_or(false)
+    {
+        warn.insert(
+            0,
+            "password login window of sisura-ssh-enroll is open (closes itself)".to_string(),
+        );
+    }
     if !warn.is_empty() {
-        return Finding::warn(ID, "SSH settings changed by an admin").with(warn);
+        return Finding::warn(ID, warn[0].clone()).with(warn[1..].to_vec());
     }
     Finding::pass(ID, "key-only, no root login, no forwarding, modern ciphers")
 }

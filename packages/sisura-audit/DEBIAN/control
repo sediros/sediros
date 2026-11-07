@@ -1,5 +1,5 @@
 Package: sisura-audit
-Version: 0.1.0
+Version: 0.2.0
 Architecture: @SISURA_ARCH@
 Maintainer: The Sisura Authors <ahmetatakan.tech@gmail.com>
 Section: admin

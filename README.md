@@ -95,14 +95,19 @@ SSH accepts keys only, for members of the `sudo` group (the admin user) and of `
 ssh <admin user>@<address of the machine>     # port 22; find the address with: ip -4 -br addr
 ```
 
-No SSH key given to the installer? Log in on the console and add one:
+No SSH key given to the installer? Log in on the console and run
 
 ```bash
-mkdir -p ~/.ssh
-curl -fsSL https://github.com/<github user>.keys >> ~/.ssh/authorized_keys   # keys you have on GitHub
-# or paste a public key (the line from ~/.ssh/id_ed25519.pub on your computer):
-echo 'ssh-ed25519 AAAA... you@laptop' >> ~/.ssh/authorized_keys
+sudo sisura-ssh-enroll
 ```
+
+It allows a password login over SSH for your user only, from local networks only, and prints the command to run on your computer:
+
+```bash
+ssh-copy-id <admin user>@<address of the machine>
+```
+
+As soon as the key arrives (or after 10 minutes, or on Ctrl-C) password logins are closed again; a reboot closes them too. `--anywhere` also allows other networks, for a VPS reached through the provider's console. Keys you already have on GitHub work without it: `curl -fsSL https://github.com/<github user>.keys >> ~/.ssh/authorized_keys`.
 
 ### Unlocking the disk over SSH
 
