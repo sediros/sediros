@@ -5,11 +5,13 @@ APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 APT::Periodic::AutocleanInterval "7";
 
-// Security archive only. Point releases and other repositories are left to
-// the admin ('apt upgrade'), so no feature changes arrive unattended.
+// Debian's security archive and Sisura's own packages (sisura-*, see
+// /etc/apt/preferences.d/sisura). Debian point releases and other
+// repositories are left to the admin ('apt upgrade').
 #clear Unattended-Upgrade::Origins-Pattern;
 Unattended-Upgrade::Origins-Pattern {
     "origin=Debian,label=Debian-Security";
+    "origin=Sisura,site=sisura-linux.github.io";
 };
 
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";

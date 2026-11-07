@@ -20,6 +20,12 @@ First release, based on Debian 13 (trixie).
 - SUID/SGID removal outside an allowlist, re-applied after every dpkg run; kernel module blacklist; core dumps disabled.
 - Kernel hardening parameters on every GRUB entry; optional GRUB password (`sisura-grub-password`) that protects entry editing while the default entry still boots unattended.
 
+### Updates (`sisura-archive-keyring` 0.1.0, `sisura-hardening` 0.4.0)
+- Sisura apt repository (`https://sisura-linux.github.io/sisura/apt`), built from the packages of each published release and signed in CI; Sisura's own packages now receive fixes through apt, not only with a new image.
+- `sisura-archive-keyring`: the repository's signing key and source, bound to each other with `Signed-By`, and an apt pin that only accepts `sisura-*` packages from the repository (matched by host name), so even a stolen signing key cannot replace Debian packages.
+- unattended-upgrades also installs updates of Sisura's packages.
+- `make apt-test` updates a VM through a test repository: signature accepted, unattended update installed, foreign package refused by the pin, repository signed with another key rejected, hardening intact afterwards.
+
 ### Installer (`sisura-install` 0.3.0, `sisura-live` 0.2.1)
 - Live session with console autologin and the Sisura login banner; nothing written to disk.
 - Installs to disk with GPT, an EFI system partition, an unencrypted `/boot` and a LUKS2 (argon2id) root.
@@ -35,8 +41,7 @@ First release, based on Debian 13 (trixie).
 - `sisura pull` downloads a released VM image from GitHub and verifies it against the release's SHA256SUMS; no source checkout needed.
 - Images contain no SSH key: the CLI passes its own key to each VM at boot.
 - `sisura transfer` copies files and directories (`-r`) between the host and a running VM over the same SSH connection as `shell`; the VM side is written `<vm>:<path>`.
-- `make test` boots a throwaway VM and verifies the hardening, packages and build id; `make iso-test` and `make install-test` check the live ISO, an installation and the installed system with Secure Boot enforced.
+- `make test` boots a throwaway VM and verifies the hardening, packages and build id; `make apt-test` checks updates through the apt repository; `make iso-test` and `make install-test` check the live ISO, an installation and the installed system with Secure Boot enforced.
 
 ### Known limitations
 - SSH disk unlock uses DHCP only (no static IP yet).
-- No public apt repository yet: installed systems get Debian security updates, but Sisura package updates need a new image.

@@ -2,7 +2,8 @@
 #   Triggered by pushing a tag v<release> (e.g. v13.1) that matches RELEASE in
 #   config/sisura.conf, or v<release>-rc<N> for a pre-release (same files,
 #   marked "Pre-release" on GitHub, for testing before the final release). Builds and tests the images for amd64 and arm64, builds
-#   the sisura CLI for macOS and Linux, writes SHA256SUMS, attests the build
+#   the sisura CLI for macOS and Linux, collects the .deb packages (for the
+#   apt repository, see apt-repo.yml), writes SHA256SUMS, attests the build
 #   provenance of every file and creates a DRAFT GitHub release: nothing is
 #   public until a maintainer reviews and publishes it.
 #   Run it manually (workflow_dispatch) for a dry run: everything is built and
@@ -75,7 +76,8 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends \
             debootstrap debian-archive-keyring zstd e2fsprogs qemu-utils \
             squashfs-tools xorriso mtools dosfstools grub-common ${{ matrix.grub }} \
-            qemu-system-x86 qemu-system-arm ovmf openssh-client
+            qemu-system-x86 qemu-system-arm ovmf openssh-client \
+            dpkg-dev apt-utils gnupg gpgv xz-utils
 
       - name: Enable KVM
         if: matrix.smoke
@@ -95,6 +97,7 @@ jobs:
         run: |
           sudo chmod 0666 /dev/kvm
           make test
+          make apt-test
 
       - name: Build installer and ISO
         run: make iso
@@ -118,6 +121,10 @@ jobs:
             cp "build/${stem}.${ext}" dist/
           done
           cp "build/sisura-${release}-install-${{ matrix.arch }}.iso" dist/
+          # Packages for the apt repository (apt-repo.yml): arch-independent
+          # ones once (from amd64), arch-specific ones from each arch.
+          if [ "${{ matrix.arch }}" = amd64 ]; then cp build/debs/*_all.deb dist/; fi
+          cp build/debs/*_${{ matrix.arch }}.deb dist/
           ls -la dist
 
       - uses: actions/upload-artifact@v7

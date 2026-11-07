@@ -24,7 +24,8 @@ pkg_version = $(shell sed -n 's/^Version: *//p' packages/$(1)/DEBIAN/control)
 DEBS       := $(BUILD)/debs/sisura-base-files_$(RELEASE)_all.deb \
               $(BUILD)/debs/sisura-hardening_$(call pkg_version,sisura-hardening)_all.deb \
               $(BUILD)/debs/sisura-boot-hardening_$(call pkg_version,sisura-boot-hardening)_all.deb \
-              $(BUILD)/debs/sisura-guest_$(call pkg_version,sisura-guest)_all.deb
+              $(BUILD)/debs/sisura-guest_$(call pkg_version,sisura-guest)_all.deb \
+              $(BUILD)/debs/sisura-archive-keyring_$(call pkg_version,sisura-archive-keyring)_all.deb
 # Only in the install profile (live ISO + installer).
 INSTALLER_BIN := $(BUILD)/bin/sisura-install-$(ARCH)
 LIVE_DEB      := $(BUILD)/debs/sisura-live_$(call pkg_version,sisura-live)_all.deb
@@ -52,7 +53,7 @@ PKG_INPUTS    := scripts/build_packages.sh scripts/lib/release.sh config/sisura.
 CLI_INPUTS    := sisura-cli/Cargo.toml $(shell find sisura-cli/src -name '*.rs')
 SHELL_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh tests/lib/*.sh)
 
-.PHONY: help deb rootfs image build iso iso-run iso-test install-test cli installer install test lint fmt launch shell stop clean
+.PHONY: help deb rootfs image build iso iso-run iso-test install-test apt-test cli installer install test lint fmt launch shell stop clean
 
 help: ## Show this help
 	@echo "Sisura $(RELEASE) ($(ARCH), profile $(PROFILE)) - usage: make <target> [RELEASE=..] [PROFILE=vm|install] [VM=..]"
@@ -113,6 +114,10 @@ install: $(CLI) ## Install 'sisura' into ~/.cargo/bin
 test: $(CLI) $(IMAGE) ## Boot a throwaway VM and run the hardening smoke test (vm profile)
 	@test "$(PROFILE)" = vm || { echo "make test needs PROFILE=vm (install images have no key and no passwordless sudo)"; exit 1; }
 	SISURA_BIN=$(CLI) SISURA_IMAGE=$(IMAGE) tests/smoke.sh
+
+apt-test: $(CLI) $(IMAGE) $(DEBS) ## Update a throwaway VM through a test apt repository (signature, pin, unattended-upgrades)
+	@test "$(PROFILE)" = vm || { echo "make apt-test needs PROFILE=vm"; exit 1; }
+	SISURA_BIN=$(CLI) SISURA_IMAGE=$(IMAGE) tests/apt_repo.sh
 
 lint: ## bash -n + shellcheck (if installed) + rustfmt + clippy + package versions
 	@scripts/check_versions.sh

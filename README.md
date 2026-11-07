@@ -114,9 +114,27 @@ With a GRUB password the default entry still boots unattended, but editing boot 
 
 ### Updates
 
-- Debian security updates are installed automatically every day. The system never reboots on its own; after a kernel update a "System restart required" notice appears at login. To allow automatic reboots on a server, set `Unattended-Upgrade::Automatic-Reboot "true";` in `/etc/apt/apt.conf.d/52sisura-unattended-upgrades`.
+- Debian security updates and updates of Sisura's own packages (`sisura-*`) are installed automatically every day. The system never reboots on its own; after a kernel update a "System restart required" notice appears at login. To allow automatic reboots on a server, put your settings in a file of your own, so package updates never have to ask about your changes:
+  ```bash
+  echo 'Unattended-Upgrade::Automatic-Reboot "true"; Unattended-Upgrade::Automatic-Reboot-Time "04:00";' \
+    | sudo tee /etc/apt/apt.conf.d/60local-reboot
+  ```
 - Other updates: `sudo apt update && sudo apt upgrade`, as on Debian.
-- Updates of Sisura's own packages will come from a Sisura apt repository, which does not exist yet; until then they arrive with a new release.
+- Sisura's packages come from the Sisura apt repository (`https://sisura-linux.github.io/sisura/apt`), set up by the `sisura-archive-keyring` package:
+  - The source is bound to Sisura's signing key (`Signed-By`): that key cannot sign anything else, and no other key can sign this repository.
+  - An apt pin (`/etc/apt/preferences.d/sisura`) only accepts `sisura-*` packages from it. Even with a stolen signing key, the repository cannot replace Debian packages such as `openssh-server`.
+  - Signing key fingerprint: `2E46 F4E2 4105 D45B A8A2  7376 0E93 53DF 8969 0935`
+
+Systems installed from 13.1-rc1 or rc2 do not have the repository yet. Add it once:
+
+```bash
+curl -fsSLo /tmp/sisura-archive-keyring.deb \
+  https://sisura-linux.github.io/sisura/apt/pool/main/s/sisura-archive-keyring/sisura-archive-keyring_0.1.0_all.deb
+sudo apt install /tmp/sisura-archive-keyring.deb
+sha256sum /usr/share/keyrings/sisura-archive-keyring.pgp
+# must be 8acb4e38a8ab506b14dc02dc936339c03e3c9c8d28826621b65a925c13569112
+sudo apt update && sudo apt upgrade
+```
 
 ### Which build am I running?
 

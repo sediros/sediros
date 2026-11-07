@@ -55,7 +55,8 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends \
             debootstrap debian-archive-keyring zstd e2fsprogs qemu-utils \
             squashfs-tools xorriso mtools dosfstools grub-common ${{ matrix.grub }} \
-            qemu-system-x86 qemu-system-arm ovmf openssh-client
+            qemu-system-x86 qemu-system-arm ovmf openssh-client \
+            dpkg-dev apt-utils gnupg gpgv xz-utils
 
       - name: Enable KVM
         if: matrix.smoke
@@ -81,6 +82,12 @@ jobs:
           sudo chmod 0666 /dev/kvm
           ls -l /dev/kvm
           make test
+
+      - name: apt repository test (signature, pin, unattended update)
+        if: matrix.smoke
+        run: |
+          sudo chmod 0666 /dev/kvm
+          make apt-test
 
       - name: Build ISO
         run: make iso

@@ -43,6 +43,7 @@ Settings are in `config/sisura.conf` and can be overridden on the command line, 
 | `make iso-run` | boots the ISO in QEMU on a serial console (quit: Ctrl-A X) |
 | `make iso-test` | boots the ISO with Secure Boot enforced and checks it from the live session |
 | `make install-test` | installs from the ISO to an empty disk and boots it, both with Secure Boot enforced |
+| `make apt-test` | updates a throwaway VM through a test apt repository (signature, pin, unattended upgrade) |
 
 ## Repository layout
 
@@ -138,12 +139,24 @@ Releasing:
 3. Optional dry run: run the `release` workflow manually (Actions → release → Run workflow). It builds everything and keeps the files as workflow artifacts, without creating a release.
    To test the published flow (downloads, Homebrew, `sisura pull`) before the final release, tag a pre-release instead: `v13.2-rc1`. It is built the same way, published as a GitHub "Pre-release", and `sisura pull` uses it while no final release exists.
 4. `git tag -a v13.2 -m "Sisura 13.2" && git push origin v13.2`. The `release` workflow checks that the tag matches `RELEASE` and the changelog, builds and smoke-tests the images (amd64, arm64), builds the CLI for macOS (arm64, x86_64) and Linux (musl, amd64, arm64), writes `SHA256SUMS`, attests the build provenance and creates a **draft** release with the changelog section as notes.
-5. Review the draft on GitHub (files, notes) and publish it.
+5. Review the draft on GitHub (files, notes) and publish it. Publishing starts the `apt-repo` workflow, which puts the release's packages into the apt repository (see below).
 6. Update the Homebrew formula from the published release and commit it:
    ```bash
    scripts/update_formula.sh v13.2
    git add Formula/sisura.rb && git commit -m "Formula: sisura for v13.2" && git push
    ```
+
+## apt repository
+
+Installed systems get updates of Sisura's packages from `https://sisura-linux.github.io/sisura/apt` (GitHub Pages, suite = Debian codename, component `main`).
+
+- Every release carries its `.deb` files. `.github/workflows/apt-repo.yml` runs when a release is published (or manually): it downloads the packages of all published releases, oldest first, and keeps a file once it is there, so a published package file never changes. `scripts/build_apt_repo.sh` then writes `pool/` and `dists/`, signs `InRelease` and `Release.gpg`, and checks the signature with the key in `sisura-archive-keyring`; a signing key that does not match what systems trust is never published. The repository has no state of its own and can always be rebuilt from the releases.
+- `sisura-archive-keyring` installs the key, `sources.list.d/sisura.sources` (`Signed-By` that key) and `preferences.d/sisura`, which only accepts `sisura-*` from the repository's host. `sisura-hardening` lets unattended-upgrades install from it (`origin=Sisura,site=sisura-linux.github.io`). The host name appears in all three files; change them together.
+- `make apt-test` (also in CI on amd64) boots a VM, serves it a repository signed with a throwaway key (`tests/apt_fixture.sh`) and checks the signature, the unattended update, the pin and a repository signed with another key.
+
+Signing key (Ed25519, fingerprint `2E46F4E24105D45BA8A273760E9353DF89690935`, expires 2029-11-06):
+- The private key is the repository secret `APT_SIGNING_KEY`; an offline copy and a revocation certificate are kept by the maintainer, never in the repository.
+- Rotation (before it expires, or if it leaks): create a new key, ship both public keys in a new `sisura-archive-keyring` version, publish a release, switch `APT_SIGNING_KEY` to the new key in a later release, then drop the old public key. Systems that never install the intermediate version need the keyring package once by hand, as in the README.
 
 ## Changing a hardening setting
 
@@ -155,8 +168,9 @@ Files under `/etc` in Sisura packages are conffiles: dpkg never overwrites an ad
 
 ## Continuous integration
 
-- `.github/workflows/ci.yml` runs on every push and pull request: `make lint`, then a build for amd64 (with KVM and the smoke test) and arm64 (build only), uploading the images, ISOs and manifests as artifacts for 7 days.
+- `.github/workflows/ci.yml` runs on every push and pull request: `make lint`, then a build for amd64 (with KVM, the smoke test and the apt repository test) and arm64 (build only), uploading the images, ISOs and manifests as artifacts for 7 days.
 - `.github/workflows/release.yml` runs on `v*` tags (and manually, as a dry run); see "Releasing" above.
+- `.github/workflows/apt-repo.yml` runs when a release is published; see "apt repository" above.
 
 ## Distribution
 

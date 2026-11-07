@@ -1,0 +1,74 @@
+# Sisura apt repository
+#   Rebuilds the repository from the .deb files of every published release
+#   (pre-releases included), signs it with APT_SIGNING_KEY and deploys it to
+#   GitHub Pages: https://sisura-linux.github.io/sisura/apt
+#   Runs when a release is published (drafts are not), or manually.
+#   The repository has no state of its own: each run builds it from the
+#   releases, so it can always be rebuilt from scratch.
+name: apt-repo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apt-repo
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends dpkg-dev apt-utils gnupg gpgv xz-utils
+
+      - name: Collect packages from published releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p debs
+          # Oldest release first, and a file that is already there is kept:
+          # once published, a package file never changes (apt and caches
+          # would see a different checksum for the same version).
+          gh release list --exclude-drafts --limit 500 --json tagName,publishedAt \
+              -q 'sort_by(.publishedAt) | .[].tagName' |
+          while read -r tag; do
+            if gh release view "$tag" --json assets -q '.assets[].name' | grep -q '\.deb$'; then
+              gh release download "$tag" --pattern '*.deb' --dir debs --skip-existing
+            fi
+          done
+          ls -la debs
+
+      - name: Build and sign
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+        run: |
+          key="$RUNNER_TEMP/apt-signing-key.asc"
+          (umask 077; printf '%s\n' "$APT_SIGNING_KEY" > "$key")
+          scripts/build_apt_repo.sh --debs debs --out site/apt --key "$key"
+          rm -f "$key"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}apt/
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

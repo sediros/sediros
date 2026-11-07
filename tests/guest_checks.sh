@@ -121,7 +121,7 @@ if ((${#bad[@]} == 0)); then pass "sshd: key-only, no root, no forwarding, Allow
 else fail "sshd" "missing: ${bad[*]}"; fi
 
 # --- Sisura packages --------------------------------------------------------------
-for p in sisura-base-files sisura-hardening sisura-boot-hardening sisura-guest; do
+for p in sisura-base-files sisura-archive-keyring sisura-hardening sisura-boot-hardening sisura-guest; do
     pkg="$(dpkg-query -W -f='${Status} ${Version}' "$p" 2>/dev/null)"
     if [[ "$pkg" != "install ok installed "* ]]; then
         fail "package" "$p not installed (${pkg:-missing})"
@@ -161,12 +161,26 @@ apt_cfg="$(apt-config dump)"
 bad=()
 grep -q '^APT::Periodic::Unattended-Upgrade "1";' <<<"$apt_cfg" || bad+=("Periodic::Unattended-Upgrade")
 grep -q '^APT::Periodic::Update-Package-Lists "1";' <<<"$apt_cfg" || bad+=("Periodic::Update-Package-Lists")
-grep -q 'Origins-Pattern:: "origin=Debian,label=Debian-Security";' <<<"$apt_cfg" || bad+=("Origins-Pattern")
+grep -q 'Origins-Pattern:: "origin=Debian,label=Debian-Security";' <<<"$apt_cfg" || bad+=("Origins-Pattern Debian")
+grep -q 'Origins-Pattern:: "origin=Sisura,site=sisura-linux.github.io";' <<<"$apt_cfg" || bad+=("Origins-Pattern Sisura")
 for t in apt-daily.timer apt-daily-upgrade.timer; do
     [[ "$(systemctl is-enabled "$t" 2>/dev/null)" == "enabled" ]] || bad+=("$t disabled")
 done
-if ((${#bad[@]} == 0)); then pass "unattended-upgrades: security archive, timers enabled"
+if ((${#bad[@]} == 0)); then pass "unattended-upgrades: Debian security + Sisura, timers enabled"
 else fail "unattended-upgrades" "${bad[*]}"; fi
+
+# --- Sisura apt repository: source bound to its key, pinned to sisura-* -----------
+src=/etc/apt/sources.list.d/sisura.sources
+kr=/usr/share/keyrings/sisura-archive-keyring.pgp
+bad=()
+grep -q "^Signed-By: $kr\$" "$src" 2>/dev/null || bad+=("Signed-By")
+grep -q '^URIs: https://' "$src" 2>/dev/null || bad+=("https URI")
+[[ -s "$kr" ]] || bad+=("keyring missing")
+# The pin: only sisura-* may come from the repository.
+pin="$(awk '/^Package:/{p=$2} /^Pin-Priority:/{print p"="$2}' /etc/apt/preferences.d/sisura 2>/dev/null | tr '\n' ' ')"
+[[ "$pin" == "sisura-*=500 *=-1 " ]] || bad+=("pin: ${pin:-missing}")
+if ((${#bad[@]} == 0)); then pass "apt: Sisura repository signed-by its key, pinned to sisura-*"
+else fail "apt repository" "${bad[*]}"; fi
 
 # --- accounts -------------------------------------------------------------------
 if [[ "$(sudo passwd -S root | awk '{print $2}')" == "L" ]]; then pass "root: password locked"

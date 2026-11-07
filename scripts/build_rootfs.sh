@@ -97,7 +97,8 @@ BASE_PACKAGES=(
 # Sisura's own packages (scripts/build_packages.sh -> build/debs). They carry
 # the hardening (sysctl, sshd, modprobe, SUID strip, first-boot units) so that
 # installed systems receive fixes through apt, not only fresh images.
-SISURA_PACKAGES=(sisura-base-files sisura-hardening sisura-boot-hardening)
+# sisura-archive-keyring: the apt source for those fixes (signing key, pin).
+SISURA_PACKAGES=(sisura-base-files sisura-archive-keyring sisura-hardening sisura-boot-hardening)
 
 # install profile: the live ISO / installer and the system it installs.
 # grub-efi-* only installs files here; sisura-install runs grub-install.

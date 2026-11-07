@@ -1,0 +1,8 @@
+# Sisura packages (sisura-*). Debian's packages and security updates come
+# from debian.sources; /etc/apt/preferences.d/sisura limits this repository
+# to Sisura's own packages.
+Types: deb
+URIs: https://sisura-linux.github.io/sisura/apt
+Suites: @SISURA_CODENAME@
+Components: main
+Signed-By: /usr/share/keyrings/sisura-archive-keyring.pgp
