@@ -167,4 +167,63 @@ gpgv --quiet --keyring "$PUBKEY" "$dist/Release.gpg" "$dist/Release" 2>/dev/null
 ok "signed by $want"
 
 cp "$PUBKEY" "$OUT/sisura-archive-keyring.pgp"
+
+# --- index.html: what a browser shows at the repository URL ----------------------
+# apt never reads it; without it GitHub Pages answers the URL with a 404.
+keyring_deb="$(cd "$OUT" && find pool -name 'sisura-archive-keyring_*_all.deb' | sort -V | tail -n1)"
+key_sha="$(sha256sum "$PUBKEY" | cut -d' ' -f1)"
+fpr_spaced="$(sed -E 's/(.{4})/\1 /g; s/ $//' <<<"$want")"
+rows="$(for arch in $ARCHS; do
+            awk -v a="$arch" '/^Package:/{p=$2} /^Version:/{v=$2} /^Architecture:/{print p" "v" "$2}' \
+                "$dist/main/binary-$arch/Packages"
+        done | sort -u -V | awk '{printf "<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n", $1, $2, $3}')"
+cat > "$OUT/index.html" <<EOF
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sisura apt repository</title>
+<style>
+  :root { color-scheme: light dark; --fg: #1d1d1f; --bg: #fff; --muted: #6e6e73; --code: #f2f2f4; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --bg: #111113; --muted: #a1a1a6; --code: #1e1e22; } }
+  body { margin: 0 auto; max-width: 46rem; padding: 2rem 1rem; font: 16px/1.55 system-ui, sans-serif; color: var(--fg); background: var(--bg); }
+  h1 { font-size: 1.6rem; margin-bottom: .2rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  p.lead { color: var(--muted); margin-top: 0; }
+  pre, code { font: 13px/1.5 ui-monospace, Menlo, monospace; background: var(--code); border-radius: 6px; }
+  pre { padding: .8rem 1rem; overflow-x: auto; } code { padding: .1rem .3rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td, th { text-align: left; padding: .3rem .6rem .3rem 0; border-bottom: 1px solid var(--code); }
+  a { color: inherit; }
+</style>
+</head>
+<body>
+<h1>Sisura apt repository</h1>
+<p class="lead">Updates of Sisura Linux's own packages (<code>sisura-*</code>) for Debian ${SUITE}. Debian's packages and security updates still come from Debian.</p>
+
+<h2>Already set up</h2>
+<p>Systems installed from Sisura 13.1-rc3 or later use this repository automatically: <code>sisura-archive-keyring</code> configures it, and unattended-upgrades installs the updates.</p>
+
+<h2>Older Sisura systems (13.1-rc1, rc2)</h2>
+<pre>curl -fsSLo /tmp/sisura-archive-keyring.deb \\
+  https://sisura-linux.github.io/sisura/apt/${keyring_deb}
+sudo apt install /tmp/sisura-archive-keyring.deb
+sha256sum /usr/share/keyrings/sisura-archive-keyring.pgp
+# must be ${key_sha}
+sudo apt update &amp;&amp; sudo apt upgrade</pre>
+
+<h2>Trust</h2>
+<p>Signing key fingerprint: <code>${fpr_spaced}</code><br>
+The source is bound to this key (<code>Signed-By</code>), and an apt pin only accepts <code>sisura-*</code> packages from this host, so the repository cannot replace Debian packages.</p>
+
+<h2>Packages</h2>
+<table>
+<tr><th>Package</th><th>Version</th><th>Architecture</th></tr>
+${rows}
+</table>
+
+<p style="margin-top:2rem"><a href="https://github.com/sisura-linux/sisura">github.com/sisura-linux/sisura</a></p>
+</body>
+</html>
+EOF
 ok "repository ready: $OUT"
