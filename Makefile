@@ -31,6 +31,9 @@ INSTALLER_BIN := $(BUILD)/bin/sisura-install-$(ARCH)
 LIVE_DEB      := $(BUILD)/debs/sisura-live_$(call pkg_version,sisura-live)_all.deb
 INSTALLER_DEB := $(BUILD)/debs/sisura-install_$(call pkg_version,sisura-install)_$(ARCH).deb
 INSTALL_DEBS  := $(LIVE_DEB) $(INSTALLER_DEB)
+# In every image (vm and install profile).
+AUDIT_BIN     := $(BUILD)/bin/sisura-audit-$(ARCH)
+AUDIT_DEB     := $(BUILD)/debs/sisura-audit_$(call pkg_version,sisura-audit)_$(ARCH).deb
 
 # Linux builds need root (debootstrap/chroot, file ownership); -E keeps SISURA_* env.
 SUDO := $(if $(filter Linux,$(UNAME_S)),$(if $(filter-out 0,$(shell id -u)),sudo -E,),)
@@ -48,12 +51,12 @@ export SISURA_MAX_BOOT_SECS := $(MAX_BOOT_SECS)
 export SISURA_MAX_RAM_MB    := $(MAX_RAM_MB)
 
 # Inputs that change the rootfs (config/sisura.conf only holds make variables).
-ROOTFS_INPUTS := scripts/build_rootfs.sh scripts/lib/release.sh $(DEBS) $(if $(filter install,$(PROFILE)),$(INSTALL_DEBS)) $(filter-out config/sisura.conf config/iso/%,$(shell find config -type f))
+ROOTFS_INPUTS := scripts/build_rootfs.sh scripts/lib/release.sh $(DEBS) $(AUDIT_DEB) $(if $(filter install,$(PROFILE)),$(INSTALL_DEBS)) $(filter-out config/sisura.conf config/iso/%,$(shell find config -type f))
 PKG_INPUTS    := scripts/build_packages.sh scripts/lib/release.sh config/sisura.conf $(shell find packages -type f ! -name .DS_Store)
 CLI_INPUTS    := sisura-cli/Cargo.toml $(shell find sisura-cli/src -name '*.rs')
 SHELL_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh tests/lib/*.sh)
 
-.PHONY: help deb rootfs image build iso iso-run iso-test install-test apt-test cli installer install test lint fmt launch shell stop clean
+.PHONY: help deb rootfs image build iso iso-run iso-test install-test apt-test cli installer audit install test lint fmt launch shell stop clean
 
 help: ## Show this help
 	@echo "Sisura $(RELEASE) ($(ARCH), profile $(PROFILE)) - usage: make <target> [RELEASE=..] [PROFILE=vm|install] [VM=..]"
@@ -84,6 +87,11 @@ $(LIVE_DEB): $(firstword $(DEBS))
 $(INSTALLER_DEB): $(PKG_INPUTS) $(INSTALLER_BIN)
 	scripts/build_packages.sh sisura-install
 
+$(AUDIT_BIN): sisura-audit/Cargo.toml sisura-audit/Cargo.lock $(shell find sisura-audit/src -name '*.rs') scripts/build_installer.sh
+	scripts/build_installer.sh sisura-audit
+$(AUDIT_DEB): $(PKG_INPUTS) $(AUDIT_BIN)
+	scripts/build_packages.sh sisura-audit
+
 ifneq ($(PROFILE),install)
 # Same recipe as $(ROOTFS_TAR), install profile.
 $(INSTALL_ROOTFS_TAR): $(ROOTFS_INPUTS) $(INSTALL_DEBS)
@@ -105,6 +113,7 @@ iso: $(ISO) ## Build the live/installer ISO (install profile)
 cli: $(CLI) ## Build sisura-cli (release)
 
 installer: $(INSTALLER_BIN) ## Build sisura-install for Linux (Docker on macOS)
+audit: $(AUDIT_BIN) ## Build sisura-audit for Linux (Docker on macOS)
 
 install: $(CLI) ## Install 'sisura' into ~/.cargo/bin
 	cargo install --path sisura-cli --locked --force
@@ -124,7 +133,7 @@ lint: ## bash -n + shellcheck (if installed) + rustfmt + clippy + package versio
 	@for f in $(SHELL_SCRIPTS); do bash -n "$$f" || exit 1; done; echo "bash -n: ok"
 	@if command -v shellcheck >/dev/null; then shellcheck -x $(SHELL_SCRIPTS) && echo "shellcheck: ok"; \
 	 else echo "shellcheck: not installed, skipped"; fi
-	@for c in sisura-cli sisura-install; do \
+	@for c in sisura-cli sisura-install sisura-audit; do \
 	    cargo fmt --manifest-path $$c/Cargo.toml --check && \
 	    cargo clippy --release --manifest-path $$c/Cargo.toml -- -D warnings || exit 1; \
 	done
@@ -132,6 +141,7 @@ lint: ## bash -n + shellcheck (if installed) + rustfmt + clippy + package versio
 fmt: ## Format Rust code
 	cargo fmt --manifest-path sisura-cli/Cargo.toml
 	cargo fmt --manifest-path sisura-install/Cargo.toml
+	cargo fmt --manifest-path sisura-audit/Cargo.toml
 
 # --- VM shortcuts ------------------------------------------------------------
 
@@ -157,3 +167,4 @@ clean: ## Remove build/ artifacts and Rust target/ (VMs are kept)
 	$(SUDO) rm -rf --one-file-system $(BUILD) 2>/dev/null || $(SUDO) rm -rf $(BUILD)
 	cargo clean --manifest-path sisura-cli/Cargo.toml
 	cargo clean --manifest-path sisura-install/Cargo.toml
+	cargo clean --manifest-path sisura-audit/Cargo.toml

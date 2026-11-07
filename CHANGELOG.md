@@ -26,6 +26,10 @@ First release, based on Debian 13 (trixie).
 - unattended-upgrades also installs updates of Sisura's packages.
 - `make apt-test` updates a VM through a test repository: signature accepted, unattended update installed, foreign package refused by the pin, repository signed with another key rejected, hardening intact afterwards.
 
+### Audit (`sisura-audit` 0.1.0)
+- `sudo sisura-audit` checks that the hardening is still in place on a running system (kernel settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM, kernel modules, automatic updates, apt repository, boot parameters, disk encryption, Secure Boot). Expected values come from the installed Sisura packages; changes are reported with the file that made them where possible. `--json`, `--quiet`; exit status 1 on failures.
+- In every image; the smoke test runs it next to its own checks.
+
 ### Installer (`sisura-install` 0.3.0, `sisura-live` 0.2.1)
 - Live session with console autologin and the Sisura login banner; nothing written to disk.
 - Installs to disk with GPT, an EFI system partition, an unencrypted `/boot` and a LUKS2 (argon2id) root.

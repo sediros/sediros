@@ -11,6 +11,7 @@ packages/*  ──build_packages.sh──▶ build/debs/*.deb ─┐
                                                      ├─ build_rootfs.sh ─▶ rootfs (.tar.zst) ─┬─ build_image.sh ─▶ qcow2 (vm profile)
 Debian mirror ── debootstrap + apt ──────────────────┘                                        └─ build_iso.sh ───▶ ISO (install profile)
 sisura-install/ ─build_installer.sh─▶ build/bin/sisura-install-<arch> ─▶ sisura-install .deb (ISO only)
+sisura-audit/ ───build_installer.sh─▶ build/bin/sisura-audit-<arch> ───▶ sisura-audit .deb (every image)
 sisura-cli/ ──cargo──▶ sisura (runs the qcow2 images in QEMU)
 ```
 
@@ -38,6 +39,7 @@ Settings are in `config/sisura.conf` and can be overridden on the command line, 
 | `make build` | `build/sisura-<release>-<arch>.{qcow2,vmlinuz,initrd.img,cmdline,manifest,build-info}` |
 | `make iso` | `build/sisura-<release>-install-<arch>.iso` |
 | `make installer` | `build/bin/sisura-install-<arch>` |
+| `make audit` | `build/bin/sisura-audit-<arch>` |
 | `make install` | installs the `sisura` CLI into `~/.cargo/bin` |
 | `make launch` / `shell` / `stop` | VM `dev` (or `VM=name`) |
 | `make iso-run` | boots the ISO in QEMU on a serial console (quit: Ctrl-A X) |
@@ -53,7 +55,9 @@ Settings are in `config/sisura.conf` and can be overridden on the command line, 
 | `scripts/build_image.sh` | rootfs → `build/*.qcow2` (ext4, `LABEL=sisura-root`) |
 | `scripts/build_iso.sh` | rootfs → squashfs + live-boot + shim/signed GRUB (UEFI) + GRUB i386-pc (BIOS, amd64) → `build/*.iso` |
 | `scripts/build_packages.sh` | `packages/*` → `build/debs/*.deb`; fills in `@SISURA_RELEASE@`, `@SISURA_CODENAME@`, `@SISURA_ARCH@`; adds compiled programs listed in `packages/<pkg>/.sisura-binaries` |
-| `scripts/build_installer.sh` | builds `sisura-install` for Linux (Docker with `debian:trixie` on macOS) |
+| `scripts/build_installer.sh [crate]` | builds `sisura-install` or `sisura-audit` for Linux (Docker with `debian:trixie` on macOS) |
+| `scripts/build_apt_repo.sh` | `.deb` files → signed apt repository (`pool/`, `dists/`, `index.html`); used by `apt-repo.yml` and `make apt-test` |
+| `scripts/update_formula.sh` | Homebrew formula from a published release's `SHA256SUMS` |
 | `scripts/check_versions.sh` | fails when a package changed since the last release tag without a new version |
 | `scripts/lib/release.sh` | release → Debian suite mapping, build id |
 | `scripts/run_iso.sh` | boots an ISO (or an installed disk) in QEMU |
@@ -63,10 +67,13 @@ Settings are in `config/sisura.conf` and can be overridden on the command line, 
 | `packages/sisura-guest/` | VM images: adds the SSH key passed by `sisura launch` |
 | `packages/sisura-live/` | live ISO session: autologin, passwordless sudo, only with `boot=live`, only in RAM |
 | `packages/sisura-install/` | installer package (ISO only, removed from installed systems) |
+| `packages/sisura-audit/` | `sisura-audit` (every image) |
+| `packages/sisura-archive-keyring/` | apt repository key, source and pin |
 | `sisura-cli/` | Rust CLI (`sisura`) |
 | `sisura-install/` | Rust installer |
+| `sisura-audit/` | Rust hardening check, no dependencies beyond std |
 | `config/` | build settings, ISO boot menu template |
-| `tests/` | smoke test (`smoke.sh`) and in-guest checks (`guest_checks.sh`) |
+| `tests/` | smoke test (`smoke.sh`), in-guest checks (`guest_checks.sh`), apt repository test (`apt_repo.sh`), Secure Boot tests |
 
 ## Profiles
 
@@ -163,6 +170,8 @@ Signing key (Ed25519, fingerprint `2E46F4E24105D45BA8A273760E9353DF89690935`, ex
 1. Edit the file under `packages/sisura-hardening/`.
 2. Bump `Version` in its `DEBIAN/control`.
 3. `make build && make test`.
+
+`sisura-audit` reads its expected values from those files (`99-sisura.conf`, `sshd_config.d/99-sisura.conf`, `suid-allowlist`, `sisura-blacklist.conf`, `90-sisura.cfg`), so a changed value needs no change in the audit. A new kind of setting needs a check in `sisura-audit/src/checks.rs`, and `tests/guest_checks.sh` should check it independently.
 
 Files under `/etc` in Sisura packages are conffiles: dpkg never overwrites an admin's changes. Files owned by Debian packages (`/etc/login.defs`, `/etc/default/ufw`) are only set at image build time and never touched by package updates.
 

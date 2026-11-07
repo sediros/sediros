@@ -1,0 +1,2 @@
+# <path in package>        <built file, relative to the project root>
+usr/sbin/sisura-audit      build/bin/sisura-audit-@SISURA_ARCH@

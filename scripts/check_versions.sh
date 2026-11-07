@@ -12,7 +12,7 @@
 #    packages/<pkg>/          DEBIAN/control Version must differ
 #    packages/sisura-base-files/  RELEASE in config/sisura.conf must differ
 #                             (its version is the release)
-#    sisura-cli/, sisura-install/  version in Cargo.toml must differ
+#    sisura-cli/, sisura-install/, sisura-audit/  version in Cargo.toml must differ
 #  Packages that did not exist at the base are new and always pass.
 # =============================================================================
 set -Eeuo pipefail
@@ -59,7 +59,7 @@ for dir in packages/*/; do
     [[ "$old" != "$new" ]] || fail "$pkg changed since $base but Version is still $new ($dir/DEBIAN/control)"
 done
 
-for crate in sisura-cli sisura-install; do
+for crate in sisura-cli sisura-install sisura-audit; do
     existed "$crate/Cargo.toml" || continue
     changed "$crate/src" || changed "$crate/Cargo.toml" || changed "$crate/Cargo.lock" || continue
     old="$(at_base "$crate/Cargo.toml" | field version =)"

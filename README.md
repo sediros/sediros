@@ -7,6 +7,7 @@ Sisura is a minimal, hardened Linux distribution based on Debian 13 (trixie). It
 ## What you get
 
 - **Hardened by default:** kernel and network hardening (sysctl), AppArmor, a firewall that denies incoming traffic, key-only SSH with modern cryptography, no unnecessary SUID programs, automatic Debian security updates.
+- **Checkable:** `sudo sisura-audit` tells you whether that hardening is still in place, and which file changed it if not.
 - **Encrypted installs:** the installer sets up full disk encryption (LUKS2) and can let you unlock the disk over SSH at boot, for servers you cannot reach physically.
 - **Plain Debian underneath:** Sisura adds a few packages to Debian; it does not replace it. Your Debian knowledge, documentation and packages apply.
 - **Fast throwaway VMs:** `sisura launch` starts a Sisura VM on macOS (Apple Silicon) or Linux in a few seconds.
@@ -135,6 +136,23 @@ sha256sum /usr/share/keyrings/sisura-archive-keyring.pgp
 # must be 8acb4e38a8ab506b14dc02dc936339c03e3c9c8d28826621b65a925c13569112
 sudo apt update && sudo apt upgrade
 ```
+
+### Is the hardening still in place?
+
+```bash
+sudo sisura-audit            # all checks
+sudo sisura-audit --quiet    # only warnings and failures
+sudo sisura-audit --json     # for scripts and monitoring
+```
+
+It compares the running system with the hardening of the installed Sisura packages: kernel settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM, kernel modules, automatic updates, the Sisura apt repository, boot parameters, disk encryption and Secure Boot. Each line is `✓` (in place), `!` (a warning, for example a setting an admin changed on purpose, or a reboot that is due), `✗` (hardening missing or broken) or `·` (information). Where it can, it names the file that changed a setting:
+
+```
+ ✗ ssh          SSH hardening weakened
+                passwordauthentication: yes (Sisura: no), set in /etc/ssh/sshd_config.d/50-local.conf
+```
+
+Exit status: 0 no failures (warnings allowed), 1 failures, 2 the audit could not run.
 
 ### Which build am I running?
 

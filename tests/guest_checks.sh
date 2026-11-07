@@ -121,7 +121,7 @@ if ((${#bad[@]} == 0)); then pass "sshd: key-only, no root, no forwarding, Allow
 else fail "sshd" "missing: ${bad[*]}"; fi
 
 # --- Sisura packages --------------------------------------------------------------
-for p in sisura-base-files sisura-archive-keyring sisura-hardening sisura-boot-hardening sisura-guest; do
+for p in sisura-base-files sisura-archive-keyring sisura-hardening sisura-boot-hardening sisura-guest sisura-audit; do
     pkg="$(dpkg-query -W -f='${Status} ${Version}' "$p" 2>/dev/null)"
     if [[ "$pkg" != "install ok installed "* ]]; then
         fail "package" "$p not installed (${pkg:-missing})"
@@ -231,6 +231,14 @@ else fail "modprobe" "loadable: ${bad[*]}"; fi
 # --- core dumps -----------------------------------------------------------------
 if [[ "$(ulimit -Hc)" == "0" ]]; then pass "core dumps: hard limit 0"
 else fail "core dumps" "hard limit $(ulimit -Hc)"; fi
+
+# --- sisura-audit: the user-facing check agrees -----------------------------------------
+if audit="$(sudo sisura-audit --quiet 2>&1)"; then
+    pass "sisura-audit: $(tail -n1 <<<"$audit")"
+else
+    fail "sisura-audit" "exit $?"
+    while IFS= read -r line; do printf '      %s\n' "$line"; done <<<"$audit"
+fi
 
 # --- memory footprint -------------------------------------------------------------
 used_mb="$(awk '/^MemTotal/ {t=$2} /^MemAvailable/ {a=$2} END {printf "%d", (t-a)/1024}' /proc/meminfo)"
