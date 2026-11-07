@@ -109,6 +109,16 @@ done < <(sudo find / -xdev -type f -perm /6000 2>/dev/null)
 if ((${#extra[@]} == 0)); then pass "suid/sgid: allowlist only"
 else fail "suid/sgid" "${extra[*]}"; fi
 
+# --- no extra SSH paths ------------------------------------------------------------
+# systemd-ssh-generator would also offer sshd on AF_VSOCK (to the hypervisor)
+# and a local AF_UNIX socket, outside the firewall; Sisura masks it.
+if [[ "$(readlink /etc/systemd/system-generators/systemd-ssh-generator)" == /dev/null ]] \
+    && ! systemctl list-units --all --no-legend 'sshd-vsock*' 'sshd-unix-local*' 2>/dev/null | grep -q .; then
+    pass "systemd-ssh-generator masked (no vsock/unix SSH sockets)"
+else
+    fail "systemd-ssh-generator" "not masked, or its sockets exist"
+fi
+
 # --- sshd effective config --------------------------------------------------------
 sshd="$(sudo sshd -T 2>/dev/null)"
 bad=()
