@@ -13,7 +13,8 @@
 #    - a repository signed with another key is rejected
 #    - the hardening checks still pass after the update
 #
-#  Env: SISURA_BIN, SISURA_IMAGE, SISURA_KEEP_VM=1 as in tests/smoke.sh
+#  Env: SISURA_BIN, SISURA_IMAGE, SISURA_KEEP_VM=1 as in tests/smoke.sh;
+#       SISURA_APT_MAX_RAM_MB  RAM budget after the update (default: 512)
 #  Needs: python3 (HTTP server); dpkg-dev, apt-utils, gnupg on Linux, else Docker
 # =============================================================================
 set -Eeuo pipefail
@@ -156,7 +157,9 @@ then
 fi
 
 echo "==> Hardening after the update"
-"$SISURA" shell "$VM" -- bash -s -- "${SISURA_MAX_RAM_MB:-256}" "$RELEASE" \
+# The idle-RAM budget is checked by tests/smoke.sh on a fresh boot; after
+# apt update and an upgrade the guest legitimately uses more.
+"$SISURA" shell "$VM" -- bash -s -- "${SISURA_APT_MAX_RAM_MB:-512}" "$RELEASE" \
     < "$PROJECT_ROOT/tests/guest_checks.sh" || FAIL=1
 
 echo
