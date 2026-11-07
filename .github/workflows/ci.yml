@@ -4,9 +4,12 @@
 name: ci
 
 on:
+  # Documentation-only changes build nothing that the tests could catch.
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE', 'NOTICE']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE', 'NOTICE']
   workflow_dispatch:
 
 concurrency:
