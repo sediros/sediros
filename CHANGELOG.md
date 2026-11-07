@@ -20,11 +20,11 @@ First release, based on Debian 13 (trixie).
 - SUID/SGID removal outside an allowlist, re-applied after every dpkg run; kernel module blacklist; core dumps disabled.
 - Kernel hardening parameters on every GRUB entry; optional GRUB password (`sisura-grub-password`) that protects entry editing while the default entry still boots unattended.
 
-### Updates (`sisura-archive-keyring` 0.1.0, `sisura-hardening` 0.5.2)
+### Updates (`sisura-archive-keyring` 0.1.0, `sisura-hardening` 0.5.3)
 - Sisura apt repository (`https://sisura-linux.github.io/sisura/apt`), built from the packages of each published release and signed in CI; Sisura's own packages now receive fixes through apt, not only with a new image.
 - `sisura-archive-keyring`: the repository's signing key and source, bound to each other with `Signed-By`, and an apt pin that only accepts `sisura-*` packages from the repository (matched by host name), so even a stolen signing key cannot replace Debian packages.
 - unattended-upgrades also installs updates of Sisura's packages.
-- `sudo sisura-ssh-enroll`: adds the first SSH key with `ssh-copy-id` through a short password login window (calling user only, local networks only unless `--anywhere`, closed when the key arrives, after 10 minutes or on reboot). In the live ISO session it refuses and says to install or boot the installed disk. A user without an SSH key is reminded of it after logging in on the console (not before login, and only about their own keys).
+- `sudo sisura-ssh-enroll`: adds the first SSH key with `ssh-copy-id` through a short password login window (calling user only, local networks only unless `--anywhere`, closed when the key arrives, after 10 minutes or on reboot). In the live ISO session it refuses and says to install or boot the installed disk. It shows `ssh-copy-id -i ~/.ssh/id_ed25519.pub ...` (without `-i`, ssh-copy-id may send another key) and how to compare the received key's fingerprint. A user without an SSH key is reminded of it after logging in on the console (not before login, and only about their own keys).
 - `make apt-test` updates a VM through a test repository: signature accepted, unattended update installed, foreign package refused by the pin, repository signed with another key rejected, hardening intact afterwards.
 
 ### Audit (`sisura-audit` 0.2.0)

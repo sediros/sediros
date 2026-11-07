@@ -100,12 +100,14 @@ echo
 echo "  SSH password login is open for '$user' for $minutes minutes"
 ((anywhere)) && echo "  from ANY address" || echo "  from local networks only"
 echo
-echo "  On your computer, run:"
+echo "  On your computer, run (with the public key you want to use; without"
+echo "  -i, ssh-copy-id may pick another key from ~/.ssh or your ssh-agent):"
 if [[ -n "$addrs" ]]; then
-    while read -r a; do echo "      ssh-copy-id $user@$a"; done <<<"$addrs"
+    while read -r a; do echo "      ssh-copy-id -i ~/.ssh/id_ed25519.pub $user@$a"; done <<<"$addrs"
 else
-    echo "      ssh-copy-id $user@<address of this machine>"
+    echo "      ssh-copy-id -i ~/.ssh/id_ed25519.pub $user@<address of this machine>"
 fi
+echo "  No key yet? Create one there first: ssh-keygen -t ed25519"
 echo
 echo "  Waiting for a new key in $keys (Ctrl-C to cancel) ..."
 
@@ -116,8 +118,10 @@ while ((SECONDS < deadline)); do
         echo
         echo "  ✓ key added:"
         tail -n $(( $(key_count "$keys") - before )) "$keys" | ssh-keygen -lf - 2>/dev/null | sed 's/^/      /'
+        echo "  Check that it is yours: on your computer, the same fingerprint"
+        echo "  must come from: ssh-keygen -lf ~/.ssh/id_ed25519.pub"
         echo "  SSH password login is closed again: log in with your key now,"
-        echo "  e.g. ssh $user@${addrs%%$'\n'*}"
+        echo "  e.g. ssh -i ~/.ssh/id_ed25519 $user@${addrs%%$'\n'*}"
         exit 0
     fi
     sleep 2

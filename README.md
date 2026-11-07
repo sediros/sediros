@@ -139,8 +139,10 @@ sudo sisura-ssh-enroll
 It allows a password login over SSH for your user only, from local networks only, and prints the command to run on your computer:
 
 ```bash
-ssh-copy-id <admin user>@<address of the machine>
+ssh-copy-id -i ~/.ssh/id_ed25519.pub <admin user>@<address of the machine>
 ```
+
+Give the key with `-i`: without it, `ssh-copy-id` sends the keys of your ssh-agent or the newest `~/.ssh/*.pub`, which may not be the key you then log in with. No key yet? Create one first: `ssh-keygen -t ed25519`. The command shows the fingerprint of the key it received; `ssh-keygen -lf ~/.ssh/id_ed25519.pub` on your computer must show the same.
 
 As soon as the key arrives (or after 10 minutes, or on Ctrl-C) password logins are closed again; a reboot closes them too. `--anywhere` also allows other networks, for a VPS reached through the provider's console. Keys you already have on GitHub work without it: `curl -fsSL https://github.com/<github user>.keys >> ~/.ssh/authorized_keys`.
 
