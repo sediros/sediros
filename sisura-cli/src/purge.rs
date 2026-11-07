@@ -85,9 +85,9 @@ fn purge_unused_images(paths: &Paths) -> Result<()> {
     Ok(())
 }
 
-fn confirm(prompt: &str) -> Result<bool> {
+pub fn confirm(prompt: &str) -> Result<bool> {
     if !io::stdin().is_terminal() {
-        bail!("refusing to purge without confirmation on a non-interactive stdin; pass --yes");
+        bail!("refusing to continue without confirmation on a non-interactive stdin; pass --yes");
     }
     print!("{prompt}");
     io::stdout().flush()?;

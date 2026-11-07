@@ -200,6 +200,8 @@ sisura shell dev -- uname -a
 sisura transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
 sisura transfer dev:/var/log/syslog .  # and back; -r for directories
 sisura forward dev 8080:80             # http://localhost:8080 -> port 80 in the VM
+sisura snapshot dev before-nginx       # VM stopped: save its state (list: sisura snapshot dev)
+sisura restore dev before-nginx        # back to it; later changes are lost
 sisura list                # VMs, their state and build id
 sisura stop dev
 sisura purge dev           # delete the VM

@@ -117,6 +117,21 @@ else
     fail "stop" "sisura stop failed"
 fi
 
+echo "==> Snapshot and restore"
+# Snapshot of the stopped VM, a change after it, then back to the snapshot.
+if "$SISURA" snapshot "$VM" smoke >/dev/null \
+    && "$SISURA" launch "$VM" --timeout 120 >/dev/null \
+    && "$SISURA" shell "$VM" -- 'touch ~/after-snapshot && sync' \
+    && "$SISURA" stop "$VM" --timeout 30 >/dev/null \
+    && "$SISURA" restore "$VM" smoke --yes >/dev/null \
+    && "$SISURA" launch "$VM" --timeout 120 >/dev/null \
+    && "$SISURA" shell "$VM" -- 'test ! -e ~/after-snapshot'; then
+    pass "snapshot/restore: change after the snapshot is gone"
+else
+    fail "snapshot/restore" "VM did not return to the snapshot"
+fi
+"$SISURA" stop "$VM" --timeout 30 >/dev/null || true
+
 echo
 if ((FAILS == 0)); then
     echo "SMOKE TEST PASSED"

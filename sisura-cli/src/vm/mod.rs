@@ -5,6 +5,7 @@ mod image;
 mod network;
 mod process;
 mod qemu;
+mod snapshot;
 mod state;
 
 use std::fs;
@@ -13,6 +14,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Context, Result};
 
 pub use forward::forward_cmd;
+pub use snapshot::{restore_cmd, snapshot_cmd};
 pub use state::{load_all, VmState};
 
 use crate::cli::{LaunchArgs, StopArgs};

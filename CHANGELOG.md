@@ -35,13 +35,14 @@ First release, based on Debian 13 (trixie).
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 - Secure Boot: the ISO and installed systems boot with Debian's signed chain (Microsoft-signed `shim`, Debian-signed GRUB and kernel); tested with firmware that enforces Secure Boot, for the live ISO, the installation and the installed system.
 
-### Tools (`sisura` CLI 0.5.0)
+### Tools (`sisura` CLI 0.6.0)
 - `sisura build/launch/shell/list/stop/purge`: QEMU VMs with HVF (macOS) or KVM (Linux), copy-on-write disks, SSH on localhost only.
 - `launch --data-disk` attaches an empty second disk; `list` shows each VM's build id; `sisura` without a command shows the help with a getting-started section.
 - `sisura pull` downloads a released VM image from GitHub and verifies it against the release's SHA256SUMS; no source checkout needed.
 - Images contain no SSH key: the CLI passes its own key to each VM at boot.
 - `sisura transfer` copies files and directories (`-r`) between the host and a running VM over the same SSH connection as `shell`; the VM side is written `<vm>:<path>`.
 - `sisura forward dev 8080:80` (or `launch --forward`) forwards a port on 127.0.0.1 to a VM, live or at launch; kept with the VM, shown by `list`, and the VM's firewall is opened for this machine only.
+- `sisura snapshot` / `sisura restore`: snapshots of a stopped VM (qcow2 internal snapshots of its disks, only changed blocks are kept); list with `sisura snapshot <vm>`, delete with `--delete`.
 - `make test` boots a throwaway VM and verifies the hardening, packages and build id; `make apt-test` checks updates through the apt repository; `make iso-test` and `make install-test` check the live ISO, an installation and the installed system with Secure Boot enforced.
 
 ### Known limitations

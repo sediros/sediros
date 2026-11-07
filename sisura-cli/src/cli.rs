@@ -44,6 +44,10 @@ pub enum Command {
     Transfer(TransferArgs),
     /// Forward a port on 127.0.0.1 to a VM: sisura forward dev 8080:80
     Forward(ForwardArgs),
+    /// Take, list or delete snapshots of a stopped VM: sisura snapshot dev before-nginx
+    Snapshot(SnapshotArgs),
+    /// Return a stopped VM to a snapshot: sisura restore dev before-nginx
+    Restore(RestoreArgs),
     /// List VMs and their state
     List,
     /// Stop a running VM (ACPI power-down, then kill on timeout)
@@ -195,6 +199,32 @@ pub struct ForwardArgs {
     /// Remove the forward from this host port (repeatable)
     #[arg(long, value_name = "HOST")]
     pub remove: Vec<u16>,
+}
+
+#[derive(Args, Debug)]
+pub struct SnapshotArgs {
+    /// VM name
+    pub name: String,
+
+    /// Snapshot to take. Without one: list the VM's snapshots.
+    pub snapshot: Option<String>,
+
+    /// Delete this snapshot
+    #[arg(long, value_name = "SNAPSHOT", conflicts_with = "snapshot")]
+    pub delete: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct RestoreArgs {
+    /// VM name
+    pub name: String,
+
+    /// Snapshot to return to
+    pub snapshot: String,
+
+    /// Do not ask for confirmation
+    #[arg(short, long)]
+    pub yes: bool,
 }
 
 #[derive(Args, Debug)]
