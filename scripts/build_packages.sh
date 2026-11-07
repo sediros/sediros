@@ -139,6 +139,11 @@ for src in "$PKG_SRC"/*/; do
     done
     # sudoers drop-ins: 0440 like /etc/sudoers (sudo rejects writable ones).
     [[ -d "$stage/etc/sudoers.d" ]] && find "$stage/etc/sudoers.d" -type f -exec chmod 0440 {} +
+    # initramfs-tools silently skips hooks and boot scripts that are not
+    # executable.
+    for d in usr/share/initramfs-tools/hooks usr/share/initramfs-tools/scripts; do
+        [[ -d "$stage/$d" ]] && find "$stage/$d" -type f -exec chmod 0755 {} +
+    done
     # update-grub only runs executable /etc/grub.d scripts.
     [[ -d "$stage/etc/grub.d" ]] && find "$stage/etc/grub.d" -type f -exec chmod 0755 {} +
 

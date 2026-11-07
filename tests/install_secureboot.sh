@@ -94,6 +94,15 @@ sb_mark
 sb_send 'echo SISURA-AUDIT-$(sudo dpkg --audit | wc -l)-END'
 sb_wait 'SISURA-AUDIT-[0-9]+-END' 60
 grep -aq 'SISURA-AUDIT-0-END' <<<"$(sb_console)" || sb_fail "dpkg --audit reports packages on the installed system"
+# The virtio-gpu initramfs hook ran (initramfs-tools skips hooks that are
+# not executable): VMs with a virtio-gpu display show the LUKS prompt.
+sb_mark
+# shellcheck disable=SC2016  # expanded in the guest
+sb_send 'echo SISURA-GPU-$(lsinitramfs /boot/initrd.img-* | grep -c virtio-gpu)-END'
+sb_wait 'SISURA-GPU-[0-9]+-END' 120
+if grep -aq 'SISURA-GPU-0-END' <<<"$(sb_console)"; then
+    sb_fail "virtio-gpu is not in the installed system's initramfs"
+fi
 lockdown="$(grep -ao 'SISURA-LOCKDOWN-.*' <<<"$out" | tail -n1)"
 loader="$(tr -d '\r' < "$SB_LOG" | grep -ao 'BdsDxe: starting [^"]*"[^"]*"' | head -n1 || true)"
 echo "PASS  installed system boots with Secure Boot enforced in $((SECONDS - start))s"

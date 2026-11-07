@@ -11,7 +11,7 @@ First release, based on Debian 13 (trixie).
 - `os-release` identifies the system as Sisura Linux (`ID=sisura`, `ID_LIKE=debian`); Debian's file is kept via `dpkg-divert`.
 - `/etc/sisura/build-info` records release, build id, build date and profile.
 
-### Hardening (`sisura-hardening` 0.3.0, `sisura-boot-hardening` 0.2.0)
+### Hardening (`sisura-hardening` 0.3.0, `sisura-boot-hardening` 0.2.1)
 - sysctl hardening (63 keys), AppArmor, UFW with incoming traffic denied and SSH rate-limited.
 - Key-only SSH with modern ciphers, `AllowGroups sudo sisura-ssh`.
 - nftables rule dropping IPv4 TCP packets with IP options (mitigation for CVE-2026-98432-type handshake bugs).
@@ -38,7 +38,7 @@ First release, based on Debian 13 (trixie).
 - Asks for disk, hostname, keyboard layout, admin user, sudo password, SSH keys (pasted or from GitHub) and GRUB password; validates every answer before touching the disk. All answers are also available as flags.
 - Keyboard layout applies to the LUKS prompt at boot. The layout chosen in the wizard also applies to the live console right away (it did not when the installer ran under sudo), and the dozens of harmless `ckbcomp` warnings it caused while building the initramfs are no longer shown. Copying the system no longer prints hundreds of harmless "Operation not supported" warnings: the live squashfs has no extended attributes to copy, and the EFI partition's mount point (vfat) takes no ACLs.
 - Installed over a serial console (VPS, server, VM): the installed system keeps using it for GRUB, kernel messages and the LUKS prompt.
-- Installed from the screen: the LUKS prompt stays on the screen (`console=tty0`), also on arm64 VMs and servers whose firmware names a serial console (ACPI SPCR). VMs with a virtio-gpu display (UTM, QEMU) show it too: the driver is now in the initramfs (`sisura-boot-hardening` 0.2.0); before, the screen stayed at "Display output is not active" until the disk was unlocked.
+- Installed from the screen: the LUKS prompt stays on the screen (`console=tty0`), also on arm64 VMs and servers whose firmware names a serial console (ACPI SPCR). VMs with a virtio-gpu display (UTM, QEMU) show it too: the driver is now in the initramfs (`sisura-boot-hardening` 0.2.1); before, the screen stayed at "Display output is not active" until the disk was unlocked.
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 - Secure Boot: the ISO and installed systems boot with Debian's signed chain (Microsoft-signed `shim`, Debian-signed GRUB and kernel); tested with firmware that enforces Secure Boot, for the live ISO, the installation and the installed system.
 
