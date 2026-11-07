@@ -298,6 +298,7 @@ sisura purge dev           # delete the VM
 | SSH rate limit | More than 6 SSH connections from one address within 30 seconds are refused for a while ("Connection refused"); wait half a minute |
 | SUID bits removed outside an allowlist | Some rarely used tools that need SUID stop working (see `/etc/sisura/suid-allowlist`) |
 | unattended-upgrades | About 30-40 MB of disk and 20 MB of RAM for Python |
+| No documentation installed | `man` pages, info pages and translations are left out to keep the system small, so `man` does not work and `apt install` prints harmless `update-alternatives: warning: skip creation of /usr/share/man/...` lines. To get man pages: delete the `path-exclude=/usr/share/man/*` line in `/etc/dpkg/dpkg.cfg.d/01-sisura-nodoc`, then `sudo apt install man-db` (packages installed before that need `sudo apt install --reinstall <package>` for their pages) |
 
 Files under `/etc` that you change are kept: package updates never overwrite them.
 
