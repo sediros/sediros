@@ -1,7 +1,7 @@
 //! External commands. Every command is echoed before it runs; secrets are
 //! only ever passed on stdin, never in argv (visible in ps / logs).
 
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -32,6 +32,45 @@ pub fn run(prog: &str, args: &[&str]) -> Result<()> {
         bail!("{} failed ({status})", render(prog, args));
     }
     Ok(())
+}
+
+/// stderr lines of Debian tools that are known to be harmless. ckbcomp
+/// (console-setup's initramfs hook, setupcon) prints one per key of the
+/// keyboard layout that has no console equivalent, dozens for e.g. "tr".
+const NOISE: &[&str] = &["Unknown X keysym"];
+
+/// Like `run`, but stderr lines matching `NOISE` are counted instead of shown.
+pub fn run_filtered(prog: &str, args: &[&str]) -> Result<()> {
+    println!("  $ {}", render(prog, args));
+    let mut child = Command::new(prog)
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("starting {prog}"))?;
+    let stderr = child.stderr.take().context("stderr")?;
+    let hidden = filter_lines(BufReader::new(stderr), &mut std::io::stderr());
+    let status = child.wait()?;
+    if hidden > 0 {
+        println!("  ({hidden} harmless keymap warnings of ckbcomp not shown)");
+    }
+    if !status.success() {
+        bail!("{} failed ({status})", render(prog, args));
+    }
+    Ok(())
+}
+
+/// Copy lines from `input` to `out`, except noise; returns how many were dropped.
+fn filter_lines(input: impl BufRead, out: &mut impl Write) -> usize {
+    let mut hidden = 0;
+    for line in input.lines().map_while(Result::ok) {
+        if NOISE.iter().any(|n| line.contains(n)) {
+            hidden += 1;
+        } else {
+            let _ = writeln!(out, "{line}");
+        }
+    }
+    hidden
 }
 
 /// Run a command with `input` on stdin (secrets). The input is not echoed.
@@ -121,6 +160,14 @@ pub fn chroot(target: &Path, prog: &str, args: &[&str]) -> Result<()> {
     run("chroot", &full)
 }
 
+/// `chroot` with the known harmless stderr noise filtered (see `NOISE`).
+pub fn chroot_filtered(target: &Path, prog: &str, args: &[&str]) -> Result<()> {
+    let root = target.to_str().context("non UTF-8 target path")?;
+    let mut full = vec![root, prog];
+    full.extend_from_slice(args);
+    run_filtered("chroot", &full)
+}
+
 /// `tar -c src | tar -x dst`, preserving owners, modes, ACLs and xattrs
 /// (file capabilities such as ping's cap_net_raw live in xattrs).
 pub fn copy_tree(src: &Path, dst: &Path, excludes: &[&str]) -> Result<()> {
@@ -158,4 +205,17 @@ pub fn copy_tree(src: &Path, dst: &Path, excludes: &[&str]) -> Result<()> {
         bail!("copying {src} -> {dst} failed (create: {read_status}, extract: {writer})");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::filter_lines;
+
+    #[test]
+    fn drops_only_keymap_noise() {
+        let input = "WARNING: Unknown X keysym \"none\"\nreal error\nWARNING: Unknown X keysym \"dead_x\"\n";
+        let mut out = Vec::new();
+        assert_eq!(filter_lines(input.as_bytes(), &mut out), 2);
+        assert_eq!(String::from_utf8(out).unwrap(), "real error\n");
+    }
 }

@@ -91,13 +91,28 @@ Good to know:
 
 SSH accepts keys only, for members of the `sudo` group (the admin user) and of `sisura-ssh`. Passwords are never accepted over SSH; the admin password is for `sudo` and the local console. After 5 failed password attempts in 15 minutes the account is locked for 15 minutes.
 
+```bash
+ssh <admin user>@<address of the machine>     # port 22; find the address with: ip -4 -br addr
+```
+
+No SSH key given to the installer? Log in on the console and add one:
+
+```bash
+mkdir -p ~/.ssh
+curl -fsSL https://github.com/<github user>.keys >> ~/.ssh/authorized_keys   # keys you have on GitHub
+# or paste a public key (the line from ~/.ssh/id_ed25519.pub on your computer):
+echo 'ssh-ed25519 AAAA... you@laptop' >> ~/.ssh/authorized_keys
+```
+
 ### Unlocking the disk over SSH
 
-If you enabled it during installation, a small SSH server runs before the system starts, only to ask for the disk passphrase:
+If you enabled it during installation (it needs SSH keys), a small SSH server runs **while the machine waits for the disk passphrase at boot**, only to ask for that passphrase:
 
 ```bash
 ssh -p 2222 root@<address of the machine>
 ```
+
+Port 2222 exists only during that wait. Once the system is running, the connection hangs (the firewall drops it without an answer); log in normally on port 22 instead.
 
 - It accepts only the SSH keys given to the installer, no passwords, and runs nothing but the unlock prompt.
 - Compare the host key fingerprint with the one the installer printed on your first connection.

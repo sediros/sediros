@@ -30,11 +30,11 @@ First release, based on Debian 13 (trixie).
 - `sudo sisura-audit` checks that the hardening is still in place on a running system (kernel settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM, kernel modules, automatic updates, apt repository, boot parameters, disk encryption, Secure Boot). Expected values come from the installed Sisura packages; changes are reported with the file that made them where possible. `--json`, `--quiet`; exit status 1 on failures.
 - In every image; the smoke test runs it next to its own checks.
 
-### Installer (`sisura-install` 0.3.0, `sisura-live` 0.2.1)
+### Installer (`sisura-install` 0.3.1, `sisura-live` 0.2.1)
 - Live session with console autologin and the Sisura login banner; nothing written to disk.
 - Installs to disk with GPT, an EFI system partition, an unencrypted `/boot` and a LUKS2 (argon2id) root.
 - Asks for disk, hostname, keyboard layout, admin user, sudo password, SSH keys (pasted or from GitHub) and GRUB password; validates every answer before touching the disk. All answers are also available as flags.
-- Keyboard layout applies to the LUKS prompt at boot.
+- Keyboard layout applies to the LUKS prompt at boot. The layout chosen in the wizard also applies to the live console right away (it did not when the installer ran under sudo), and the dozens of harmless `ckbcomp` warnings it caused while building the initramfs are no longer shown.
 - Installed over a serial console (VPS, server, VM): the installed system keeps using it for GRUB, kernel messages and the LUKS prompt.
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 - Secure Boot: the ISO and installed systems boot with Debian's signed chain (Microsoft-signed `shim`, Debian-signed GRUB and kernel); tested with firmware that enforces Secure Boot, for the live ISO, the installation and the installed system.

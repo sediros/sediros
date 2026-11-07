@@ -168,22 +168,31 @@ pub fn github_keys(user: &str) -> Result<Vec<String>> {
 }
 
 /// Use the chosen layout on the live console too, so the passphrases typed
-/// now match what the boot prompt will expect. Best effort, VT only.
+/// now match what the boot prompt will expect. Best effort, virtual
+/// consoles only (a serial terminal uses the keyboard of the other end).
 pub fn apply_live_keyboard(kb: &Keyboard) {
-    let on_vt = unsafe {
-        let p = libc::ttyname(0);
-        !p.is_null()
-            && std::ffi::CStr::from_ptr(p)
-                .to_string_lossy()
-                .trim_start_matches("/dev/tty")
-                .parse::<u32>()
-                .is_ok()
+    // sudo runs us on a pseudo-terminal: find the virtual console behind it.
+    let Some((tty, false)) = crate::install::console() else {
+        return;
     };
-    if !on_vt || fs::write("/etc/default/keyboard", kb.file()).is_err() {
+    if fs::write("/etc/default/keyboard", kb.file()).is_err() {
         return;
     }
+    let dev = format!("/dev/{tty}");
+    let (Ok(input), Ok(output)) = (
+        fs::File::open(&dev),
+        fs::OpenOptions::new().write(true).open(&dev),
+    ) else {
+        return;
+    };
+    // setupcon loads the keymap (shared by all virtual consoles) through the
+    // console it runs on. Its ckbcomp warnings (see cmd::NOISE) would only
+    // clutter the wizard.
     let _ = std::process::Command::new("setupcon")
         .args(["-k", "--force"])
+        .stdin(input)
+        .stdout(output)
+        .stderr(std::process::Stdio::null())
         .status();
 }
 

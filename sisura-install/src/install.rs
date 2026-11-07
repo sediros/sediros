@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 
-use crate::cmd::{self, chroot, run, run_with_stdin};
+use crate::cmd::{self, chroot, chroot_filtered, run, run_with_stdin};
 use crate::disk::{self, Disk};
 use crate::secret::Secret;
 use crate::setup::{self, Setup};
@@ -401,10 +401,11 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
     // Plain `dpkg --purge` (above) leaves triggers it activated pending,
     // e.g. shim-signed's; apt would run them at its end. Without this the
     // installed system starts with packages that `dpkg --audit` reports.
-    chroot(target, "dpkg", &["--configure", "--pending"])?;
+    // Both can build an initramfs, whose keymap step is noisy (cmd::NOISE).
+    chroot_filtered(target, "dpkg", &["--configure", "--pending"])?;
 
     step("Building the initramfs (cryptsetup, keyboard layout)");
-    chroot(target, "update-initramfs", &["-c", "-k", "all"])?;
+    chroot_filtered(target, "update-initramfs", &["-c", "-k", "all"])?;
 
     if let Some(tty) = serial_console() {
         step(&format!(
@@ -459,12 +460,19 @@ fn configure_chroot(target: &Path, setup: &Setup) -> Result<Option<String>> {
 /// Serial console the installer runs on (ttyS0, ttyAMA0, ...), if any:
 /// like the Debian installer, a system installed over a serial console
 /// (VPS, server, VM) keeps using it.
+fn serial_console() -> Option<String> {
+    console()
+        .filter(|(_, serial)| *serial)
+        .map(|(name, _)| name)
+}
+
+/// The real terminal the installer was started from: (device name, is it a
+/// serial port), e.g. ("ttyS0", true) or ("tty1", false).
 ///
 /// sudo with `use_pty` (Sisura's policy) runs the installer on a new
 /// pseudo-terminal, so this walks up the parent processes to the first
-/// one attached to a real terminal: a serial port, or a virtual console
-/// (screen, no serial setup).
-fn serial_console() -> Option<String> {
+/// one attached to a real terminal: a serial port or a virtual console.
+pub fn console() -> Option<(String, bool)> {
     let mut pid = std::process::id();
     for _ in 0..16 {
         for fd in 0..3 {
@@ -474,10 +482,8 @@ fn serial_console() -> Option<String> {
             let Some(name) = link.strip_prefix("/dev").ok().and_then(|n| n.to_str()) else {
                 continue;
             };
-            match console_kind(name) {
-                Some(true) => return Some(name.to_string()),
-                Some(false) => return None,
-                None => {}
+            if let Some(serial) = console_kind(name) {
+                return Some((name.to_string(), serial));
             }
         }
         let status = fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
@@ -505,22 +511,6 @@ fn console_kind(dev: &str) -> Option<bool> {
         return digits(unit).then_some(true);
     }
     dev.strip_prefix("tty").filter(|n| digits(n)).map(|_| false)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::console_kind;
-
-    #[test]
-    fn console_kinds() {
-        assert_eq!(console_kind("ttyS0"), Some(true));
-        assert_eq!(console_kind("ttyAMA0"), Some(true));
-        assert_eq!(console_kind("tty1"), Some(false));
-        assert_eq!(console_kind("pts/0"), None);
-        assert_eq!(console_kind("ttyS"), None);
-        assert_eq!(console_kind("tty"), None);
-        assert_eq!(console_kind("null"), None);
-    }
 }
 
 fn write_serial_console(target: &Path, tty: &str) -> Result<()> {
@@ -615,4 +605,20 @@ fn write_hostname(target: &Path, hostname: &str) -> Result<()> {
         .collect();
     fs::write(hosts, new.join("\n") + "\n")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::console_kind;
+
+    #[test]
+    fn console_kinds() {
+        assert_eq!(console_kind("ttyS0"), Some(true));
+        assert_eq!(console_kind("ttyAMA0"), Some(true));
+        assert_eq!(console_kind("tty1"), Some(false));
+        assert_eq!(console_kind("pts/0"), None);
+        assert_eq!(console_kind("ttyS"), None);
+        assert_eq!(console_kind("tty"), None);
+        assert_eq!(console_kind("null"), None);
+    }
 }

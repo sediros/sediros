@@ -40,9 +40,15 @@ sb_start -device virtio-scsi-pci \
 sb_wait ':~\$' 300
 sb_mark
 sb_send "printf '%s\\n' '$PASSPHRASE' > /tmp/pp; printf '%s\\n' '$PASSWORD' > /tmp/pw"
-sb_send "sudo sisura-install install --yes --disk vda --passphrase-file /tmp/pp --password-file /tmp/pw --grub-password-file /tmp/pw; echo SISURA-INSTALL-RC-\$?"
+# A non-US layout: its keymap goes into the initramfs (LUKS prompt), and
+# console-setup's ckbcomp prints a warning per unmapped key while building it.
+sb_send "sudo sisura-install install --yes --disk vda --keyboard tr --passphrase-file /tmp/pp --password-file /tmp/pw --grub-password-file /tmp/pw; echo SISURA-INSTALL-RC-\$?"
 sb_wait 'SISURA-INSTALL-RC-[0-9]+' 2400
 grep -aq 'SISURA-INSTALL-RC-0' <<<"$(sb_console)" || sb_fail "sisura-install failed"
+# Those warnings are filtered: dozens of them hid the real output.
+if grep -aq 'Unknown X keysym' <<<"$(sb_console)"; then
+    sb_fail "ckbcomp keymap warnings shown during the install"
+fi
 # The live session runs on the serial console, so the installed system must
 # use it too (otherwise the LUKS prompt only appears on the screen).
 grep -aqE 'Serial console tty(S|AMA)0' <<<"$(sb_console)" \
