@@ -241,9 +241,21 @@ else
 fi
 
 # --- memory footprint -------------------------------------------------------------
-used_mb="$(awk '/^MemTotal/ {t=$2} /^MemAvailable/ {a=$2} END {printf "%d", (t-a)/1024}' /proc/meminfo)"
-if ((used_mb <= MAX_RAM_MB)); then pass "memory: ${used_mb} MiB used (limit ${MAX_RAM_MB})"
-else fail "memory" "${used_mb} MiB used, limit ${MAX_RAM_MB}"; fi
+# Idle footprint: the lowest of several samples, so that a short spike (the
+# checks above, a timer that just fired) does not count. A single sample
+# varied by ~20 MiB between runs of the same image.
+used_mb=""
+for _ in 1 2 3 4 5 6; do
+    m="$(awk '/^MemTotal/ {t=$2} /^MemAvailable/ {a=$2} END {printf "%d", (t-a)/1024}' /proc/meminfo)"
+    if [[ -z "$used_mb" ]] || ((m < used_mb)); then used_mb="$m"; fi
+    sleep 2
+done
+if ((used_mb <= MAX_RAM_MB)); then pass "memory: ${used_mb} MiB used at idle (limit ${MAX_RAM_MB})"
+else
+    fail "memory" "${used_mb} MiB used at idle, limit ${MAX_RAM_MB}"
+    # What used it, for the next look at a failure.
+    ps -eo rss=,comm= --sort=-rss | head -n 8 | awk '{printf "      %6d KiB  %s\n", $1, $2}'
+fi
 
 echo
 if ((FAILS == 0)); then echo "guest checks: all passed"; else echo "guest checks: $FAILS failed"; fi
