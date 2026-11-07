@@ -235,10 +235,7 @@ pub fn spawn(
     cmd
         // User-mode networking: no root, no host bridge; SSH bound to loopback only.
         .arg("-netdev")
-        .arg(format!(
-            "user,id=net0,hostfwd=tcp:127.0.0.1:{}-:22",
-            vm.ssh_port
-        ))
+        .arg(netdev(vm))
         .args(["-device", "virtio-net-pci,netdev=net0"])
         // Entropy for first-boot SSH host key generation.
         .args(["-device", "virtio-rng-pci"])
@@ -266,20 +263,75 @@ pub fn spawn(
     Ok(())
 }
 
-/// Ask the guest to power off via ACPI / GPIO power button.
-pub fn qmp_powerdown(socket: &Path) -> Result<()> {
+/// User-mode network: SSH and the VM's port forwards, bound to loopback only.
+fn netdev(vm: &VmState) -> String {
+    let mut s = format!("user,id=net0,hostfwd=tcp:127.0.0.1:{}-:22", vm.ssh_port);
+    for f in &vm.forwards {
+        s.push_str(&format!(",hostfwd=tcp:127.0.0.1:{}-:{}", f.host, f.guest));
+    }
+    s
+}
+
+/// Add or remove a port forward of a running VM (QEMU monitor commands
+/// hostfwd_add / hostfwd_remove).
+pub fn qmp_hostfwd(socket: &Path, add: bool, host: u16, guest: u16) -> Result<()> {
+    let line = if add {
+        format!("hostfwd_add net0 tcp:127.0.0.1:{host}-:{guest}")
+    } else {
+        format!("hostfwd_remove net0 tcp:127.0.0.1:{host}")
+    };
+    let (mut writer, mut reader) = qmp_connect(socket)?;
+    qmp_command(&mut writer, &mut reader, "qmp_capabilities")?;
+    writeln!(
+        writer,
+        "{{\"execute\":\"human-monitor-command\",\"arguments\":{{\"command-line\":\"{line}\"}}}}"
+    )?;
+    let reply = qmp_reply(&mut reader, "human-monitor-command")?;
+    // HMP answers in text inside an otherwise successful reply: nothing for
+    // a successful add, "... removed" for a successful remove, an error
+    // message otherwise.
+    let text = hmp_text(&reply);
+    let ok = if add {
+        text.is_empty()
+    } else {
+        text.ends_with("removed")
+    };
+    if !ok {
+        bail!("QEMU refused '{line}': {text}");
+    }
+    Ok(())
+}
+
+/// The text of a human-monitor-command reply: {"return": "<text>"}.
+fn hmp_text(reply: &str) -> String {
+    reply
+        .split_once("\"return\"")
+        .and_then(|(_, rest)| rest.split_once('"'))
+        .and_then(|(_, rest)| rest.rsplit_once('"'))
+        .map(|(text, _)| text.replace("\\r", "").replace("\\n", " "))
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
+fn qmp_connect(socket: &Path) -> Result<(UnixStream, BufReader<UnixStream>)> {
     let stream = UnixStream::connect(socket)
         .with_context(|| format!("connecting to QMP socket {}", socket.display()))?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
     stream.set_write_timeout(Some(Duration::from_secs(5)))?;
-    let mut writer = stream.try_clone()?;
+    let writer = stream.try_clone()?;
     let mut reader = BufReader::new(stream);
-
     let mut greeting = String::new();
     reader.read_line(&mut greeting)?;
     if !greeting.contains("QMP") {
         bail!("unexpected QMP greeting: {}", greeting.trim());
     }
+    Ok((writer, reader))
+}
+
+/// Ask the guest to power off via ACPI / GPIO power button.
+pub fn qmp_powerdown(socket: &Path) -> Result<()> {
+    let (mut writer, mut reader) = qmp_connect(socket)?;
     qmp_command(&mut writer, &mut reader, "qmp_capabilities")?;
     qmp_command(&mut writer, &mut reader, "system_powerdown")?;
     Ok(())
@@ -291,14 +343,18 @@ fn qmp_command(
     command: &str,
 ) -> Result<()> {
     writeln!(writer, "{{\"execute\":\"{command}\"}}")?;
-    // Asynchronous events may arrive before the reply; skip them.
+    qmp_reply(reader, command).map(|_| ())
+}
+
+/// The reply line to the last command; asynchronous events are skipped.
+fn qmp_reply(reader: &mut BufReader<UnixStream>, command: &str) -> Result<String> {
     for _ in 0..16 {
         let mut line = String::new();
         if reader.read_line(&mut line)? == 0 {
             bail!("QMP connection closed during '{command}'");
         }
         if line.contains("\"return\"") {
-            return Ok(());
+            return Ok(line);
         }
         if line.contains("\"error\"") {
             bail!("QMP '{command}' failed: {}", line.trim());
@@ -309,7 +365,20 @@ fn qmp_command(
 
 #[cfg(test)]
 mod tests {
-    use super::base64;
+    use super::{base64, hmp_text};
+
+    #[test]
+    fn hmp_reply_text() {
+        assert_eq!(hmp_text("{\"return\": \"\"}\r\n"), "");
+        assert_eq!(
+            hmp_text("{\"return\": \"host forwarding rule for tcp:127.0.0.1:1 removed\\r\\n\"}"),
+            "host forwarding rule for tcp:127.0.0.1:1 removed"
+        );
+        assert_eq!(
+            hmp_text("{\"return\": \"Could not set up host forwarding rule 'x'\\r\\n\"}"),
+            "Could not set up host forwarding rule 'x'"
+        );
+    }
 
     #[test]
     fn base64_rfc4648_vectors() {

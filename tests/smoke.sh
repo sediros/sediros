@@ -91,6 +91,19 @@ else
     fail "transfer" "copied file missing or different"
 fi
 
+# sisura forward: a live port forward reaches a server in the VM
+fwd_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+"$SISURA" shell "$VM" -- 'mkdir -p /tmp/fwd && echo sisura-forward-ok > /tmp/fwd/index.html
+    nohup python3 -m http.server 8000 --directory /tmp/fwd >/dev/null 2>&1 </dev/null &' || true
+if "$SISURA" forward "$VM" "$fwd_port:8000" >/dev/null \
+    && [[ "$(curl -s -m 5 "http://127.0.0.1:$fwd_port/")" == sisura-forward-ok ]]; then
+    pass "forward: 127.0.0.1:$fwd_port reaches port 8000 in the VM"
+else
+    fail "forward" "no answer on 127.0.0.1:$fwd_port"
+fi
+"$SISURA" forward "$VM" --remove "$fwd_port" >/dev/null || fail "forward" "--remove failed"
+"$SISURA" shell "$VM" -- 'pkill -f "http.server 8000"' || true
+
 echo "==> Guest checks"
 if ! "$SISURA" shell "$VM" -- bash -s -- "$MAX_RAM" "$RELEASE" < "$PROJECT_ROOT/tests/guest_checks.sh"; then
     FAILS=$((FAILS + 1))

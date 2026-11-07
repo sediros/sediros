@@ -74,6 +74,22 @@ pub fn transfer(paths: &Paths, args: &TransferArgs) -> Result<()> {
     Err(err).context("failed to exec scp")
 }
 
+/// Run a command in a running VM as the default user, without a terminal.
+/// Returns whether it succeeded; its output goes to our stderr.
+pub fn run_in_vm(paths: &Paths, vm: &VmState, command: &str) -> Result<bool> {
+    let mut cmd = Command::new("ssh");
+    client_options(&mut cmd, paths, vm, None)?;
+    cmd.args(["-o", "BatchMode=yes", "-T"])
+        .arg(format!("{DEFAULT_USER}@127.0.0.1"))
+        .arg(command)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null());
+    Ok(cmd.status().context("running ssh")?.success())
+}
+
+/// Guest user of Sisura VM images.
+const DEFAULT_USER: &str = "sisura";
+
 fn running_vm(paths: &Paths, name: &str) -> Result<VmState> {
     validate_vm_name(name)?;
     let vm =

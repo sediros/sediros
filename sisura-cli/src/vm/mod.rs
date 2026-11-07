@@ -1,5 +1,6 @@
 //! VM lifecycle: launch, list, stop.
 
+mod forward;
 mod image;
 mod network;
 mod process;
@@ -11,6 +12,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
 
+pub use forward::forward_cmd;
 pub use state::{load_all, VmState};
 
 use crate::cli::{LaunchArgs, StopArgs};
@@ -50,7 +52,11 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     let taken: Vec<u16> = load_all(&paths.vms_dir())?
         .into_iter()
         .filter(|vm| vm.name != args.name)
-        .map(|vm| vm.ssh_port)
+        .flat_map(|vm| {
+            let mut ports: Vec<u16> = vm.forwards.iter().map(|f| f.host).collect();
+            ports.push(vm.ssh_port);
+            ports
+        })
         .collect();
 
     let (mut vm, image, fresh) = match existing {
@@ -70,6 +76,7 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
                 cpus: args.cpus,
                 memory_mib: args.memory,
                 created: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
+                forwards: Vec::new(),
             };
             (vm, image, true)
         }
@@ -83,6 +90,11 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     };
     vm.cpus = args.cpus;
     vm.memory_mib = args.memory;
+    // The VM's own SSH port must not collide with one of its forwards.
+    if vm.forwards.iter().any(|f| f.host == vm.ssh_port) {
+        bail!("SSH port {} is also a port forward of this VM", vm.ssh_port);
+    }
+    forward::add_at_launch(paths, &mut vm, &args.forwards)?;
 
     let platform = Platform::detect(&vm.arch)?;
     if platform.accel == Accel::Tcg {
@@ -115,6 +127,10 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     );
 
     if args.no_wait {
+        if !vm.forwards.is_empty() {
+            println!("Port forwards (the VM's firewall is not updated with --no-wait):");
+            forward::print_forwards(&vm);
+        }
         return Ok(());
     }
 
@@ -126,6 +142,10 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     match result {
         Ok(()) => {
             println!(" ready in {:.1}s", started.elapsed().as_secs_f64());
+            if !vm.forwards.is_empty() {
+                forward::open_firewall(paths, &vm);
+                forward::print_forwards(&vm);
+            }
             println!("Next: sisura shell {}", vm.name);
             Ok(())
         }
@@ -158,8 +178,8 @@ pub fn list(paths: &Paths) -> Result<()> {
         return Ok(());
     }
     println!(
-        "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} BUILD",
-        "NAME", "STATE", "ARCH", "CPUS", "MEMORY", "SSH", "IMAGE"
+        "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} {:<28} FORWARDS",
+        "NAME", "STATE", "ARCH", "CPUS", "MEMORY", "SSH", "IMAGE", "BUILD"
     );
     for vm in vms {
         let state = if vm.is_running() {
@@ -167,8 +187,14 @@ pub fn list(paths: &Paths) -> Result<()> {
         } else {
             "stopped"
         };
+        let forwards = vm
+            .forwards
+            .iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
         println!(
-            "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} {}",
+            "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} {:<28} {}",
             vm.name,
             state,
             vm.arch,
@@ -176,7 +202,8 @@ pub fn list(paths: &Paths) -> Result<()> {
             format!("{}M", vm.memory_mib),
             vm.ssh_port,
             vm.image_key,
-            image::cached_build_id(paths, &vm.image_key)
+            image::cached_build_id(paths, &vm.image_key),
+            if forwards.is_empty() { "-" } else { &forwards }
         );
     }
     Ok(())

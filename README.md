@@ -199,6 +199,7 @@ sisura shell dev           # SSH into it
 sisura shell dev -- uname -a
 sisura transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
 sisura transfer dev:/var/log/syslog .  # and back; -r for directories
+sisura forward dev 8080:80             # http://localhost:8080 -> port 80 in the VM
 sisura list                # VMs, their state and build id
 sisura stop dev
 sisura purge dev           # delete the VM
@@ -206,6 +207,7 @@ sisura purge dev           # delete the VM
 
 - Each VM runs on its own copy-on-write disk on top of the read-only image, so `purge` and a new `launch` give you a fresh system.
 - The VM's SSH port is reachable on `127.0.0.1` only. Images contain no SSH key: the CLI creates its own key pair in `~/.local/share/sisura/` and gives the public key to each VM when it starts.
+- `sisura forward` (or `launch --forward 8080:80`) makes a service in the VM reachable from this machine. The port is opened on `127.0.0.1` only, kept with the VM and restored at every launch, and the VM's firewall admits it from this machine only. `sisura forward dev` lists the forwards, `--remove 8080` removes one. Installed systems do not need this: they have their own address on your network; open the port with `sudo ufw allow 80/tcp`.
 - VMs have passwordless `sudo`; they are meant for testing and development, not for installing to disk.
 - Everything (images, VMs, the key) lives in `~/.local/share/sisura/`; set `SISURA_HOME` to use another place.
 

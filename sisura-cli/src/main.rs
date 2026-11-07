@@ -30,6 +30,7 @@ fn run(cli: Cli) -> Result<()> {
         Command::Launch(args) => vm::launch(&paths, &args),
         Command::Shell(args) => ssh::shell(&paths, &args),
         Command::Transfer(args) => ssh::transfer(&paths, &args),
+        Command::Forward(args) => vm::forward_cmd(&paths, &args),
         Command::List => vm::list(&paths),
         Command::Stop(args) => vm::stop_cmd(&paths, &args),
         Command::Purge(args) => purge::run(&paths, &args),

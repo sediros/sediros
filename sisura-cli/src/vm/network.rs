@@ -29,8 +29,15 @@ pub fn pick_port(requested: Option<u16>, taken: &[u16]) -> Result<u16> {
         })
 }
 
+/// Free on 127.0.0.1 and not taken on any address: macOS lets a program
+/// bind 127.0.0.1:<port> while another one listens on *:<port>, and the
+/// loopback listener then silently takes over localhost:<port>.
 pub fn port_free(port: u16) -> bool {
-    TcpListener::bind(("127.0.0.1", port)).is_ok()
+    let in_use = |addr: &str| {
+        matches!(TcpListener::bind((addr, port)),
+                 Err(e) if e.kind() == std::io::ErrorKind::AddrInUse)
+    };
+    TcpListener::bind(("127.0.0.1", port)).is_ok() && !in_use("0.0.0.0") && !in_use("::")
 }
 
 /// QEMU's user-mode hostfwd accepts TCP connections even before the guest's

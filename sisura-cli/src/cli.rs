@@ -12,6 +12,7 @@ use clap::{Args, Parser, Subcommand};
         sisura launch dev         start a VM named dev\n  \
         sisura shell dev          log in (SSH key is set up automatically)\n  \
         sisura transfer f dev:    copy a file into the VM (dev:path for the VM side)\n  \
+        sisura forward dev 8080:80  open http://localhost:8080 to port 80 in the VM\n  \
         sisura stop dev\n\n\
         Guide: https://github.com/sisura-linux/sisura#readme"
 )]
@@ -41,6 +42,8 @@ pub enum Command {
     Shell(ShellArgs),
     /// Copy files between the host and a running VM: sisura transfer ./f dev:/tmp
     Transfer(TransferArgs),
+    /// Forward a port on 127.0.0.1 to a VM: sisura forward dev 8080:80
+    Forward(ForwardArgs),
     /// List VMs and their state
     List,
     /// Stop a running VM (ACPI power-down, then kill on timeout)
@@ -131,6 +134,11 @@ pub struct LaunchArgs {
     #[arg(long)]
     pub no_wait: bool,
 
+    /// Forward 127.0.0.1:HOST to the VM's port GUEST (repeatable, e.g.
+    /// --forward 8080:80). Kept with the VM; the VM's firewall is opened for it.
+    #[arg(long = "forward", value_name = "HOST:GUEST")]
+    pub forwards: Vec<String>,
+
     /// Attach an empty second disk of this size (e.g. 16G) to a new VM, as
     /// /dev/vdb (installer tests). Kept with the VM, deleted by purge.
     #[arg(long, value_name = "SIZE")]
@@ -173,6 +181,20 @@ pub struct TransferArgs {
     /// Guest user
     #[arg(short, long, env = "SISURA_USER", default_value = "sisura")]
     pub user: String,
+}
+
+#[derive(Args, Debug)]
+pub struct ForwardArgs {
+    /// VM name
+    pub name: String,
+
+    /// Forwards to add, HOST:GUEST (e.g. 8080:80). Without any: list them.
+    #[arg(value_name = "HOST:GUEST")]
+    pub add: Vec<String>,
+
+    /// Remove the forward from this host port (repeatable)
+    #[arg(long, value_name = "HOST")]
+    pub remove: Vec<u16>,
 }
 
 #[derive(Args, Debug)]
