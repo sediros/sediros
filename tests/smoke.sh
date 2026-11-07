@@ -79,6 +79,18 @@ if [[ -n "${SISURA_IMAGE:-}" && -f "${SISURA_IMAGE%.qcow2}.build-info" ]]; then
     else fail "build id" "image ${want_build:-?}, VM ${got_build:-?}"; fi
 fi
 
+# sisura transfer: host -> VM -> host round trip, recursive
+xfer="$SISURA_HOME/xfer"
+mkdir -p "$xfer/in/sub" "$xfer/out"
+head -c 65536 /dev/urandom > "$xfer/in/sub/blob"
+if "$SISURA" transfer -r "$xfer/in" "$VM:/tmp" \
+    && "$SISURA" transfer "$VM:/tmp/in/sub/blob" "$xfer/out/" \
+    && [[ "$(sha256 "$xfer/in/sub/blob")" == "$(sha256 "$xfer/out/blob")" ]]; then
+    pass "transfer round trip (host -> VM -> host)"
+else
+    fail "transfer" "copied file missing or different"
+fi
+
 echo "==> Guest checks"
 if ! "$SISURA" shell "$VM" -- bash -s -- "$MAX_RAM" "$RELEASE" < "$PROJECT_ROOT/tests/guest_checks.sh"; then
     FAILS=$((FAILS + 1))

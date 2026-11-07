@@ -179,6 +179,8 @@ Every file is checked against the release's `SHA256SUMS`.
 sisura launch dev          # start a VM (created on first use), ready in a few seconds
 sisura shell dev           # SSH into it
 sisura shell dev -- uname -a
+sisura transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
+sisura transfer dev:/var/log/syslog .  # and back; -r for directories
 sisura list                # VMs, their state and build id
 sisura stop dev
 sisura purge dev           # delete the VM

@@ -11,6 +11,7 @@ use clap::{Args, Parser, Subcommand};
         sisura pull               download the latest released VM image\n  \
         sisura launch dev         start a VM named dev\n  \
         sisura shell dev          log in (SSH key is set up automatically)\n  \
+        sisura transfer f dev:    copy a file into the VM (dev:path for the VM side)\n  \
         sisura stop dev\n\n\
         Guide: https://github.com/sisura-linux/sisura#readme"
 )]
@@ -38,6 +39,8 @@ pub enum Command {
     Launch(LaunchArgs),
     /// Open an SSH session in a running VM, or run a command: sisura shell vm -- uname -a
     Shell(ShellArgs),
+    /// Copy files between the host and a running VM: sisura transfer ./f dev:/tmp
+    Transfer(TransferArgs),
     /// List VMs and their state
     List,
     /// Stop a running VM (ACPI power-down, then kill on timeout)
@@ -150,6 +153,26 @@ pub struct ShellArgs {
     /// Command to run instead of an interactive shell (after --)
     #[arg(last = true)]
     pub command: Vec<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct TransferArgs {
+    /// Sources, then the destination. The VM side is written <vm>:<path>
+    /// (dev: is the home directory); the other side is a host path.
+    #[arg(required = true, num_args = 2.., value_name = "PATH")]
+    pub paths: Vec<String>,
+
+    /// Copy directories recursively
+    #[arg(short, long)]
+    pub recursive: bool,
+
+    /// SSH private key. Default: the CLI key (<home>/id_ed25519), else <project>/id_sisura
+    #[arg(short = 'i', long, env = "SISURA_SSH_KEY")]
+    pub identity: Option<PathBuf>,
+
+    /// Guest user
+    #[arg(short, long, env = "SISURA_USER", default_value = "sisura")]
+    pub user: String,
 }
 
 #[derive(Args, Debug)]

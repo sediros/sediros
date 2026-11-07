@@ -29,11 +29,12 @@ First release, based on Debian 13 (trixie).
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 - Secure Boot: the ISO and installed systems boot with Debian's signed chain (Microsoft-signed `shim`, Debian-signed GRUB and kernel); tested with firmware that enforces Secure Boot, for the live ISO, the installation and the installed system.
 
-### Tools (`sisura` CLI 0.3.1)
+### Tools (`sisura` CLI 0.4.0)
 - `sisura build/launch/shell/list/stop/purge`: QEMU VMs with HVF (macOS) or KVM (Linux), copy-on-write disks, SSH on localhost only.
 - `launch --data-disk` attaches an empty second disk; `list` shows each VM's build id; `sisura` without a command shows the help with a getting-started section.
 - `sisura pull` downloads a released VM image from GitHub and verifies it against the release's SHA256SUMS; no source checkout needed.
 - Images contain no SSH key: the CLI passes its own key to each VM at boot.
+- `sisura transfer` copies files and directories (`-r`) between the host and a running VM over the same SSH connection as `shell`; the VM side is written `<vm>:<path>`.
 - `make test` boots a throwaway VM and verifies the hardening, packages and build id; `make iso-test` and `make install-test` check the live ISO, an installation and the installed system with Secure Boot enforced.
 
 ### Known limitations
