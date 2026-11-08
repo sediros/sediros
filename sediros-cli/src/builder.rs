@@ -54,7 +54,7 @@ pub fn run(paths: &Paths, args: &BuildArgs) -> Result<()> {
     Ok(())
 }
 
-/// `RELEASE ?= 13.1` from config/sediros.conf, the same default the Makefile uses.
+/// `RELEASE ?= 1.0` from config/sediros.conf, the same default the Makefile uses.
 fn default_release(project: &Path) -> Result<String> {
     let conf = project.join("config/sediros.conf");
     let text =

@@ -53,7 +53,8 @@ for control in "$PROJECT_ROOT"/packages/*/DEBIAN/control; do
     name="$(sed -n 's/^Package: *//p' "$control")"
     ver="$(sed -n 's/^Version: *//p' "$control")"
     arch="$(sed -n 's/^Architecture: *//p' "$control")"
-    [[ "$ver" == @SEDIROS_RELEASE@ ]] && ver="$RELEASE"
+    ver="${ver//@SEDIROS_RELEASE@/$RELEASE}"
+    ver="${ver#*:}"   # file names have no epoch
     [[ "$arch" == @SEDIROS_ARCH@ ]] && arch="$host_arch"
     deb="build/debs/${name}_${ver}_${arch}.deb"
     if [[ -f "$PROJECT_ROOT/$deb" ]]; then debs+=("$deb")
@@ -84,6 +85,7 @@ if ! out="$("$SEDIROS" launch "$VM" --timeout 120 "${IMAGE_ARGS[@]+"${IMAGE_ARGS
     echo "$out"; echo "FAIL  launch"; exit 1
 fi
 "$SEDIROS" transfer "$WORK/test.pgp" "$VM:/tmp/sediros-test.pgp"
+"$SEDIROS" transfer "$WORK/legacy-base-files.deb" "$VM:/tmp/legacy-base-files.deb"
 
 echo "==> Update through the repository"
 # The guest reaches the host's 127.0.0.1 as 10.0.2.2 (QEMU user network).
@@ -106,6 +108,12 @@ nft add rule ip apttest out ip daddr 10.0.2.2 tcp dport 80 dnat to "10.0.2.2:$PO
 install -m 0644 /tmp/sediros-test.pgp /usr/share/keyrings/sediros-test.pgp
 sed -i -e 's|^URIs: https://|URIs: http://|' \
        -e 's|^Signed-By: .*|Signed-By: /usr/share/keyrings/sediros-test.pgp|' "$src"
+
+# A system installed from a 13.1-rcN candidate: base-files numbered 13.1.
+want_base="$(dpkg-query -W -f='${Version}' sediros-base-files)"
+dpkg -i /tmp/legacy-base-files.deb >/dev/null 2>&1
+[[ "$(dpkg-query -W -f='${Version}' sediros-base-files)" == 13.1 ]] \
+    || fail "legacy base-files" "could not install sediros-base-files 13.1"
 
 before_ssh="$(dpkg-query -W -f='${Version}' openssh-server)"
 before="$(dpkg-query -W -f='${Version}' sediros-hardening)"
@@ -133,6 +141,12 @@ else
 fi
 [[ "$(dpkg-query -W -f='${Version}' openssh-server)" == "$before_ssh" ]] \
     || fail "pin" "openssh-server changed during the upgrade"
+got_base="$(dpkg-query -W -f='${Version}' sediros-base-files)"
+if [[ "$got_base" == "$want_base" ]] && grep -q "^SEDIROS_RELEASE=${want_base#*:}\$" /etc/os-release; then
+    pass "release numbering: sediros-base-files 13.1 -> $got_base (epoch)"
+else
+    fail "release numbering" "sediros-base-files is $got_base, want $want_base"
+fi
 
 # Same server and path layout, signed with a key the system does not trust.
 sed -i 's|/sediros/apt$|/sediros/evil|' "$src"

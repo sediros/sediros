@@ -176,7 +176,7 @@ fn newest_image(build_dir: &Path) -> Result<PathBuf> {
     })
 }
 
-/// sediros-13.1-arm64.qcow2 -> "arm64"
+/// sediros-1.0-arm64.qcow2 -> "arm64"
 fn arch_from_name(path: &Path) -> Result<String> {
     let stem = path
         .file_stem()

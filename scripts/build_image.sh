@@ -97,8 +97,8 @@ if [[ -r "${ROOTFS_TAR}.sha256" ]]; then
     ok "Checksum verified"
 fi
 
-name="$(basename "$ROOTFS_TAR" .tar.zst)"     # sediros-rootfs-13.1-arm64
-name="sediros-${name#sediros-rootfs-}"           # sediros-13.1-arm64
+name="$(basename "$ROOTFS_TAR" .tar.zst)"     # sediros-rootfs-1.0-arm64
+name="sediros-${name#sediros-rootfs-}"           # sediros-1.0-arm64
 OUT="${BUILD_DIR}/${name}.qcow2"
 
 # Work in container/host-local tmp, never on a macOS bind mount

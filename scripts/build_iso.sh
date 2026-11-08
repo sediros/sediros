@@ -106,8 +106,8 @@ if [[ -r "${ROOTFS_TAR}.sha256" ]]; then
         || die "Checksum mismatch: $ROOTFS_TAR"
 fi
 
-name="$(basename "$ROOTFS_TAR" .tar.zst)"       # sediros-rootfs-13.1-arm64
-name="sediros-${name#sediros-rootfs-}"             # sediros-13.1-arm64
+name="$(basename "$ROOTFS_TAR" .tar.zst)"       # sediros-rootfs-1.0-arm64
+name="sediros-${name#sediros-rootfs-}"             # sediros-1.0-arm64
 arch="${name##*-}"
 case "$arch" in
     amd64) console="console=tty0 console=ttyS0,115200"; efi=x64;  grub_efi=x86_64-efi ;;
@@ -155,7 +155,7 @@ if [[ -r "$BUILD_DIR/${name}.cmdline" ]]; then
     # vsyscall= is x86-only.
     [[ "$arch" == "amd64" ]] || cmdline="$(sed -E 's/(^| )vsyscall=[^ ]*//g' <<<"$cmdline")"
 fi
-# "13.1 build 20261105.1432-47888b3 (arm64)" from the image's build-info.
+# "1.0 build 20261105.1432-47888b3 (arm64)" from the image's build-info.
 info="$WORK/root/etc/sediros/build-info"
 release="$(sed -n 's/^RELEASE=//p' "$info" 2>/dev/null)"
 build_id="$(sed -n 's/^BUILD_ID=//p' "$info" 2>/dev/null)"

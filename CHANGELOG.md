@@ -1,12 +1,12 @@
 # Changelog
 
-Notable changes per SedirOS release. A release is `<debian major>.<point>` and is tagged `v<release>` in git; see "Release numbers" in the README. Package and tool versions are listed when they change.
+Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 = Debian 13) and is tagged `v<release>` in git; see "Versions and support" in the README. Package and tool versions are listed when they change.
 
-## [13.1] - unreleased
+## [1.0] - unreleased
 
 First release, based on Debian 13 (trixie).
 
-Named after the cedar (*sedir* in Turkish): a hard, long-lived wood that resists decay. Release candidates up to 13.1-rc11 were published under the name Sisura.
+Named after the cedar (*sedir* in Turkish): a hard, long-lived wood that resists decay. Release candidates up to 13.1-rc11 were published under the name Sisura, 13.1-rc12 and rc13 as SedirOS 13.1; SedirOS then switched to its own release numbers (SedirOS 1 = Debian 13), so the minor number is no longer mistaken for Debian's point release. `sediros-base-files` carries the epoch `1:` so that systems installed from a release candidate move to 1.0.
 
 ### Distribution
 - Minimal Debian trixie image (debootstrap minbase) as a qcow2 VM image and a live/installer ISO (amd64, arm64).

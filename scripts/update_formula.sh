@@ -2,7 +2,7 @@
 # =============================================================================
 #  SedirOS - regenerate the Homebrew formula (Formula/sediros.rb) for a release
 #
-#  Usage : ./scripts/update_formula.sh v13.1
+#  Usage : ./scripts/update_formula.sh v1.0
 #  Env   : SEDIROS_REPO           owner/name   (default: sediros/sediros)
 #          SEDIROS_RELEASE_URL    base URL of the release files
 #                                (default: GitHub releases download URL)
@@ -20,7 +20,7 @@ set -Eeuo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TAG="${1:?usage: $0 v<release>}"
-[[ "$TAG" =~ ^v[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]] || { echo "tag must look like v13.1 or v13.1-rc1" >&2; exit 1; }
+[[ "$TAG" =~ ^v[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]] || { echo "tag must look like v1.0 or v1.0-rc1" >&2; exit 1; }
 REPO="${SEDIROS_REPO:-sediros/sediros}"
 BASE="${SEDIROS_RELEASE_URL:-https://github.com/${REPO}/releases/download/${TAG}}"
 

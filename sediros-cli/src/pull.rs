@@ -30,7 +30,7 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
         None if args.url.is_some() => bail!("--url needs --release"),
         None => latest_tag(repo)?,
     };
-    // A pre-release such as v13.1-rc1 has the same file names as 13.1.
+    // A pre-release such as v1.0-rc1 has the same file names as 1.0.
     let label = tag.trim_start_matches('v').to_string();
     let release = label
         .split_once("-rc")
@@ -41,7 +41,7 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
             .split('.')
             .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()));
     if !valid_release {
-        bail!("invalid release '{release}' (expected e.g. 13.1)");
+        bail!("invalid release '{release}' (expected e.g. 1.0)");
     }
     let arch = host_debian_arch()?;
     let stem = format!("sediros-{release}-{arch}");
@@ -117,14 +117,23 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
     Ok(())
 }
 
+/// Sort key of a release number. The release candidates before 1.0 were
+/// numbered after Debian (13.1-rcN); they sort before every 1.x.
+fn release_order(release: &str) -> Option<(u32, u32)> {
+    let (major, minor) = release.split_once('.')?;
+    let key: (u32, u32) = (major.parse().ok()?, minor.parse().ok()?);
+    Some(if key.0 >= 13 { (0, key.1) } else { key })
+}
+
 /// Newest pulled base image (by release number), if any.
 pub fn newest_pulled(paths: &Paths) -> Option<PathBuf> {
     let arch = host_debian_arch().ok()?;
     let mut best: Option<((u32, u32), PathBuf)> = None;
     for entry in fs::read_dir(paths.downloads_dir()).ok()?.flatten() {
         let release = entry.file_name().to_string_lossy().into_owned();
-        let (major, point) = release.split_once('.')?;
-        let key = (major.parse().ok()?, point.parse().ok()?);
+        let Some(key) = release_order(&release) else {
+            continue;
+        };
         let qcow = entry.path().join(format!("sediros-{release}-{arch}.qcow2"));
         if entry.path().join(".complete").is_file()
             && qcow.is_file()
@@ -189,7 +198,7 @@ fn latest_tag(repo: &str) -> Result<String> {
 }
 
 fn tag_name(body: &str) -> Result<String> {
-    // "tag_name": "v13.1" - a full JSON parser is not needed for one field.
+    // "tag_name": "v1.0" - a full JSON parser is not needed for one field.
     let after = body
         .split_once("\"tag_name\"")
         .map(|(_, rest)| rest)
@@ -232,23 +241,31 @@ fn sha256(file: &Path) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::expected_sum;
+    use super::{expected_sum, release_order};
+
+    #[test]
+    fn release_candidates_before_1_0_sort_first() {
+        assert!(release_order("1.0") > release_order("13.1"));
+        assert!(release_order("1.1") > release_order("1.0"));
+        assert!(release_order("2.0") > release_order("1.9"));
+        assert_eq!(release_order("downloads"), None);
+    }
 
     #[test]
     fn finds_sums_in_both_formats() {
         let sums = format!(
-            "{a}  sediros-13.1-arm64.qcow2\n{b} *sediros-13.1-arm64.vmlinuz\n",
+            "{a}  sediros-1.0-arm64.qcow2\n{b} *sediros-1.0-arm64.vmlinuz\n",
             a = "a".repeat(64),
             b = "b".repeat(64)
         );
         assert_eq!(
-            expected_sum(&sums, "sediros-13.1-arm64.qcow2"),
+            expected_sum(&sums, "sediros-1.0-arm64.qcow2"),
             Some("a".repeat(64).as_str())
         );
         assert_eq!(
-            expected_sum(&sums, "sediros-13.1-arm64.vmlinuz"),
+            expected_sum(&sums, "sediros-1.0-arm64.vmlinuz"),
             Some("b".repeat(64).as_str())
         );
-        assert_eq!(expected_sum(&sums, "sediros-13.1-arm64.iso"), None);
+        assert_eq!(expected_sum(&sums, "sediros-1.0-arm64.iso"), None);
     }
 }

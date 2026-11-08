@@ -1,5 +1,5 @@
 # SedirOS release
-#   Triggered by pushing a tag v<release> (e.g. v13.1) that matches RELEASE in
+#   Triggered by pushing a tag v<release> (e.g. v1.0) that matches RELEASE in
 #   config/sediros.conf, or v<release>-rc<N> for a pre-release (same files,
 #   marked "Pre-release" on GitHub, for testing before the final release). Builds and tests the images for amd64 and arm64, builds
 #   the sediros CLI for macOS and Linux, collects the .deb packages (for the

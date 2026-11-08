@@ -2,7 +2,7 @@
 # =============================================================================
 #  SedirOS - minimal hardened Debian RootFS builder
 #
-#  Usage : sudo ./scripts/build_rootfs.sh [--release 13.1] [--suite sid]
+#  Usage : sudo ./scripts/build_rootfs.sh [--release 1.0] [--suite sid]
 #                                         [--clean] [--no-tar] [-h]
 #  Host  : Debian/Ubuntu (or any Linux) with debootstrap, zstd, coreutils.
 #          Must run as root. Will NOT run on macOS - use a Linux VM/container.
@@ -17,7 +17,7 @@
 #                                                 (also /etc/sediros/build-info)
 #
 #  Environment overrides:
-#    SEDIROS_RELEASE         SedirOS release, e.g. 13.1 (default: config/sediros.conf)
+#    SEDIROS_RELEASE         SedirOS release, e.g. 1.0 (default: config/sediros.conf)
 #    SEDIROS_BUILD_ID        Build id (default: <UTC time>-<git sha>[-dirty])
 #    SEDIROS_SUITE           Debian suite override: sid/unstable only
 #                           (default: derived from the release, 13 -> trixie)

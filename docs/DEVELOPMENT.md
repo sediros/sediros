@@ -88,7 +88,7 @@ One build script produces two kinds of root file systems:
 | Admin password | locked | empty and expired (the installer sets it) |
 | sudo | passwordless | asks for the password |
 | Extra packages | `sediros-guest` | `sediros-live`, `sediros-install`, cryptsetup, GRUB EFI with `shim-signed`, dropbear-initramfs (disabled), ... |
-| Artifact name | `sediros-13.1-arm64.*` | `sediros-13.1-install-arm64.*` |
+| Artifact name | `sediros-1.0-arm64.*` | `sediros-1.0-install-arm64.*` |
 
 How a VM gets its key: the CLI keeps a key pair in `SEDIROS_HOME` (`~/.local/share/sediros/id_ed25519`) and adds `systemd.set_credential_binary=sediros.ssh.authorized_keys:<base64>` to the kernel command line; `sediros-guest` copies it into the admin user's `authorized_keys`. A public key is not secret, so the readable kernel command line is fine.
 
@@ -127,18 +127,18 @@ With the ISO, end to end:
 ```bash
 make iso
 SEDIROS_ISO_DISK=build/test-disk.qcow2 make iso-run       # install in the live session
-SEDIROS_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sediros-13.1-install-arm64.iso
+SEDIROS_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sediros-1.0-install-arm64.iso
 ```
 
 ## Versions and releases
 
 | Number | Example | Changes when |
 |---|---|---|
-| Release | `13.1` | A new ISO/image is published. Major = Debian major (13 trixie, 14 forky). Point (`13.1` → `13.2`): a Debian point release, a critical security fix in a package on the ISO, or an important installer/hardening fix. |
+| Release | `1.0` | A new ISO/image is published. SedirOS's own numbering: the major number selects the Debian base (1 = Debian 13 trixie, 2 = Debian 14 forky), the minor number (`1.0` → `1.1`) counts releases on it: a Debian point release, a critical security fix in a package on the ISO, or an important installer/hardening fix. The minor number is not Debian's point release. |
 | Package / tool version (SemVer) | `sediros-hardening 0.3.0` | Any file of the package changes: patch for fixes, minor for features, major (minor before 1.0) for changes that can break existing systems. Without a new version apt never delivers the change. |
 | Build id | `20261105.1505-f69b925` | Every build: `<UTC yyyymmdd.HHMM>-<git commit>`, `-dirty` if the tree had uncommitted changes. |
 
-- The release is set in one place, `RELEASE` in `config/sediros.conf`; the Debian suite is derived from it. Development builds on sid: `make build SUITE=sid`.
+- The release is set in one place, `RELEASE` in `config/sediros.conf`; the Debian release and suite are derived from its major number (`scripts/lib/release.sh`). `sediros-base-files` carries the epoch `1:` (`1:1.0`) because the release candidates before 1.0 were numbered `13.1-rcN`: without it apt would see 1.0 as older. `make apt-test` checks that a 13.1 system moves to the current version. Development builds on sid: `make build SUITE=sid`.
 - The build id is written to `/etc/sediros/build-info` and `build/*.build-info`, the first line of `build/*.manifest`, the ISO boot menu, the installer's plan and `sediros list`.
 - CI skips documentation-only pushes (`*.md`, `docs/`, `LICENSE`, `NOTICE`): they change nothing the build or tests could catch.
 - `make lint` runs `scripts/check_versions.sh`: every package and Rust tool that changed since the last `v*` tag needs a new version; `sediros-base-files` needs a new `RELEASE`.

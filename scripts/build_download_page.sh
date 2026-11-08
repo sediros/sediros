@@ -40,7 +40,7 @@ asset_url()  { jq -r --arg n "$1" '.assets[] | select(.name == $n) | .url' "$REL
 asset_mb()   { jq -r --arg n "$1" '.assets[] | select(.name == $n) | (.size / 1048576 | floor)' "$REL"; }
 asset_sha()  { awk -v n="$1" '$2 == n || $2 == "*"n {print $1}' "$SUMS"; }
 
-# The ISO names carry the Debian-based release (13.1), not the rc suffix.
+# The ISO names carry the release (1.0), not the rc suffix.
 iso_row() {
     local arch="$1" who="$2" name
     name="$(jq -r --arg a "$arch" '.assets[].name | select(test("^sediros-.*-install-" + $a + "\\.iso$"))' "$REL" | head -n1)"

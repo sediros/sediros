@@ -10,7 +10,7 @@
 #  Output: build/debs/<name>_<version>_<arch>.deb
 #
 #  Placeholders replaced in every package file (incl. DEBIAN/control):
-#    @SEDIROS_RELEASE@ (13.1)  @SEDIROS_MAJOR@ (13)  @SEDIROS_CODENAME@ (trixie)
+#    @SEDIROS_RELEASE@ (1.0)  @SEDIROS_MAJOR@ (1)  @SEDIROS_DEBIAN@ (13)  @SEDIROS_CODENAME@ (trixie)
 #    @SEDIROS_ARCH@ (dpkg architecture of the build host = image arch)
 #  taken from SEDIROS_RELEASE / SEDIROS_SUITE (scripts/lib/release.sh).
 #
@@ -94,6 +94,7 @@ for src in "$PKG_SRC"/*/; do
     while IFS= read -r -d '' f; do
         sed -i -e "s|@SEDIROS_RELEASE@|${RELEASE}|g" \
                -e "s|@SEDIROS_MAJOR@|${RELEASE%%.*}|g" \
+               -e "s|@SEDIROS_DEBIAN@|${DEBIAN}|g" \
                -e "s|@SEDIROS_CODENAME@|${SUITE}|g" \
                -e "s|@SEDIROS_ARCH@|${DEB_ARCH}|g" "$f"
     done < <(grep -rlZ '@SEDIROS_[A-Z]*@' "$stage" || true)
@@ -172,7 +173,8 @@ for src in "$PKG_SRC"/*/; do
     sed -i '/^Installed-Size:/d' "$stage/DEBIAN/control"
     echo "Installed-Size: ${size_kib}" >> "$stage/DEBIAN/control"
 
-    out="$OUT_DIR/${name}_${version}_${arch}.deb"
+    # File names leave out the epoch, as Debian's do (sediros-base-files 1:1.0).
+    out="$OUT_DIR/${name}_${version#*:}_${arch}.deb"
     dpkg-deb --root-owner-group -Zxz --build "$stage" "$out" >/dev/null
     ok "$(basename "$out") ($(du -h "$out" | cut -f1))"
     built=$((built + 1))

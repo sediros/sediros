@@ -11,6 +11,9 @@
 #      (the update the VM must install unattended), and a fake
 #      openssh-server 1:99 (which the apt pin must refuse)
 #  <workdir>/www/sediros/evil/         same packages, signed by another key
+#  <workdir>/legacy-base-files.deb     sediros-base-files numbered like the
+#      13.1-rcN release candidates (not in the repository): the epoch of the
+#      current version must make apt replace it
 # =============================================================================
 set -Eeuo pipefail
 
@@ -29,6 +32,12 @@ ver="$(dpkg-deb -f "$hard" Version)"
 dpkg-deb -R "$hard" "$stage/hard"
 sed -i "s/^Version: .*/Version: ${ver}+apttest1/" "$stage/hard/DEBIAN/control"
 dpkg-deb --root-owner-group -Zxz --build "$stage/hard" "$stage/debs/sediros-hardening_${ver}+apttest1_all.deb" >/dev/null
+
+# --- a pre-1.0 system: sediros-base-files 13.1 (release candidates) ------------
+base="$(ls "$stage"/debs/sediros-base-files_*.deb)"
+dpkg-deb -R "$base" "$stage/legacy"
+sed -i "s/^Version: .*/Version: 13.1/" "$stage/legacy/DEBIAN/control"
+dpkg-deb --root-owner-group -Zxz --build "$stage/legacy" "$WORK/legacy-base-files.deb" >/dev/null
 
 # --- a package the pin must refuse --------------------------------------------
 mkdir -p "$stage/fake/DEBIAN"

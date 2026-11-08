@@ -58,7 +58,7 @@ pub enum Command {
 
 #[derive(Args, Debug)]
 pub struct PullArgs {
-    /// Release to download, e.g. 13.1 (default: the latest published release)
+    /// Release to download, e.g. 1.0 (default: the latest published release)
     #[arg(long)]
     pub release: Option<String>,
 
@@ -77,7 +77,7 @@ pub struct PullArgs {
 
 #[derive(Args, Debug)]
 pub struct BuildArgs {
-    /// SedirOS release, e.g. 13.1 (default: RELEASE in config/sediros.conf)
+    /// SedirOS release, e.g. 1.0 (default: RELEASE in config/sediros.conf)
     #[arg(long, env = "SEDIROS_RELEASE")]
     pub release: Option<String>,
 

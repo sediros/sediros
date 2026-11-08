@@ -1,15 +1,17 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034  # RELEASE and SUITE are outputs for the sourcing script
+# shellcheck disable=SC2034  # RELEASE, DEBIAN and SUITE are outputs for the sourcing script
 # =============================================================================
-#  SedirOS - release <-> Debian suite mapping (sourced by the build scripts).
+#  SedirOS - release <-> Debian mapping (sourced by the build scripts).
 #
-#  A SedirOS release is "<debian major>.<point>", e.g. 13.1 = Debian 13 (trixie),
-#  first SedirOS point release. The suite is derived from the major number;
+#  A SedirOS release is "<major>.<minor>", SedirOS's own numbering. Each
+#  major is based on one Debian release: SedirOS 1 = Debian 13 (trixie),
+#  SedirOS 2 = Debian 14 (forky). The suite is derived from the major number;
 #  SEDIROS_SUITE may only override it with sid/unstable (development builds).
+#  (Release candidates before 1.0 were numbered 13.1-rcN after Debian 13.)
 #
 #  Input : SEDIROS_RELEASE (default: RELEASE from config/sediros.conf)
 #          SEDIROS_SUITE   (optional)
-#  Output: RELEASE, SUITE
+#  Output: RELEASE, DEBIAN (Debian major), SUITE
 # =============================================================================
 
 sediros_default_release() {
@@ -18,25 +20,35 @@ sediros_default_release() {
     sed -n 's/^RELEASE[[:space:]]*?=[[:space:]]*//p' "$conf" 2>/dev/null | head -n1
 }
 
-sediros_suite_for_major() {
+# SedirOS major -> Debian major
+sediros_debian_for_major() {
     case "$1" in
-        12) echo bookworm ;;
+        1) echo 13 ;;
+        2) echo 14 ;;
+        *) return 1 ;;
+    esac
+}
+
+sediros_suite_for_debian() {
+    case "$1" in
         13) echo trixie ;;
         14) echo forky ;;
         *)  return 1 ;;
     esac
 }
 
-# Sets RELEASE and SUITE, or prints an error and returns 1.
+# Sets RELEASE, DEBIAN and SUITE, or prints an error and returns 1.
 sediros_resolve_release() {
     RELEASE="${SEDIROS_RELEASE:-$(sediros_default_release)}"
-    if [[ ! "$RELEASE" =~ ^[0-9]+\.[0-9]+$ ]]; then
-        echo "Invalid release '${RELEASE}' (expected <debian major>.<point>, e.g. 13.1)" >&2
+    if [[ ! "$RELEASE" =~ ^[1-9][0-9]*\.[0-9]+$ ]]; then
+        echo "Invalid release '${RELEASE}' (expected <major>.<minor>, e.g. 1.0)" >&2
         return 1
     fi
+    DEBIAN="$(sediros_debian_for_major "${RELEASE%%.*}")" \
+        || { echo "No Debian release known for SedirOS ${RELEASE}" >&2; return 1; }
 
     local mapped=""
-    mapped="$(sediros_suite_for_major "${RELEASE%%.*}")" || mapped=""
+    mapped="$(sediros_suite_for_debian "$DEBIAN")" || mapped=""
 
     case "${SEDIROS_SUITE:-}" in
         "")

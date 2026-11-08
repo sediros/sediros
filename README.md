@@ -5,9 +5,9 @@
   </picture>
 </h1>
 
-SedirOS is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sediros`, a small CLI that boots SedirOS VMs in seconds.
+SedirOS is a minimal, hardened Linux distribution. SedirOS 1 is based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sediros`, a small CLI that boots SedirOS VMs in seconds.
 
-> **Status:** SedirOS 13.1 is in testing. Release candidates are on the [download page](https://sediros.github.io/sediros/); the final 13.1 follows once they hold up.
+> **Status:** SedirOS 1.0 is in testing. Release candidates are on the [download page](https://sediros.github.io/sediros/); the final 1.0 follows once they hold up.
 
 ## What you get
 
@@ -34,8 +34,8 @@ The two are independent: an installed system does not need the CLI, and the CLI 
 
 | Your machine | ISO |
 |---|---|
-| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sediros-13.1-install-amd64.iso` |
-| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sediros-13.1-install-arm64.iso` |
+| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sediros-1.0-install-amd64.iso` |
+| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sediros-1.0-install-arm64.iso` |
 
 For the `sediros` CLI you download nothing by hand: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm).
 
@@ -46,8 +46,8 @@ Everything is published on the [GitHub releases page](https://github.com/sediros
 
 | File | What it is |
 |---|---|
-| `sediros-13.1-install-<arch>.iso` | live system and installer |
-| `sediros-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sediros pull` |
+| `sediros-1.0-install-<arch>.iso` | live system and installer |
+| `sediros-1.0-<arch>.qcow2` + kernel files | VM image, downloaded by `sediros pull` |
 | `sediros-<version>-<platform>.tar.gz` | the `sediros` CLI for macOS and Linux |
 | `sediros-*.deb` | SedirOS's packages (also in the [apt repository](https://sediros.github.io/sediros/apt/)) |
 | `SHA256SUMS` | checksums of all files |
@@ -62,7 +62,7 @@ shasum -a 256 -c SHA256SUMS --ignore-missing      # macOS
 To also check that a file was built by this repository's release workflow (needs the GitHub CLI):
 
 ```bash
-gh attestation verify sediros-13.1-install-amd64.iso --repo sediros/sediros
+gh attestation verify sediros-1.0-install-amd64.iso --repo sediros/sediros
 ```
 
 </details>
@@ -90,8 +90,8 @@ gh attestation verify sediros-13.1-install-amd64.iso --repo sediros/sediros
 
 Everything on the stick is erased.
 - Any system: a graphical tool such as [balenaEtcher](https://etcher.balena.io/).
-- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sediros-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
-- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sediros-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
+- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sediros-1.0-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
+- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sediros-1.0-install-amd64.iso of=/dev/rdiskN bs=4m`.
 - VPS: most panels have "mount ISO"; attach it and boot from it.
 
 ### The installer's questions
@@ -120,7 +120,7 @@ For a hypervisor such as UTM, VirtualBox, VMware, Proxmox or virt-manager (for t
 - **Remove the ISO after installing, while the VM is off**, otherwise the VM boots the live session again. A prompt of `sediros@sediros` with "live session" in the login banner means you are not in the installed system; the banner also warns when the disk already holds a SedirOS installation.
 
 UTM on a Mac, step by step:
-1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sediros-13.1-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
+1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sediros-1.0-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
 2. Start the VM and install (`sudo sediros-install install`), then `sudo poweroff`.
 3. With the VM off: right-click it → **Edit** → under **Drives** select the **USB Drive** that holds the ISO → **Clear** → **Save**. (Ejecting it from the toolbar while the VM runs lasts only until the next start.)
 4. Start the VM: it asks for the disk encryption passphrase on the screen.
@@ -215,7 +215,7 @@ Exit status: 0 no failures (warnings allowed), 1 failures, 2 the audit could not
 cat /etc/sediros/build-info
 ```
 
-shows the release, the build id (for example `13.1`, `20261105.1523-2d85457`) and when the system was installed. Please include both when reporting a problem.
+shows the release, the build id (for example `1.0`, `20261105.1523-2d85457`) and when the system was installed. Please include both when reporting a problem.
 
 ## Trying SedirOS in a VM
 
@@ -236,7 +236,7 @@ brew install sediros
 *Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
 
 ```bash
-VERSION=0.6.0 RELEASE=13.1-rc12 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
+VERSION=0.6.2 RELEASE=1.0-rc1 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
 URL=https://github.com/sediros/sediros/releases/download/v$RELEASE
 curl -LO $URL/sediros-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
@@ -259,7 +259,7 @@ Homebrew on Linux works too (`brew tap`, `brew trust` and `brew install sediros`
 **2. Download the VM image** (once per release, a few hundred MB):
 
 ```bash
-sediros pull                # latest release; or: sediros pull --release 13.1
+sediros pull                # latest release; or: sediros pull --release 1.0
 ```
 
 Every file is checked against the release's `SHA256SUMS`.
@@ -285,6 +285,18 @@ sediros purge dev           # delete the VM
 - `sediros forward` (or `launch --forward 8080:80`) makes a service in the VM reachable from this machine. The port is opened on `127.0.0.1` only, kept with the VM and restored at every launch, and the VM's firewall admits it from this machine only. `sediros forward dev` lists the forwards, `--remove 8080` removes one. Installed systems do not need this: they have their own address on your network; open the port with `sudo ufw allow 80/tcp`.
 - VMs have passwordless `sudo`; they are meant for testing and development, not for installing to disk.
 - Everything (images, VMs, the key) lives in `~/.local/share/sediros/`; set `SEDIROS_HOME` to use another place.
+
+## Versions and support
+
+| SedirOS | Based on | Status |
+|---|---|---|
+| 1.x | Debian 13 (trixie) | current |
+
+SedirOS numbers its own releases. The major number follows the Debian release underneath (SedirOS 1 = Debian 13, SedirOS 2 = Debian 14); the minor number counts SedirOS releases and is not Debian's point release. Release candidates before 1.0 were numbered 13.1-rcN.
+
+All releases with the same major number are one line. A newer release is a fresher starting point for new installs: installed systems get everything in it through `apt` and need no reinstall (only changes to the installer itself, such as the disk layout, apply to new installs only). Moving to the next major number is a Debian release upgrade and does not happen automatically.
+
+Installed systems receive Debian's security updates for as long as Debian supports the Debian release underneath: Debian's [security support](https://www.debian.org/security/faq), then [Debian LTS](https://wiki.debian.org/LTS). SedirOS's own packages come from the SedirOS apt repository. SedirOS is a volunteer project and makes no support promise beyond that.
 
 ## Security defaults and their side effects
 
