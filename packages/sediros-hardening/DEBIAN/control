@@ -1,12 +1,12 @@
 Package: sediros-hardening
-Version: 0.5.5
+Version: 0.5.6
 Architecture: all
 Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
 Section: admin
 Priority: optional
 Depends: apparmor, ufw, nftables, openssh-server, sudo, procps, kmod, passwd,
  init-system-helpers, unattended-upgrades, libpam-runtime, libpam-modules,
- libpam-pwquality, cracklib-runtime
+ libpam-pwquality, cracklib-runtime, whiptail
 Description: SedirOS security hardening
  Baseline hardening for SedirOS:
   - kernel sysctl hardening (info leaks, eBPF, ptrace, ASLR, network stack)
