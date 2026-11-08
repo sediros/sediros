@@ -63,6 +63,7 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
     }
 
     create_private_dir(&paths.downloads_dir())?;
+    remove_stale_staging(&paths.downloads_dir());
     let staging = paths
         .downloads_dir()
         .join(format!(".{release}.tmp-{}", std::process::id()));
@@ -70,7 +71,53 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
         fs::remove_dir_all(&staging)?;
     }
     create_private_dir(&staging)?;
+    // A failed download leaves nothing behind (images are hundreds of MB).
+    let result = fetch_into(&staging, &base, &stem, &tag, label.as_str());
+    if result.is_err() {
+        let _ = fs::remove_dir_all(&staging);
+    }
+    result?;
 
+    if dest.exists() {
+        fs::remove_dir_all(&dest)?;
+    }
+    fs::rename(&staging, &dest)?;
+
+    let build = fs::read_to_string(dest.join(format!("{stem}.build-info")))
+        .ok()
+        .and_then(|t| {
+            t.lines()
+                .find_map(|l| l.strip_prefix("BUILD_ID=").map(str::to_string))
+        })
+        .unwrap_or_else(|| "?".into());
+    println!("\nSedirOS {label} build {build} is ready. Start a VM: sediros launch <name>");
+    Ok(())
+}
+
+/// Staging directories of downloads that did not finish (older CLIs left
+/// them behind after a failed download) and are older than an hour, so a
+/// download running in parallel is not touched.
+fn remove_stale_staging(dir: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        let old = e
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.elapsed().ok())
+            .is_some_and(|age| age.as_secs() > 3600);
+        if name.starts_with('.') && name.contains(".tmp-") && old {
+            let _ = fs::remove_dir_all(e.path());
+        }
+    }
+}
+
+/// Downloads the release's image files into `staging` and checks them.
+fn fetch_into(staging: &Path, base: &str, stem: &str, tag: &str, label: &str) -> Result<()> {
+    let arch = stem.rsplit('-').next().unwrap_or("?");
     println!("Downloading SedirOS {label} ({arch}) from {base}");
     download(
         &format!("{base}/SHA256SUMS"),
@@ -87,7 +134,6 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
         download(&format!("{base}/{name}"), &file, *ext == "qcow2")?;
         let got = sha256(&file)?;
         if got != want {
-            let _ = fs::remove_dir_all(&staging);
             bail!("checksum mismatch for {name}: expected {want}, got {got}");
         }
         if *ext == "qcow2" {
@@ -100,20 +146,6 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
         println!("  ✓ {name}");
     }
     fs::write(staging.join(".complete"), format!("{tag}\n"))?;
-
-    if dest.exists() {
-        fs::remove_dir_all(&dest)?;
-    }
-    fs::rename(&staging, &dest)?;
-
-    let build = fs::read_to_string(dest.join(format!("{stem}.build-info")))
-        .ok()
-        .and_then(|t| {
-            t.lines()
-                .find_map(|l| l.strip_prefix("BUILD_ID=").map(str::to_string))
-        })
-        .unwrap_or_else(|| "?".into());
-    println!("\nSedirOS {label} build {build} is ready. Start a VM: sediros launch <name>");
     Ok(())
 }
 

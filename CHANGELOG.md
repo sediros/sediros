@@ -48,6 +48,7 @@ Named after the cedar (*sedir* in Turkish): a hard, long-lived wood that resists
 ### Tools (`sediros` CLI 0.6.3)
 - `sediros pull` without `--release`, before a final release exists, takes the most recently published pre-release; it took the first one GitHub lists, which is ordered by tag and put 13.1-rc13 before 1.0-rc1. Pulled 13.1 images count as older than 1.x.
 - `sediros pull` says so when GitHub's API limit for requests without a login (60 per hour per IP address) is reached, instead of reporting that no release exists.
+- A failed `sediros pull` removes its partial download (earlier versions left the files of every failed attempt in the download directory); leftovers older than an hour are removed by the next pull.
 - In a source checkout without a build of its own, `sediros launch` uses the image from `sediros pull` instead of failing.
 - `sediros build/launch/shell/list/stop/purge`: QEMU VMs with HVF (macOS) or KVM (Linux), copy-on-write disks, SSH on localhost only.
 - `launch --data-disk` attaches an empty second disk; `list` shows each VM's build id; `sediros` without a command shows the help with a getting-started section.
