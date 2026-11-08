@@ -7,7 +7,7 @@
 
 SedirOS is a minimal, hardened Linux distribution. SedirOS 1 is based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sediros`, a small CLI that boots SedirOS VMs in seconds.
 
-> **Status:** SedirOS 1.0 is in testing. Release candidates are on the [download page](https://sediros.github.io/sediros/); the final 1.0 follows once they hold up.
+> **Status:** SedirOS 1.0 is the first release. Get it from the [download page](https://sediros.github.io/sediros/).
 
 ## What you get
 
@@ -85,6 +85,16 @@ gh attestation verify sediros-1.0-install-amd64.iso --repo sediros/sediros
 - A 64-bit PC or server (amd64) or ARM machine (arm64) that boots with **UEFI**. Legacy BIOS/CSM boot is not supported; the installer stops if the ISO was started that way.
 - **Secure Boot** can stay on: SedirOS boots with Debian's signed boot chain (shim signed by Microsoft, Debian-signed GRUB and kernel), which machines with Microsoft's UEFI keys accept. With Secure Boot on, the kernel runs in lockdown mode, and kernel modules that are not part of Debian (DKMS) need a key enrolled with `mokutil`.
 - At least 8 GiB of disk space; the whole disk is used and erased. Installation has been tested with 2 GiB of RAM.
+
+Tested environments for 1.0:
+
+| Environment | Architecture | Tested |
+|---|---|---|
+| QEMU/KVM with UEFI and Secure Boot enforced | amd64 | every CI run and release: live ISO, install, installed system |
+| QEMU with HVF on an Apple Silicon Mac (UEFI) | arm64 | install, LUKS unlock on the console and over SSH, `sediros-audit` |
+| UTM on an Apple Silicon Mac, Virtualize | arm64 | install from the ISO, LUKS prompt on the screen, updates through apt |
+| UTM on an Apple Silicon Mac, Emulate | amd64 | install from the ISO, LUKS prompt on the screen |
+| Physical PCs and servers | amd64, arm64 | not yet: reports are welcome |
 
 ### Writing the USB stick
 
@@ -236,7 +246,7 @@ brew install sediros
 *Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
 
 ```bash
-VERSION=0.6.2 RELEASE=1.0-rc1 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
+VERSION=0.6.3 RELEASE=1.0 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
 URL=https://github.com/sediros/sediros/releases/download/v$RELEASE
 curl -LO $URL/sediros-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing

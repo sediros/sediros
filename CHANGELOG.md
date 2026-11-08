@@ -2,7 +2,7 @@
 
 Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 = Debian 13) and is tagged `v<release>` in git; see "Versions and support" in the README. Package and tool versions are listed when they change.
 
-## [1.0] - unreleased
+## [1.0] - 2026-11-08
 
 First release, based on Debian 13 (trixie).
 
