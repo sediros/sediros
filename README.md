@@ -1,23 +1,23 @@
 # SedirOS
 
-SedirOS is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sedir`, a small CLI that boots SedirOS VMs in seconds.
+SedirOS is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sediros`, a small CLI that boots SedirOS VMs in seconds.
 
 > **Status:** SedirOS 13.1 is in testing. Release candidates are on the [download page](https://sediros.github.io/sediros/); the final 13.1 follows once they hold up.
 
 ## What you get
 
 - **Hardened by default:** kernel and network hardening (sysctl), AppArmor, a firewall that denies incoming traffic, key-only SSH with modern cryptography, no unnecessary SUID programs, automatic Debian security updates.
-- **Checkable:** `sudo sedir-audit` tells you whether that hardening is still in place, and which file changed it if not.
+- **Checkable:** `sudo sediros-audit` tells you whether that hardening is still in place, and which file changed it if not.
 - **Encrypted installs:** the installer sets up full disk encryption (LUKS2) and can let you unlock the disk over SSH at boot, for servers you cannot reach physically.
 - **Plain Debian underneath:** SedirOS adds a few packages to Debian; it does not replace it. Your Debian knowledge, documentation and packages apply.
-- **Fast throwaway VMs:** `sedir launch` starts a SedirOS VM on macOS (Apple Silicon) or Linux in a few seconds.
+- **Fast throwaway VMs:** `sediros launch` starts a SedirOS VM on macOS (Apple Silicon) or Linux in a few seconds.
 
 ## Two ways to use SedirOS
 
 | I want to... | Use | Start here |
 |---|---|---|
 | run SedirOS as the operating system of a server, PC or cloud VM | the installer ISO | [Installing to disk](#installing-to-disk) |
-| try SedirOS, or get fast throwaway Linux VMs on my Mac or Linux machine | the `sedir` CLI | [Trying SedirOS in a VM](#trying-sediros-in-a-vm) |
+| try SedirOS, or get fast throwaway Linux VMs on my Mac or Linux machine | the `sediros` CLI | [Trying SedirOS in a VM](#trying-sediros-in-a-vm) |
 
 The two are independent: an installed system does not need the CLI, and the CLI never installs anything to disk.
 
@@ -27,10 +27,10 @@ The two are independent: an installed system does not need the CLI, and the CLI 
 
 | Your machine | ISO |
 |---|---|
-| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sedir-13.1-install-amd64.iso` |
-| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sedir-13.1-install-arm64.iso` |
+| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sediros-13.1-install-amd64.iso` |
+| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sediros-13.1-install-arm64.iso` |
 
-For the `sedir` CLI you download nothing by hand: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm).
+For the `sediros` CLI you download nothing by hand: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm).
 
 <details>
 <summary>All release files, and verifying them</summary>
@@ -39,10 +39,10 @@ Everything is published on the [GitHub releases page](https://github.com/sediros
 
 | File | What it is |
 |---|---|
-| `sedir-13.1-install-<arch>.iso` | live system and installer |
-| `sedir-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sedir pull` |
-| `sedir-<version>-<platform>.tar.gz` | the `sedir` CLI for macOS and Linux |
-| `sedir-*.deb` | SedirOS's packages (also in the [apt repository](https://sediros.github.io/sediros/apt/)) |
+| `sediros-13.1-install-<arch>.iso` | live system and installer |
+| `sediros-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sediros pull` |
+| `sediros-<version>-<platform>.tar.gz` | the `sediros` CLI for macOS and Linux |
+| `sediros-*.deb` | SedirOS's packages (also in the [apt repository](https://sediros.github.io/sediros/apt/)) |
 | `SHA256SUMS` | checksums of all files |
 
 **Verify what you downloaded** before using it:
@@ -55,7 +55,7 @@ shasum -a 256 -c SHA256SUMS --ignore-missing      # macOS
 To also check that a file was built by this repository's release workflow (needs the GitHub CLI):
 
 ```bash
-gh attestation verify sedir-13.1-install-amd64.iso --repo sediros/sediros
+gh attestation verify sediros-13.1-install-amd64.iso --repo sediros/sediros
 ```
 
 </details>
@@ -68,10 +68,10 @@ gh attestation verify sedir-13.1-install-amd64.iso --repo sediros/sediros
 2. **Boot it:**
    - PC or server: write it to a USB stick ([how](#writing-the-usb-stick)) and boot from the stick in **UEFI** mode.
    - VM: attach it as a CD/DVD, with **UEFI** firmware and the guest type **Linux** ([details](#installing-in-a-virtual-machine)).
-3. **Install:** in the live session that opens, run `sudo sedir-install install` and answer the questions ([what it asks](#the-installers-questions)).
+3. **Install:** in the live session that opens, run `sudo sediros-install install` and answer the questions ([what it asks](#the-installers-questions)).
 4. **Power off and remove the ISO** or the USB stick. In a VM, clear the CD/DVD drive *while the VM is off*.
 5. **Boot from the disk:** enter the disk encryption passphrase, then log in with your user and password.
-6. **SSH:** if you gave an SSH key, log in with `ssh <user>@<address>`. If not, run `sudo sedir-ssh-enroll` on the console and follow it ([details](#logging-in)).
+6. **SSH:** if you gave an SSH key, log in with `ssh <user>@<address>`. If not, run `sudo sediros-ssh-enroll` on the console and follow it ([details](#logging-in)).
 
 ### Requirements
 
@@ -83,13 +83,13 @@ gh attestation verify sedir-13.1-install-amd64.iso --repo sediros/sediros
 
 Everything on the stick is erased.
 - Any system: a graphical tool such as [balenaEtcher](https://etcher.balena.io/).
-- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sedir-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
-- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sedir-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
+- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sediros-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
+- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sediros-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
 - VPS: most panels have "mount ISO"; attach it and boot from it.
 
 ### The installer's questions
 
-Disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written; you confirm by typing the disk name, and the installation takes under a minute. For automated installs every question has a flag: `sedir-install install --help`.
+Disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written; you confirm by typing the disk name, and the installation takes under a minute. For automated installs every question has a flag: `sediros-install install --help`.
 
 What the installer creates:
 
@@ -106,13 +106,13 @@ Good to know:
 
 ### Installing in a virtual machine
 
-For a hypervisor such as UTM, VirtualBox, VMware, Proxmox or virt-manager (for throwaway VMs, the `sedir` CLI is quicker: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm)):
+For a hypervisor such as UTM, VirtualBox, VMware, Proxmox or virt-manager (for throwaway VMs, the `sediros` CLI is quicker: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm)):
 - Choose **UEFI** firmware and **Linux / Debian 64-bit** as the guest type, not "Other".
-- **Remove the ISO after installing, while the VM is off**, otherwise the VM boots the live session again. A prompt of `sedir@sedir` with "live session" in the login banner means you are not in the installed system; the banner also warns when the disk already holds a SedirOS installation.
+- **Remove the ISO after installing, while the VM is off**, otherwise the VM boots the live session again. A prompt of `sediros@sediros` with "live session" in the login banner means you are not in the installed system; the banner also warns when the disk already holds a SedirOS installation.
 
 UTM on a Mac, step by step:
-1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sedir-13.1-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
-2. Start the VM and install (`sudo sedir-install install`), then `sudo poweroff`.
+1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sediros-13.1-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
+2. Start the VM and install (`sudo sediros-install install`), then `sudo poweroff`.
 3. With the VM off: right-click it → **Edit** → under **Drives** select the **USB Drive** that holds the ISO → **Clear** → **Save**. (Ejecting it from the toolbar while the VM runs lasts only until the next start.)
 4. Start the VM: it asks for the disk encryption passphrase on the screen.
 
@@ -124,7 +124,7 @@ Known issues:
 
 ### Logging in
 
-SSH accepts keys only, for members of the `sudo` group (the admin user) and of `sedir-ssh`. Passwords are not accepted over SSH (except in the short window `sedir-ssh-enroll` opens, below); the admin password is for `sudo` and the local console. After 5 failed password attempts in 15 minutes the account is locked for 15 minutes.
+SSH accepts keys only, for members of the `sudo` group (the admin user) and of `sediros-ssh`. Passwords are not accepted over SSH (except in the short window `sediros-ssh-enroll` opens, below); the admin password is for `sudo` and the local console. After 5 failed password attempts in 15 minutes the account is locked for 15 minutes.
 
 ```bash
 ssh <admin user>@<address of the machine>     # port 22; find the address with: ip -4 -br addr
@@ -133,7 +133,7 @@ ssh <admin user>@<address of the machine>     # port 22; find the address with: 
 No SSH key given to the installer? Logging in on the console reminds you; run
 
 ```bash
-sudo sedir-ssh-enroll
+sudo sediros-ssh-enroll
 ```
 
 It allows a password login over SSH for your user only, from local networks only, and prints the command to run on your computer:
@@ -163,32 +163,32 @@ Port 2222 exists only during that wait. Once the system is running, the connecti
 ### Protecting the boot menu
 
 ```bash
-sudo sedir-grub-password set       # set a password (at least 12 characters)
-sudo sedir-grub-password status
-sudo sedir-grub-password disable
+sudo sediros-grub-password set       # set a password (at least 12 characters)
+sudo sediros-grub-password status
+sudo sediros-grub-password disable
 ```
 
 With a GRUB password the default entry still boots unattended, but editing boot entries (for example `init=/bin/bash`), the GRUB shell, recovery entries and firmware settings require the password. It does not stop booting from other media: with a remote console (IPMI, VPS panel) also use a firmware password and keep the disk encrypted.
 
 ### Updates
 
-- Debian security updates and updates of SedirOS's own packages (`sedir-*`) are installed automatically every day. The system never reboots on its own; after a kernel update a "System restart required" notice appears at login. To allow automatic reboots on a server, put your settings in a file of your own, so package updates never have to ask about your changes:
+- Debian security updates and updates of SedirOS's own packages (`sediros-*`) are installed automatically every day. The system never reboots on its own; after a kernel update a "System restart required" notice appears at login. To allow automatic reboots on a server, put your settings in a file of your own, so package updates never have to ask about your changes:
   ```bash
   echo 'Unattended-Upgrade::Automatic-Reboot "true"; Unattended-Upgrade::Automatic-Reboot-Time "04:00";' \
     | sudo tee /etc/apt/apt.conf.d/60local-reboot
   ```
 - Other updates: `sudo apt update && sudo apt upgrade`, as on Debian.
-- SedirOS's packages come from the SedirOS apt repository (`https://sediros.github.io/sediros/apt`), set up by the `sedir-archive-keyring` package:
+- SedirOS's packages come from the SedirOS apt repository (`https://sediros.github.io/sediros/apt`), set up by the `sediros-archive-keyring` package:
   - The source is bound to SedirOS's signing key (`Signed-By`): that key cannot sign anything else, and no other key can sign this repository.
-  - An apt pin (`/etc/apt/preferences.d/sedir`) only accepts `sedir-*` packages from it. Even with a stolen signing key, the repository cannot replace Debian packages such as `openssh-server`.
+  - An apt pin (`/etc/apt/preferences.d/sediros`) only accepts `sediros-*` packages from it. Even with a stolen signing key, the repository cannot replace Debian packages such as `openssh-server`.
   - Signing key fingerprint: `2E46 F4E2 4105 D45B A8A2  7376 0E93 53DF 8969 0935`
 
 ### Is the hardening still in place?
 
 ```bash
-sudo sedir-audit            # all checks
-sudo sedir-audit --quiet    # only warnings and failures
-sudo sedir-audit --json     # for scripts and monitoring
+sudo sediros-audit            # all checks
+sudo sediros-audit --quiet    # only warnings and failures
+sudo sediros-audit --json     # for scripts and monitoring
 ```
 
 It compares the running system with the hardening of the installed SedirOS packages: kernel settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM, kernel modules, automatic updates, the SedirOS apt repository, boot parameters, disk encryption and Secure Boot. Each line is `✓` (in place), `!` (a warning, for example a setting an admin changed on purpose, or a reboot that is due), `✗` (hardening missing or broken) or `·` (information). Where it can, it names the file that changed a setting:
@@ -203,14 +203,14 @@ Exit status: 0 no failures (warnings allowed), 1 failures, 2 the audit could not
 ### Which build am I running?
 
 ```bash
-cat /etc/sedir/build-info
+cat /etc/sediros/build-info
 ```
 
 shows the release, the build id (for example `13.1`, `20261105.1523-2d85457`) and when the system was installed. Please include both when reporting a problem.
 
 ## Trying SedirOS in a VM
 
-The `sedir` CLI starts SedirOS VMs with QEMU on macOS and Linux (amd64 or arm64). VMs use your machine's architecture. It is tested on Apple Silicon Macs and amd64/arm64 Linux; Intel Macs are untested.
+The `sediros` CLI starts SedirOS VMs with QEMU on macOS and Linux (amd64 or arm64). VMs use your machine's architecture. It is tested on Apple Silicon Macs and amd64/arm64 Linux; Intel Macs are untested.
 
 **1. Install the CLI and QEMU.**
 
@@ -219,7 +219,7 @@ The `sedir` CLI starts SedirOS VMs with QEMU on macOS and Linux (amd64 or arm64)
 ```bash
 brew tap sediros/sediros https://github.com/sediros/sediros
 brew trust sediros/sediros      # Homebrew 7+: allow formulae from this tap
-brew install sedir
+brew install sediros
 ```
 
 *Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
@@ -227,10 +227,10 @@ brew install sedir
 ```bash
 VERSION=0.6.0 RELEASE=13.1-rc12 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
 URL=https://github.com/sediros/sediros/releases/download/v$RELEASE
-curl -LO $URL/sedir-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
+curl -LO $URL/sediros-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
-tar -xzf sedir-$VERSION-$TARGET.tar.gz
-sudo install -m 0755 sedir-$VERSION-$TARGET/sedir /usr/local/bin/sedir
+tar -xzf sediros-$VERSION-$TARGET.tar.gz
+sudo install -m 0755 sediros-$VERSION-$TARGET/sediros /usr/local/bin/sediros
 ```
 
 Then install QEMU and allow your user to use KVM (without it VMs run very slowly):
@@ -241,14 +241,14 @@ sudo dnf install qemu-kvm qemu-img openssh-clients curl            # Fedora
 sudo usermod -aG kvm $USER                                         # then log out and in again
 ```
 
-Homebrew on Linux works too (`brew tap`, `brew trust` and `brew install sedir` as above).
+Homebrew on Linux works too (`brew tap`, `brew trust` and `brew install sediros` as above).
 
-*macOS without Homebrew:* download `sedir-<version>-aarch64-apple-darwin.tar.gz` (Apple Silicon) or `...-x86_64-apple-darwin.tar.gz` (Intel) the same way, verify it with `shasum -a 256 -c SHA256SUMS --ignore-missing`, put `sedir` on your `PATH`, and install QEMU (`brew install qemu` or MacPorts). A binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sedir` allows it.
+*macOS without Homebrew:* download `sediros-<version>-aarch64-apple-darwin.tar.gz` (Apple Silicon) or `...-x86_64-apple-darwin.tar.gz` (Intel) the same way, verify it with `shasum -a 256 -c SHA256SUMS --ignore-missing`, put `sediros` on your `PATH`, and install QEMU (`brew install qemu` or MacPorts). A binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sediros` allows it.
 
 **2. Download the VM image** (once per release, a few hundred MB):
 
 ```bash
-sedir pull                # latest release; or: sedir pull --release 13.1
+sediros pull                # latest release; or: sediros pull --release 13.1
 ```
 
 Every file is checked against the release's `SHA256SUMS`.
@@ -256,24 +256,24 @@ Every file is checked against the release's `SHA256SUMS`.
 **3. Use VMs:**
 
 ```bash
-sedir launch dev          # start a VM (created on first use), ready in a few seconds
-sedir shell dev           # SSH into it
-sedir shell dev -- uname -a
-sedir transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
-sedir transfer dev:/var/log/syslog .  # and back; -r for directories
-sedir forward dev 8080:80             # http://localhost:8080 -> port 80 in the VM
-sedir snapshot dev before-nginx       # VM stopped: save its state (list: sedir snapshot dev)
-sedir restore dev before-nginx        # back to it; later changes are lost
-sedir list                # VMs, their state and build id
-sedir stop dev
-sedir purge dev           # delete the VM
+sediros launch dev          # start a VM (created on first use), ready in a few seconds
+sediros shell dev           # SSH into it
+sediros shell dev -- uname -a
+sediros transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
+sediros transfer dev:/var/log/syslog .  # and back; -r for directories
+sediros forward dev 8080:80             # http://localhost:8080 -> port 80 in the VM
+sediros snapshot dev before-nginx       # VM stopped: save its state (list: sediros snapshot dev)
+sediros restore dev before-nginx        # back to it; later changes are lost
+sediros list                # VMs, their state and build id
+sediros stop dev
+sediros purge dev           # delete the VM
 ```
 
 - Each VM runs on its own copy-on-write disk on top of the read-only image, so `purge` and a new `launch` give you a fresh system.
-- The VM's SSH port is reachable on `127.0.0.1` only. Images contain no SSH key: the CLI creates its own key pair in `~/.local/share/sedir/` and gives the public key to each VM when it starts.
-- `sedir forward` (or `launch --forward 8080:80`) makes a service in the VM reachable from this machine. The port is opened on `127.0.0.1` only, kept with the VM and restored at every launch, and the VM's firewall admits it from this machine only. `sedir forward dev` lists the forwards, `--remove 8080` removes one. Installed systems do not need this: they have their own address on your network; open the port with `sudo ufw allow 80/tcp`.
+- The VM's SSH port is reachable on `127.0.0.1` only. Images contain no SSH key: the CLI creates its own key pair in `~/.local/share/sediros/` and gives the public key to each VM when it starts.
+- `sediros forward` (or `launch --forward 8080:80`) makes a service in the VM reachable from this machine. The port is opened on `127.0.0.1` only, kept with the VM and restored at every launch, and the VM's firewall admits it from this machine only. `sediros forward dev` lists the forwards, `--remove 8080` removes one. Installed systems do not need this: they have their own address on your network; open the port with `sudo ufw allow 80/tcp`.
 - VMs have passwordless `sudo`; they are meant for testing and development, not for installing to disk.
-- Everything (images, VMs, the key) lives in `~/.local/share/sedir/`; set `SEDIR_HOME` to use another place.
+- Everything (images, VMs, the key) lives in `~/.local/share/sediros/`; set `SEDIROS_HOME` to use another place.
 
 ## Security defaults and their side effects
 
@@ -284,9 +284,9 @@ sedir purge dev           # delete the VM
 | Firewall denies incoming traffic | Only SSH (22/tcp) is open; open other ports with `ufw` (see below) |
 | No SSH over vsock or local sockets | systemd's `systemd-ssh-generator` is masked, so SSH is reachable only through port 22, which the firewall controls; `ssh` to a VM through the hypervisor's vsock does not work |
 | SSH rate limit | More than 6 SSH connections from one address within 30 seconds are refused for a while ("Connection refused"); wait half a minute |
-| SUID bits removed outside an allowlist | Some rarely used tools that need SUID stop working (see `/etc/sedir/suid-allowlist`) |
+| SUID bits removed outside an allowlist | Some rarely used tools that need SUID stop working (see `/etc/sediros/suid-allowlist`) |
 | unattended-upgrades | About 30-40 MB of disk and 20 MB of RAM for Python |
-| No documentation installed | `man` pages, info pages and translations are left out to keep the system small, so `man` does not work and `apt install` prints harmless `update-alternatives: warning: skip creation of /usr/share/man/...` lines. To get man pages: delete the `path-exclude=/usr/share/man/*` line in `/etc/dpkg/dpkg.cfg.d/01-sedir-nodoc`, then `sudo apt install man-db` (packages installed before that need `sudo apt install --reinstall <package>` for their pages) |
+| No documentation installed | `man` pages, info pages and translations are left out to keep the system small, so `man` does not work and `apt install` prints harmless `update-alternatives: warning: skip creation of /usr/share/man/...` lines. To get man pages: delete the `path-exclude=/usr/share/man/*` line in `/etc/dpkg/dpkg.cfg.d/01-sediros-nodoc`, then `sudo apt install man-db` (packages installed before that need `sudo apt install --reinstall <package>` for their pages) |
 
 Files under `/etc` that you change are kept: package updates never overwrite them.
 
@@ -302,7 +302,7 @@ sudo ufw status numbered                                       # list the rules
 sudo ufw delete <number>                                       # remove one
 ```
 
-If `curl http://<address>` works from your computer but the browser does not open the page, the browser has probably switched to `https://`, which has no listener: type the address with `http://`, or use a private window. VMs started with the `sedir` CLI use [`sedir forward`](#trying-sediros-in-a-vm) instead, which also opens the port in the VM's firewall.
+If `curl http://<address>` works from your computer but the browser does not open the page, the browser has probably switched to `https://`, which has no listener: type the address with `http://`, or use a private window. VMs started with the `sediros` CLI use [`sediros forward`](#trying-sediros-in-a-vm) instead, which also opens the port in the VM's firewall.
 
 ## More
 
@@ -311,4 +311,4 @@ If `curl http://<address>` works from your computer but the browser does not ope
 
 ## License
 
-SedirOS's own code (build scripts, packages, `sedir-cli`, `sedir-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The SedirOS Authors (see [NOTICE](NOTICE)). The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a SedirOS system.
+SedirOS's own code (build scripts, packages, `sediros-cli`, `sediros-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The SedirOS Authors (see [NOTICE](NOTICE)). The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a SedirOS system.

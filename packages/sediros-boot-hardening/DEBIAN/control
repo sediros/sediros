@@ -1,0 +1,19 @@
+Package: sediros-boot-hardening
+Version: 0.2.1
+Architecture: all
+Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
+Section: admin
+Priority: optional
+Suggests: grub2-common
+Description: SedirOS boot loader hardening
+ GRUB configuration for installed SedirOS systems:
+  - kernel hardening parameters (slab_nomerge, init_on_alloc, ...) on every
+    Linux boot entry
+  - optional GRUB password (sediros-grub-password): editing boot entries,
+    the GRUB shell and recovery entries require it, while the default
+    entry still boots unattended
+  - virtio-gpu driver in the initramfs, so the LUKS prompt is visible on
+    the screen of VMs with a virtio-gpu display (UTM, QEMU)
+ .
+ The GRUB parts do nothing on systems without GRUB (VMs booted directly
+ by QEMU).

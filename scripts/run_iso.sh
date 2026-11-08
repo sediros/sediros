@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  SedirOS - boot a live ISO in QEMU with a serial console (Ctrl-A X to quit).
-#  Usage: scripts/run_iso.sh build/sedir-<release>-install-<arch>.iso
-#         scripts/run_iso.sh --no-iso build/sedir-<release>-install-<arch>.iso
-#  The live session logs in automatically on the serial console (sedir-live).
+#  Usage: scripts/run_iso.sh build/sediros-<release>-install-<arch>.iso
+#         scripts/run_iso.sh --no-iso build/sediros-<release>-install-<arch>.iso
+#  The live session logs in automatically on the serial console (sediros-live).
 #  The ISO has no SSH key; add one in the live session if you need SSH (port 2223).
 #
-#  Installer test: SEDIR_ISO_DISK=build/test-disk.qcow2 attaches that disk
+#  Installer test: SEDIROS_ISO_DISK=build/test-disk.qcow2 attaches that disk
 #  (created empty, 16G, if missing) as /dev/vda. After installing, boot it
 #  with --no-iso (the ISO argument then only selects the architecture).
 # =============================================================================
@@ -16,8 +16,8 @@ NO_ISO=0
 if [[ "${1:-}" == --no-iso ]]; then NO_ISO=1; shift; fi
 ISO="${1:?usage: $0 [--no-iso] <iso>}"
 [[ -r "$ISO" ]] || { echo "ISO not found: $ISO" >&2; exit 1; }
-MEM="${SEDIR_ISO_MEM:-2048}"
-PORT="${SEDIR_ISO_SSH_PORT:-2223}"
+MEM="${SEDIROS_ISO_MEM:-2048}"
+PORT="${SEDIROS_ISO_SSH_PORT:-2223}"
 
 arch="$(basename "$ISO" .iso)"; arch="${arch##*-}"
 case "$arch" in
@@ -56,18 +56,18 @@ if ((NO_ISO == 0)); then
             -drive "if=none,id=cd,media=cdrom,readonly=on,file=$ISO"
             -device "scsi-cd,drive=cd,bootindex=0")
 fi
-if [[ -n "${SEDIR_ISO_DISK:-}" ]]; then
-    if [[ ! -e "$SEDIR_ISO_DISK" ]]; then
-        "$(dirname "$(command -v "$qemu")")/qemu-img" create -q -f qcow2 "$SEDIR_ISO_DISK" 16G
-        echo "Created empty disk $SEDIR_ISO_DISK (16G)"
+if [[ -n "${SEDIROS_ISO_DISK:-}" ]]; then
+    if [[ ! -e "$SEDIROS_ISO_DISK" ]]; then
+        "$(dirname "$(command -v "$qemu")")/qemu-img" create -q -f qcow2 "$SEDIROS_ISO_DISK" 16G
+        echo "Created empty disk $SEDIROS_ISO_DISK (16G)"
     fi
-    media+=(-drive "if=none,id=hd,format=qcow2,file=$SEDIR_ISO_DISK"
+    media+=(-drive "if=none,id=hd,format=qcow2,file=$SEDIROS_ISO_DISK"
             -device "virtio-blk-pci,drive=hd,bootindex=1")
 elif ((NO_ISO)); then
-    echo "--no-iso needs SEDIR_ISO_DISK" >&2; exit 1
+    echo "--no-iso needs SEDIROS_ISO_DISK" >&2; exit 1
 fi
 
-what="$ISO"; ((NO_ISO)) && what="$SEDIR_ISO_DISK"
+what="$ISO"; ((NO_ISO)) && what="$SEDIROS_ISO_DISK"
 echo "Booting $what ($arch, $accel, ${MEM}M) - SSH on 127.0.0.1:$PORT - quit: Ctrl-A X"
 exec "$qemu" \
     -machine "$machine" -accel "$accel" -cpu "$cpu" -smp 2 -m "$MEM" \

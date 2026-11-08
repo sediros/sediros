@@ -1,0 +1,22 @@
+# SedirOS sudo policy (sediros-hardening). Who may use sudo is decided by the
+# image profile: 'vm' adds a NOPASSWD rule in 90-sediros-vm, 'install' relies
+# on the stock "%sudo ALL=(ALL:ALL) ALL" rule (password required).
+
+# Run commands in a new pty: a backgrounded process cannot keep the
+# terminal after sudo exits (TIOCSTI-style injection).
+Defaults use_pty
+
+# Command audit trail (no I/O logging) in addition to the journal.
+Defaults logfile="/var/log/sudo.log"
+
+# Ask for the password again after 5 minutes, per terminal.
+Defaults timestamp_timeout=5
+Defaults timestamp_type=tty
+
+# Wrong passwords per sudo invocation; pam_faillock locks the account
+# after 5 failures in 15 minutes across invocations.
+Defaults passwd_tries=3
+
+# Minimal, predictable environment for privileged commands.
+Defaults env_reset
+Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

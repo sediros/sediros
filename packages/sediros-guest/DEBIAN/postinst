@@ -1,0 +1,11 @@
+#!/bin/sh
+# sediros-guest postinst
+set -e
+case "$1" in
+    configure)
+        for unit in sediros-guest-ssh-keys.service sediros-guest-ufw.service; do
+            deb-systemd-helper enable "$unit" >/dev/null
+        done
+        ;;
+esac
+exit 0

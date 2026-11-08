@@ -1,0 +1,12 @@
+#!/bin/sh
+# sediros-guest postrm
+set -e
+case "$1" in
+    purge)
+        for unit in sediros-guest-ssh-keys.service sediros-guest-ufw.service; do
+            deb-systemd-helper purge "$unit" >/dev/null || true
+        done
+        rm -f /var/lib/sediros/guest-ufw-initialized
+        ;;
+esac
+exit 0

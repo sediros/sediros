@@ -9,8 +9,8 @@
 #    --out     output directory, created empty: becomes the repository root
 #    --key     armored OpenPGP secret key that signs the repository
 #    --pubkey  key the signature must verify with
-#              (default: the key in sedir-archive-keyring)
-#    --suite   Debian codename (default: from config/sedir.conf)
+#              (default: the key in sediros-archive-keyring)
+#    --suite   Debian codename (default: from config/sediros.conf)
 #
 #  Host  : Linux with dpkg-dev, apt-utils and gnupg, or macOS with Docker
 #          (re-runs itself in a container).
@@ -19,7 +19,7 @@
 #    pool/main/s/<package>/<file>.deb
 #    dists/<suite>/main/binary-<arch>/Packages{,.gz,.xz}
 #    dists/<suite>/{Release,InRelease,Release.gpg}
-#    sedir-archive-keyring.pgp     public key, for setting up older systems
+#    sediros-archive-keyring.pgp     public key, for setting up older systems
 #
 #  The repository is rebuilt from scratch each time (no state). It is signed
 #  with the key from --key and then checked with gpgv against --pubkey, so a
@@ -31,8 +31,8 @@ umask 022
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DOCKER_IMAGE="${SEDIR_DOCKER_IMAGE:-debian:trixie}"
-KEYRING_PKG="packages/sedir-archive-keyring/usr/share/keyrings/sedir-archive-keyring.pgp"
+DOCKER_IMAGE="${SEDIROS_DOCKER_IMAGE:-debian:trixie}"
+KEYRING_PKG="packages/sediros-archive-keyring/usr/share/keyrings/sediros-archive-keyring.pgp"
 
 log() { printf '==> %s\n' "$*"; }
 ok()  { printf '  ✓ %s\n' "$*"; }
@@ -70,7 +70,7 @@ PUBKEY="$(abspath "$PUBKEY")"
 if [[ -z "$SUITE" ]]; then
     # shellcheck source=scripts/lib/release.sh
     source "${SCRIPT_DIR}/lib/release.sh"
-    sedir_resolve_release || die "Release configuration error"
+    sediros_resolve_release || die "Release configuration error"
 fi
 
 missing=()
@@ -78,21 +78,21 @@ for t in dpkg-scanpackages apt-ftparchive gpg gpgv xz gzip; do
     command -v "$t" >/dev/null 2>&1 || missing+=("$t")
 done
 if ((${#missing[@]})); then
-    [[ "$(uname -s)" != Linux || -n "${SEDIR_IN_DOCKER:-}" ]] \
+    [[ "$(uname -s)" != Linux || -n "${SEDIROS_IN_DOCKER:-}" ]] \
         || die "Missing: ${missing[*]} (apt install dpkg-dev apt-utils gnupg gpgv xz-utils)"
-    [[ -z "${SEDIR_IN_DOCKER:-}" ]] || die "Missing in container: ${missing[*]}"
+    [[ -z "${SEDIROS_IN_DOCKER:-}" ]] || die "Missing in container: ${missing[*]}"
     command -v docker >/dev/null 2>&1 || die "Missing: ${missing[*]}, and no docker to run in"
     log "Re-running inside ${DOCKER_IMAGE} (missing: ${missing[*]})"
     mkdir -p "$OUT"
     debs="$(abspath "$DEBS")" out="$(abspath "$OUT")" key="$(abspath "$KEY")" pub="$(abspath "$PUBKEY")"
     exec docker run --rm --platform "$(docker_platform)" \
-        -v "${PROJECT_ROOT}:/sedir:ro" -v "$debs:/in/debs:ro" -v "$out:/out" \
+        -v "${PROJECT_ROOT}:/sediros:ro" -v "$debs:/in/debs:ro" -v "$out:/out" \
         -v "$key:/in/key.asc:ro" -v "$pub:/in/pub.pgp:ro" \
-        -e SEDIR_IN_DOCKER=1 "$DOCKER_IMAGE" bash -c '
+        -e SEDIROS_IN_DOCKER=1 "$DOCKER_IMAGE" bash -c '
             set -e
             apt-get update -qq >/dev/null
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends dpkg-dev apt-utils gnupg gpgv xz-utils >/dev/null
-            /sedir/scripts/build_apt_repo.sh --debs /in/debs --out /out --key /in/key.asc \
+            /sediros/scripts/build_apt_repo.sh --debs /in/debs --out /out --key /in/key.asc \
                 --pubkey /in/pub.pgp --suite "$1" --arch "$2"
             chown -R "$3" /out' _ "$SUITE" "$ARCHS" "$(id -u):$(id -g)"
 fi
@@ -112,9 +112,9 @@ for deb in "${debs[@]}"; do
     pkg="$(dpkg-deb -f "$deb" Package)"
     ver="$(dpkg-deb -f "$deb" Version)"
     arch="$(dpkg-deb -f "$deb" Architecture)"
-    # SEDIR_APT_ALLOW_FOREIGN: tests only (tests/apt_fixture.sh checks the pin).
-    [[ "$pkg" == sedir-* || -n "${SEDIR_APT_ALLOW_FOREIGN:-}" ]] \
-        || die "$(basename "$deb"): only sedir-* packages belong here"
+    # SEDIROS_APT_ALLOW_FOREIGN: tests only (tests/apt_fixture.sh checks the pin).
+    [[ "$pkg" == sediros-* || -n "${SEDIROS_APT_ALLOW_FOREIGN:-}" ]] \
+        || die "$(basename "$deb"): only sediros-* packages belong here"
     id="${pkg}_${ver}_${arch}"
     [[ -z "${seen[$id]:-}" ]] || die "$id provided twice ($(basename "$deb"), ${seen[$id]})"
     seen[$id]="$(basename "$deb")"
@@ -166,11 +166,11 @@ gpgv --quiet --keyring "$PUBKEY" "$dist/Release.gpg" "$dist/Release" 2>/dev/null
     || die "Release.gpg does not verify with $(basename "$PUBKEY")"
 ok "signed by $want"
 
-cp "$PUBKEY" "$OUT/sedir-archive-keyring.pgp"
+cp "$PUBKEY" "$OUT/sediros-archive-keyring.pgp"
 
 # --- index.html: what a browser shows at the repository URL ----------------------
 # apt never reads it; without it GitHub Pages answers the URL with a 404.
-keyring_deb="$(cd "$OUT" && find pool -name 'sedir-archive-keyring_*_all.deb' | sort -V | tail -n1)"
+keyring_deb="$(cd "$OUT" && find pool -name 'sediros-archive-keyring_*_all.deb' | sort -V | tail -n1)"
 key_sha="$(sha256sum "$PUBKEY" | cut -d' ' -f1)"
 fpr_spaced="$(sed -E 's/(.{4})/\1 /g; s/ $//' <<<"$want")"
 rows="$(for arch in $ARCHS; do
@@ -199,14 +199,14 @@ cat > "$OUT/index.html" <<EOF
 </head>
 <body>
 <h1>SedirOS apt repository</h1>
-<p class="lead">Updates of SedirOS's own packages (<code>sedir-*</code>) for Debian ${SUITE}. Debian's packages and security updates still come from Debian.</p>
+<p class="lead">Updates of SedirOS's own packages (<code>sediros-*</code>) for Debian ${SUITE}. Debian's packages and security updates still come from Debian.</p>
 
 <h2>Already set up</h2>
-<p>Installed SedirOS systems use this repository automatically: <code>sedir-archive-keyring</code> configures it, and unattended-upgrades installs the updates. Its key (sha256 <code>${key_sha}</code>) is in <a href="${keyring_deb}"><code>sedir-archive-keyring</code></a>.</p>
+<p>Installed SedirOS systems use this repository automatically: <code>sediros-archive-keyring</code> configures it, and unattended-upgrades installs the updates. Its key (sha256 <code>${key_sha}</code>) is in <a href="${keyring_deb}"><code>sediros-archive-keyring</code></a>.</p>
 
 <h2>Trust</h2>
 <p>Signing key fingerprint: <code>${fpr_spaced}</code><br>
-The source is bound to this key (<code>Signed-By</code>), and an apt pin only accepts <code>sedir-*</code> packages from this host, so the repository cannot replace Debian packages.</p>
+The source is bound to this key (<code>Signed-By</code>), and an apt pin only accepts <code>sediros-*</code> packages from this host, so the repository cannot replace Debian packages.</p>
 
 <h2>Packages</h2>
 <table>

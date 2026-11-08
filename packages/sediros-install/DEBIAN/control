@@ -1,0 +1,13 @@
+Package: sediros-install
+Version: 0.3.4
+Architecture: @SEDIROS_ARCH@
+Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
+Section: admin
+Priority: optional
+Depends: libc6, util-linux, fdisk, dosfstools, e2fsprogs, cryptsetup, cryptsetup-initramfs, tar, udev
+Description: SedirOS installer
+ Installs SedirOS from the live ISO to a disk: GPT with an EFI system
+ partition, an unencrypted /boot and a LUKS2-encrypted root, GRUB for UEFI.
+ Run: sudo sediros-install disks; sudo sediros-install install --disk <disk>
+ .
+ Removed from the installed system by the installer itself.

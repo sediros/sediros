@@ -5,20 +5,20 @@
 #
 #  A SedirOS release is "<debian major>.<point>", e.g. 13.1 = Debian 13 (trixie),
 #  first SedirOS point release. The suite is derived from the major number;
-#  SEDIR_SUITE may only override it with sid/unstable (development builds).
+#  SEDIROS_SUITE may only override it with sid/unstable (development builds).
 #
-#  Input : SEDIR_RELEASE (default: RELEASE from config/sedir.conf)
-#          SEDIR_SUITE   (optional)
+#  Input : SEDIROS_RELEASE (default: RELEASE from config/sediros.conf)
+#          SEDIROS_SUITE   (optional)
 #  Output: RELEASE, SUITE
 # =============================================================================
 
-sedir_default_release() {
+sediros_default_release() {
     local conf
-    conf="$(dirname "${BASH_SOURCE[0]}")/../../config/sedir.conf"
+    conf="$(dirname "${BASH_SOURCE[0]}")/../../config/sediros.conf"
     sed -n 's/^RELEASE[[:space:]]*?=[[:space:]]*//p' "$conf" 2>/dev/null | head -n1
 }
 
-sedir_suite_for_major() {
+sediros_suite_for_major() {
     case "$1" in
         12) echo bookworm ;;
         13) echo trixie ;;
@@ -28,38 +28,38 @@ sedir_suite_for_major() {
 }
 
 # Sets RELEASE and SUITE, or prints an error and returns 1.
-sedir_resolve_release() {
-    RELEASE="${SEDIR_RELEASE:-$(sedir_default_release)}"
+sediros_resolve_release() {
+    RELEASE="${SEDIROS_RELEASE:-$(sediros_default_release)}"
     if [[ ! "$RELEASE" =~ ^[0-9]+\.[0-9]+$ ]]; then
         echo "Invalid release '${RELEASE}' (expected <debian major>.<point>, e.g. 13.1)" >&2
         return 1
     fi
 
     local mapped=""
-    mapped="$(sedir_suite_for_major "${RELEASE%%.*}")" || mapped=""
+    mapped="$(sediros_suite_for_major "${RELEASE%%.*}")" || mapped=""
 
-    case "${SEDIR_SUITE:-}" in
+    case "${SEDIROS_SUITE:-}" in
         "")
             [[ -n "$mapped" ]] || { echo "No Debian suite known for release ${RELEASE}" >&2; return 1; }
             SUITE="$mapped" ;;
         sid|unstable)
-            SUITE="$SEDIR_SUITE" ;;
+            SUITE="$SEDIROS_SUITE" ;;
         "$mapped")
             SUITE="$mapped" ;;
         *)
-            echo "Suite '${SEDIR_SUITE}' does not match release ${RELEASE} (${mapped:-unknown})" >&2
+            echo "Suite '${SEDIROS_SUITE}' does not match release ${RELEASE} (${mapped:-unknown})" >&2
             return 1 ;;
     esac
 }
 
 # Build identifier: <UTC yyyymmdd.HHMM>-<git short sha>[-dirty]. "-dirty"
 # means the tree had uncommitted changes. Computed once on the host (git is
-# not available in the Docker re-exec) and passed on as SEDIR_BUILD_ID.
-sedir_build_id() {
-    if [[ -n "${SEDIR_BUILD_ID:-}" ]]; then
-        [[ "$SEDIR_BUILD_ID" =~ ^[0-9A-Za-z._-]{1,64}$ ]] \
-            || { echo "Invalid SEDIR_BUILD_ID '${SEDIR_BUILD_ID}'" >&2; return 1; }
-        printf '%s\n' "$SEDIR_BUILD_ID"
+# not available in the Docker re-exec) and passed on as SEDIROS_BUILD_ID.
+sediros_build_id() {
+    if [[ -n "${SEDIROS_BUILD_ID:-}" ]]; then
+        [[ "$SEDIROS_BUILD_ID" =~ ^[0-9A-Za-z._-]{1,64}$ ]] \
+            || { echo "Invalid SEDIROS_BUILD_ID '${SEDIROS_BUILD_ID}'" >&2; return 1; }
+        printf '%s\n' "$SEDIROS_BUILD_ID"
         return 0
     fi
     local root sha dirty=""

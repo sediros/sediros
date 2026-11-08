@@ -1,0 +1,17 @@
+[Unit]
+Description=SedirOS: extra packet filter (nftables)
+Documentation=file:/etc/sediros/netfilter.nft
+DefaultDependencies=no
+Wants=network-pre.target
+Before=network-pre.target shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/sediros/netfilter.nft
+ExecReload=/usr/sbin/nft -f /etc/sediros/netfilter.nft
+ExecStop=/usr/sbin/nft delete table ip sediros
+
+[Install]
+WantedBy=sysinit.target

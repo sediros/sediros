@@ -1,0 +1,14 @@
+/etc/sysctl.d/99-sediros.conf
+/etc/modprobe.d/sediros-blacklist.conf
+/etc/security/limits.d/99-sediros.conf
+/etc/ssh/sshd_config.d/99-sediros.conf
+/etc/profile.d/sediros-umask.sh
+/etc/sediros/suid-allowlist
+/etc/apt/apt.conf.d/99-sediros-suid
+/etc/sediros/netfilter.nft
+/etc/apt/apt.conf.d/52sediros-unattended-upgrades
+/etc/profile.d/sediros-reboot-notice.sh
+/etc/sudoers.d/sediros
+/etc/security/pwquality.conf.d/90-sediros.conf
+/etc/ssh/sshd_config.d/05-sediros-enroll.conf
+/etc/profile.d/sediros-ssh-hint.sh

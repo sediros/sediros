@@ -1,0 +1,12 @@
+#!/bin/sh
+# sediros-base-files postrm: give /usr/lib/os-release back to base-files.
+set -e
+
+case "$1" in
+    remove|abort-install|disappear)
+        dpkg-divert --package sediros-base-files --remove --rename \
+            --divert /usr/lib/os-release.debian /usr/lib/os-release >/dev/null
+        ;;
+esac
+
+exit 0

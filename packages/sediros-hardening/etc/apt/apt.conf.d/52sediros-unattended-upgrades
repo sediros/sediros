@@ -1,0 +1,22 @@
+// SedirOS: install Debian security updates automatically (apt-daily timers).
+// Read after 20auto-upgrades / 50unattended-upgrades, so these values win.
+
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+
+// Debian's security archive and SedirOS's own packages (sediros-*, see
+// /etc/apt/preferences.d/sediros). Debian point releases and other
+// repositories are left to the admin ('apt upgrade').
+#clear Unattended-Upgrade::Origins-Pattern;
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,label=Debian-Security";
+    "origin=SedirOS,site=sediros.github.io";
+};
+
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Kernel updates need a reboot; SedirOS only reports it (login notice).
+// Set to "true" (and Automatic-Reboot-Time) on unattended servers.
+Unattended-Upgrade::Automatic-Reboot "false";

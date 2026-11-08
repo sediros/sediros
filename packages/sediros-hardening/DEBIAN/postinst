@@ -1,0 +1,43 @@
+#!/bin/sh
+# sediros-hardening postinst
+set -e
+
+UNITS="sediros-ssh-hostkeys.service sediros-firstboot-ufw.service sediros-netfilter.service"
+
+case "$1" in
+    configure)
+        # Extra SSH group for non-admin users (sshd: AllowGroups sudo sediros-ssh).
+        getent group sediros-ssh >/dev/null || groupadd --system sediros-ssh
+
+        # On a machine whose firewall is already managed, the first-boot unit
+        # must not 'ufw reset' the admin's rules: mark it as done.
+        if grep -qs '^ENABLED=yes' /etc/ufw/ufw.conf; then
+            mkdir -p /var/lib/sediros
+            : > /var/lib/sediros/ufw-initialized
+        fi
+
+        # pam_faillock profiles (/usr/share/pam-configs/sediros-faillock*).
+        pam-auth-update --package
+
+        for unit in $UNITS; do
+            deb-systemd-helper enable "$unit" >/dev/null
+        done
+
+        # Running system (not an image build chroot): apply immediately.
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload || true
+            systemctl restart systemd-sysctl.service || true
+            systemctl restart sediros-netfilter.service \
+                || echo "sediros-hardening: sediros-netfilter.service failed to start" >&2
+            if sshd -t 2>/dev/null; then
+                systemctl try-reload-or-restart ssh.service || true
+            else
+                echo "sediros-hardening: sshd config test failed, ssh not reloaded" >&2
+            fi
+        fi
+
+        /usr/sbin/sediros-suid-strip >/dev/null || true
+        ;;
+esac
+
+exit 0

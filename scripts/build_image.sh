@@ -6,11 +6,11 @@
 #  Host  : Linux (root, to preserve file ownership), or macOS with Docker:
 #          on a non-Linux host the script re-runs itself in a debian container.
 #
-#  Input : build/sedir-rootfs-<release>-<arch>.tar.zst  (from build_rootfs.sh)
-#  Output: build/sedir-<release>-<arch>.qcow2           (read-only base image)
+#  Input : build/sediros-rootfs-<release>-<arch>.tar.zst  (from build_rootfs.sh)
+#  Output: build/sediros-<release>-<arch>.qcow2           (read-only base image)
 #
 #  The image has no partition table and no bootloader: the root filesystem
-#  (ext4, LABEL=sedir-root) is the whole disk and QEMU boots the kernel
+#  (ext4, LABEL=sediros-root) is the whole disk and QEMU boots the kernel
 #  directly (-kernel/-initrd). VMs use copy-on-write overlays on top of it.
 # =============================================================================
 set -Eeuo pipefail
@@ -20,11 +20,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly SCRIPT_DIR PROJECT_ROOT
 
-BUILD_DIR="${SEDIR_BUILD_DIR:-${PROJECT_ROOT}/build}"
-IMAGE_SIZE="${SEDIR_IMAGE_SIZE:-4G}"
+BUILD_DIR="${SEDIROS_BUILD_DIR:-${PROJECT_ROOT}/build}"
+IMAGE_SIZE="${SEDIROS_IMAGE_SIZE:-4G}"
 ROOTFS_TAR=""
-FS_LABEL="sedir-root"
-DOCKER_IMAGE="${SEDIR_DOCKER_IMAGE:-debian:bookworm}"
+FS_LABEL="sediros-root"
+DOCKER_IMAGE="${SEDIROS_DOCKER_IMAGE:-debian:bookworm}"
 # Containers run with the host's architecture: a local image tag that was
 # pulled for another platform would otherwise build for that one (emulated).
 docker_platform() {
@@ -61,12 +61,12 @@ done
 if [[ "$(uname -s)" != "Linux" ]]; then
     command -v docker >/dev/null 2>&1 || die "Non-Linux host and no docker found."
     [[ "$BUILD_DIR" == "$PROJECT_ROOT"/* ]] \
-        || die "On macOS SEDIR_BUILD_DIR must be inside the project (bind-mounted)."
+        || die "On macOS SEDIROS_BUILD_DIR must be inside the project (bind-mounted)."
     log "Non-Linux host, re-running inside ${DOCKER_IMAGE}"
     exec docker run --rm --platform "$(docker_platform)" \
-        -v "${PROJECT_ROOT}:/sedir" -w /sedir \
-        -e SEDIR_BUILD_DIR="/sedir/${BUILD_DIR#"$PROJECT_ROOT"/}" \
-        -e SEDIR_IMAGE_SIZE="$IMAGE_SIZE" \
+        -v "${PROJECT_ROOT}:/sediros" -w /sediros \
+        -e SEDIROS_BUILD_DIR="/sediros/${BUILD_DIR#"$PROJECT_ROOT"/}" \
+        -e SEDIROS_IMAGE_SIZE="$IMAGE_SIZE" \
         "$DOCKER_IMAGE" bash -c '
             set -e
             apt-get update -qq
@@ -84,7 +84,7 @@ for cmd in mkfs.ext4 zstd tar qemu-img e2fsck; do
 done
 
 if [[ -z "$ROOTFS_TAR" ]]; then
-    ROOTFS_TAR="$(find "$BUILD_DIR" -maxdepth 1 -name 'sedir-rootfs-*.tar.zst' -print \
+    ROOTFS_TAR="$(find "$BUILD_DIR" -maxdepth 1 -name 'sediros-rootfs-*.tar.zst' -print \
                   | sort -V | tail -n1)"
 fi
 [[ -n "$ROOTFS_TAR" && -r "$ROOTFS_TAR" ]] \
@@ -97,13 +97,13 @@ if [[ -r "${ROOTFS_TAR}.sha256" ]]; then
     ok "Checksum verified"
 fi
 
-name="$(basename "$ROOTFS_TAR" .tar.zst)"     # sedir-rootfs-13.1-arm64
-name="sedir-${name#sedir-rootfs-}"           # sedir-13.1-arm64
+name="$(basename "$ROOTFS_TAR" .tar.zst)"     # sediros-rootfs-13.1-arm64
+name="sediros-${name#sediros-rootfs-}"           # sediros-13.1-arm64
 OUT="${BUILD_DIR}/${name}.qcow2"
 
 # Work in container/host-local tmp, never on a macOS bind mount
 # (case-insensitive APFS, no real ownership).
-WORK="$(mktemp -d /tmp/sedir-image.XXXXXX)"
+WORK="$(mktemp -d /tmp/sediros-image.XXXXXX)"
 trap 'rm -rf --one-file-system "$WORK"' EXIT
 
 log "Extracting $(basename "$ROOTFS_TAR")"

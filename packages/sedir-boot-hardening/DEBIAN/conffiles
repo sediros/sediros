@@ -1,3 +1,0 @@
-/etc/default/grub.d/90-sedir.cfg
-/etc/grub.d/01_sedir_password
-/etc/grub.d/10_sedir_linux

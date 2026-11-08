@@ -10,14 +10,14 @@
 #  Output: build/debs/<name>_<version>_<arch>.deb
 #
 #  Placeholders replaced in every package file (incl. DEBIAN/control):
-#    @SEDIR_RELEASE@ (13.1)  @SEDIR_MAJOR@ (13)  @SEDIR_CODENAME@ (trixie)
-#    @SEDIR_ARCH@ (dpkg architecture of the build host = image arch)
-#  taken from SEDIR_RELEASE / SEDIR_SUITE (scripts/lib/release.sh).
+#    @SEDIROS_RELEASE@ (13.1)  @SEDIROS_MAJOR@ (13)  @SEDIROS_CODENAME@ (trixie)
+#    @SEDIROS_ARCH@ (dpkg architecture of the build host = image arch)
+#  taken from SEDIROS_RELEASE / SEDIROS_SUITE (scripts/lib/release.sh).
 #
-#  Compiled programs: packages/<name>/.sedir-binaries lists
+#  Compiled programs: packages/<name>/.sediros-binaries lists
 #    <path in package> <file relative to the project root>
 #  A package whose binaries are not built yet is skipped with a warning
-#  (scripts/build_installer.sh builds sedir-install).
+#  (scripts/build_installer.sh builds sediros-install).
 #
 #  Files are owned by root:root inside the package regardless of the
 #  checkout's owner (--root-owner-group); permissions are normalised here
@@ -31,8 +31,8 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly SCRIPT_DIR PROJECT_ROOT
 
 PKG_SRC="${PROJECT_ROOT}/packages"
-OUT_DIR="${SEDIR_DEBS_DIR:-${PROJECT_ROOT}/build/debs}"
-DOCKER_IMAGE="${SEDIR_DOCKER_IMAGE:-debian:bookworm}"
+OUT_DIR="${SEDIROS_DEBS_DIR:-${PROJECT_ROOT}/build/debs}"
+DOCKER_IMAGE="${SEDIROS_DOCKER_IMAGE:-debian:bookworm}"
 # Containers run with the host's architecture: a local image tag that was
 # pulled for another platform would otherwise build for that one (emulated).
 docker_platform() {
@@ -62,19 +62,19 @@ for arg in "$@"; do
     esac
 done
 
-sedir_resolve_release || die "Release configuration error"
+sediros_resolve_release || die "Release configuration error"
 
 if ! command -v dpkg-deb >/dev/null 2>&1; then
     [[ "$(uname -s)" != "Linux" ]] || die "dpkg-deb not found (apt install dpkg)"
     command -v docker >/dev/null 2>&1 || die "Neither dpkg-deb nor docker found."
     log "No dpkg-deb on this host, re-running inside ${DOCKER_IMAGE}"
-    exec docker run --rm --platform "$(docker_platform)" -v "${PROJECT_ROOT}:/sedir" -w /sedir \
-        -e SEDIR_RELEASE="$RELEASE" -e SEDIR_SUITE="$SUITE" \
+    exec docker run --rm --platform "$(docker_platform)" -v "${PROJECT_ROOT}:/sediros" -w /sediros \
+        -e SEDIROS_RELEASE="$RELEASE" -e SEDIROS_SUITE="$SUITE" \
         "$DOCKER_IMAGE" ./scripts/build_packages.sh "$@"
 fi
 
 DEB_ARCH="$(dpkg --print-architecture)"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/sedir-pkg.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/sediros-pkg.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$OUT_DIR"
 
@@ -92,17 +92,17 @@ for src in "$PKG_SRC"/*/; do
 
     # Release placeholders (only files that contain one are rewritten).
     while IFS= read -r -d '' f; do
-        sed -i -e "s|@SEDIR_RELEASE@|${RELEASE}|g" \
-               -e "s|@SEDIR_MAJOR@|${RELEASE%%.*}|g" \
-               -e "s|@SEDIR_CODENAME@|${SUITE}|g" \
-               -e "s|@SEDIR_ARCH@|${DEB_ARCH}|g" "$f"
-    done < <(grep -rlZ '@SEDIR_[A-Z]*@' "$stage" || true)
-    if leftover="$(grep -rl '@SEDIR_[A-Z]*@' "$stage")"; then
+        sed -i -e "s|@SEDIROS_RELEASE@|${RELEASE}|g" \
+               -e "s|@SEDIROS_MAJOR@|${RELEASE%%.*}|g" \
+               -e "s|@SEDIROS_CODENAME@|${SUITE}|g" \
+               -e "s|@SEDIROS_ARCH@|${DEB_ARCH}|g" "$f"
+    done < <(grep -rlZ '@SEDIROS_[A-Z]*@' "$stage" || true)
+    if leftover="$(grep -rl '@SEDIROS_[A-Z]*@' "$stage")"; then
         die "Unknown placeholder in: ${leftover//$stage/}"
     fi
 
     # Compiled programs built outside this script.
-    if [[ -f "$stage/.sedir-binaries" ]]; then
+    if [[ -f "$stage/.sediros-binaries" ]]; then
         missing=""
         while read -r dest from; do
             [[ -z "$dest" || "$dest" == \#* ]] && continue
@@ -111,8 +111,8 @@ for src in "$PKG_SRC"/*/; do
             else
                 missing+=" $from"
             fi
-        done < "$stage/.sedir-binaries"
-        rm -f "$stage/.sedir-binaries"
+        done < "$stage/.sediros-binaries"
+        rm -f "$stage/.sediros-binaries"
         if [[ -n "$missing" ]]; then
             printf '  - skipping %s: not built yet:%s\n' "$(basename "$src")" "$missing"
             continue
@@ -134,7 +134,7 @@ for src in "$PKG_SRC"/*/; do
     for f in "$stage"/DEBIAN/{preinst,postinst,prerm,postrm,config}; do
         [[ -f "$f" ]] && chmod 0755 "$f"
     done
-    for d in usr/bin usr/sbin usr/libexec usr/lib/sedir usr/lib/systemd/system-generators; do
+    for d in usr/bin usr/sbin usr/libexec usr/lib/sediros usr/lib/systemd/system-generators; do
         [[ -d "$stage/$d" ]] && find "$stage/$d" -type f -exec chmod 0755 {} +
     done
     # sudoers drop-ins: 0440 like /etc/sudoers (sudo rejects writable ones).

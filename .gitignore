@@ -7,9 +7,9 @@
 *.sha256
 
 # Rust
-/sedir-cli/target/
-/sedir-install/target/
-/sedir-audit/target/
+/sediros-cli/target/
+/sediros-install/target/
+/sediros-audit/target/
 
 # Secrets / local
 *.key

@@ -2,7 +2,7 @@
 # =============================================================================
 #  SedirOS - in-guest hardening checks.
 #  Runs inside the VM as the admin user (needs sudo), streamed over SSH by
-#  tests/smoke.sh:  sedir shell <vm> -- bash -s -- <max_ram_mb> <release> < guest_checks.sh
+#  tests/smoke.sh:  sediros shell <vm> -- bash -s -- <max_ram_mb> <release> < guest_checks.sh
 #  Prints one PASS/FAIL line per check, exits non-zero if anything failed.
 # =============================================================================
 set -uo pipefail
@@ -31,14 +31,14 @@ fi
 
 # --- release identification -----------------------------------------------------
 # shellcheck disable=SC1091
-read -r os_id os_rel < <(. /etc/os-release && echo "$ID ${SEDIR_RELEASE:-none}")
+read -r os_id os_rel < <(. /etc/os-release && echo "$ID ${SEDIROS_RELEASE:-none}")
 if [[ "$os_id" == sediros && "$os_rel" != none && ( -z "$WANT_RELEASE" || "$os_rel" == "$WANT_RELEASE" ) ]]; then
     pass "os-release: SedirOS $os_rel"
 else
-    fail "os-release" "ID=$os_id SEDIR_RELEASE=$os_rel, want sediros ${WANT_RELEASE:-<any>}"
+    fail "os-release" "ID=$os_id SEDIROS_RELEASE=$os_rel, want sediros ${WANT_RELEASE:-<any>}"
 fi
 
-# --- sysctl: every value in 99-sedir.conf is live --------------------------
+# --- sysctl: every value in 99-sediros.conf is live --------------------------
 bad=()
 checked=0
 while IFS= read -r line || [[ -n "$line" ]]; do
@@ -58,7 +58,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     want="$(trim "$(tr -s '[:space:]' ' ' <<<"$want")")"
     checked=$((checked + 1))
     [[ "$got" == "$want" ]] || bad+=("$key: want '$want' got '$got'")
-done < /etc/sysctl.d/99-sedir.conf
+done < /etc/sysctl.d/99-sediros.conf
 if ((${#bad[@]} == 0)); then
     pass "sysctl: $checked keys applied"
 else
@@ -99,7 +99,7 @@ if [[ -z "$external" ]]; then pass "listeners: only :22 exposed"
 else fail "listeners" "unexpected: $(tr '\n' ' ' <<<"$external")"; fi
 
 # --- setuid/setgid ---------------------------------------------------------------
-mapfile -t allowed < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' /etc/sedir/suid-allowlist)
+mapfile -t allowed < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' /etc/sediros/suid-allowlist)
 extra=()
 while IFS= read -r f; do
     keep=0
@@ -124,14 +124,14 @@ sshd="$(sudo sshd -T 2>/dev/null)"
 bad=()
 for kv in "permitrootlogin no" "passwordauthentication no" \
           "kbdinteractiveauthentication no" "x11forwarding no" "allowtcpforwarding no" \
-          "allowgroups sudo" "allowgroups sedir-ssh"; do
+          "allowgroups sudo" "allowgroups sediros-ssh"; do
     grep -qx "$kv" <<<"$sshd" || bad+=("$kv")
 done
 if ((${#bad[@]} == 0)); then pass "sshd: key-only, no root, no forwarding, AllowGroups"
 else fail "sshd" "missing: ${bad[*]}"; fi
 
 # --- SedirOS packages --------------------------------------------------------------
-for p in sedir-base-files sedir-archive-keyring sedir-hardening sedir-boot-hardening sedir-guest sedir-audit; do
+for p in sediros-base-files sediros-archive-keyring sediros-hardening sediros-boot-hardening sediros-guest sediros-audit; do
     pkg="$(dpkg-query -W -f='${Status} ${Version}' "$p" 2>/dev/null)"
     if [[ "$pkg" != "install ok installed "* ]]; then
         fail "package" "$p not installed (${pkg:-missing})"
@@ -141,28 +141,28 @@ for p in sedir-base-files sedir-archive-keyring sedir-hardening sedir-boot-harde
         pass "package: $p ${pkg##* } installed, files unmodified"
     fi
 done
-for unit in sedir-ssh-hostkeys.service sedir-firstboot-ufw.service sedir-netfilter.service sedir-guest-ssh-keys.service sedir-guest-ufw.service; do
+for unit in sediros-ssh-hostkeys.service sediros-firstboot-ufw.service sediros-netfilter.service sediros-guest-ssh-keys.service sediros-guest-ufw.service; do
     [[ "$(systemctl is-enabled "$unit" 2>/dev/null)" == "enabled" ]] \
         || fail "units" "$unit not enabled"
 done
 
-# --- SSH key came from `sedir launch`, none was baked into the image ---------
-if systemctl is-active -q sedir-guest-ssh-keys.service \
-   && grep -q ' sedir-cli$' ~/.ssh/authorized_keys \
-   && ! grep -qv ' sedir-cli$' ~/.ssh/authorized_keys; then
-    pass "ssh key: only the sedir CLI key (passed at boot)"
+# --- SSH key came from `sediros launch`, none was baked into the image ---------
+if systemctl is-active -q sediros-guest-ssh-keys.service \
+   && grep -q ' sediros-cli$' ~/.ssh/authorized_keys \
+   && ! grep -qv ' sediros-cli$' ~/.ssh/authorized_keys; then
+    pass "ssh key: only the sediros CLI key (passed at boot)"
 else
     fail "ssh key" "authorized_keys: $(awk '{print $NF}' ~/.ssh/authorized_keys | tr '\n' ' ')"
 fi
 
 # --- extra packet filter (IPv4 TCP with IP options) ---------------------------------
-if systemctl is-active -q sedir-netfilter.service \
-   && grep -q 'ip hdrlength > 5 .*drop' <<<"$(sudo nft list table ip sedir 2>/dev/null)"; then
+if systemctl is-active -q sediros-netfilter.service \
+   && grep -q 'ip hdrlength > 5 .*drop' <<<"$(sudo nft list table ip sediros 2>/dev/null)"; then
     pass "nftables: TCP with IP options dropped"
 else
-    fail "nftables" "table ip sedir missing or sedir-netfilter.service inactive"
+    fail "nftables" "table ip sediros missing or sediros-netfilter.service inactive"
     # Diagnostics for CI logs.
-    sudo systemctl status sedir-netfilter.service --no-pager -n 15 2>&1 | sed 's/^/      /'
+    sudo systemctl status sediros-netfilter.service --no-pager -n 15 2>&1 | sed 's/^/      /'
     sudo nft list tables 2>&1 | sed 's/^/      nft: /'
 fi
 
@@ -179,32 +179,32 @@ done
 if ((${#bad[@]} == 0)); then pass "unattended-upgrades: Debian security + SedirOS, timers enabled"
 else fail "unattended-upgrades" "${bad[*]}"; fi
 
-# --- SedirOS apt repository: source bound to its key, pinned to sedir-* -----------
-src=/etc/apt/sources.list.d/sedir.sources
-kr=/usr/share/keyrings/sedir-archive-keyring.pgp
+# --- SedirOS apt repository: source bound to its key, pinned to sediros-* -----------
+src=/etc/apt/sources.list.d/sediros.sources
+kr=/usr/share/keyrings/sediros-archive-keyring.pgp
 bad=()
 grep -q "^Signed-By: $kr\$" "$src" 2>/dev/null || bad+=("Signed-By")
 grep -q '^URIs: https://' "$src" 2>/dev/null || bad+=("https URI")
 [[ -s "$kr" ]] || bad+=("keyring missing")
-# The pin: only sedir-* may come from the repository.
-pin="$(awk '/^Package:/{p=$2} /^Pin-Priority:/{print p"="$2}' /etc/apt/preferences.d/sedir 2>/dev/null | tr '\n' ' ')"
-[[ "$pin" == "sedir-*=500 *=-1 " ]] || bad+=("pin: ${pin:-missing}")
-if ((${#bad[@]} == 0)); then pass "apt: SedirOS repository signed-by its key, pinned to sedir-*"
+# The pin: only sediros-* may come from the repository.
+pin="$(awk '/^Package:/{p=$2} /^Pin-Priority:/{print p"="$2}' /etc/apt/preferences.d/sediros 2>/dev/null | tr '\n' ' ')"
+[[ "$pin" == "sediros-*=500 *=-1 " ]] || bad+=("pin: ${pin:-missing}")
+if ((${#bad[@]} == 0)); then pass "apt: SedirOS repository signed-by its key, pinned to sediros-*"
 else fail "apt repository" "${bad[*]}"; fi
 
 # --- accounts -------------------------------------------------------------------
 if [[ "$(sudo passwd -S root | awk '{print $2}')" == "L" ]]; then pass "root: password locked"
 else fail "root" "password not locked"; fi
 
-if grep -qE '^BUILD_ID=[0-9A-Za-z._-]+$' /etc/sedir/build-info 2>/dev/null; then
-    pass "build-info: $(sed -n 's/^RELEASE=//p' /etc/sedir/build-info) build $(sed -n 's/^BUILD_ID=//p' /etc/sedir/build-info)"
+if grep -qE '^BUILD_ID=[0-9A-Za-z._-]+$' /etc/sediros/build-info 2>/dev/null; then
+    pass "build-info: $(sed -n 's/^RELEASE=//p' /etc/sediros/build-info) build $(sed -n 's/^BUILD_ID=//p' /etc/sediros/build-info)"
 else
-    fail "build-info" "/etc/sedir/build-info missing or without BUILD_ID"
+    fail "build-info" "/etc/sediros/build-info missing or without BUILD_ID"
 fi
 
-profile="$(sed -n 's/^PROFILE=//p' /etc/sedir/build-info 2>/dev/null)"
+profile="$(sed -n 's/^PROFILE=//p' /etc/sediros/build-info 2>/dev/null)"
 if [[ "$profile" == vm && "$(sudo passwd -S "$USER" | awk '{print $2}')" == "L" ]] \
-   && sudo test -f /etc/sudoers.d/90-sedir-vm; then
+   && sudo test -f /etc/sudoers.d/90-sediros-vm; then
     pass "profile vm: $USER password locked, NOPASSWD sudo"
 else
     fail "profile" "profile=${profile:-unknown}, $USER $(sudo passwd -S "$USER" | awk '{print $2}')"
@@ -242,11 +242,11 @@ else fail "modprobe" "loadable: ${bad[*]}"; fi
 if [[ "$(ulimit -Hc)" == "0" ]]; then pass "core dumps: hard limit 0"
 else fail "core dumps" "hard limit $(ulimit -Hc)"; fi
 
-# --- sedir-audit: the user-facing check agrees -----------------------------------------
-if audit="$(sudo sedir-audit --quiet 2>&1)"; then
-    pass "sedir-audit: $(tail -n1 <<<"$audit")"
+# --- sediros-audit: the user-facing check agrees -----------------------------------------
+if audit="$(sudo sediros-audit --quiet 2>&1)"; then
+    pass "sediros-audit: $(tail -n1 <<<"$audit")"
 else
-    fail "sedir-audit" "exit $?"
+    fail "sediros-audit" "exit $?"
     while IFS= read -r line; do printf '      %s\n' "$line"; done <<<"$audit"
 fi
 

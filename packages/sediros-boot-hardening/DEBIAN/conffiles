@@ -1,0 +1,3 @@
+/etc/default/grub.d/90-sediros.cfg
+/etc/grub.d/01_sediros_password
+/etc/grub.d/10_sediros_linux

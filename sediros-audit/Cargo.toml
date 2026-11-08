@@ -1,0 +1,20 @@
+[package]
+name = "sediros-audit"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Check that a SedirOS system's hardening is still in place"
+license = "Apache-2.0"
+authors = ["The SedirOS Authors <ahmetatakan.tech@gmail.com>"]
+publish = false
+
+# No dependencies on purpose: a security tool with a small surface, and it
+# builds offline (Debian's cargo in Docker, no crates.io).
+[dependencies]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

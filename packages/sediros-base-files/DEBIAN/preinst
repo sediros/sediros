@@ -1,0 +1,12 @@
+#!/bin/sh
+# sediros-base-files preinst: take over /usr/lib/os-release from base-files.
+set -e
+
+case "$1" in
+    install|upgrade)
+        dpkg-divert --package sediros-base-files --add --rename \
+            --divert /usr/lib/os-release.debian /usr/lib/os-release >/dev/null
+        ;;
+esac
+
+exit 0

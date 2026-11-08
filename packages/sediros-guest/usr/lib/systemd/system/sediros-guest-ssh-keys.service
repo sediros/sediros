@@ -1,0 +1,15 @@
+[Unit]
+Description=SedirOS: SSH key from the VM manager (systemd credential)
+Documentation=file:/usr/lib/sediros/guest-ssh-keys
+ConditionCredential=sediros.ssh.authorized_keys
+After=local-fs.target
+Before=ssh.service systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ImportCredential=sediros.ssh.authorized_keys
+ExecStart=/usr/lib/sediros/guest-ssh-keys
+
+[Install]
+WantedBy=multi-user.target

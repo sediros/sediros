@@ -43,7 +43,7 @@ asset_sha()  { awk -v n="$1" '$2 == n || $2 == "*"n {print $1}' "$SUMS"; }
 # The ISO names carry the Debian-based release (13.1), not the rc suffix.
 iso_row() {
     local arch="$1" who="$2" name
-    name="$(jq -r --arg a "$arch" '.assets[].name | select(test("^sedir-.*-install-" + $a + "\\.iso$"))' "$REL" | head -n1)"
+    name="$(jq -r --arg a "$arch" '.assets[].name | select(test("^sediros-.*-install-" + $a + "\\.iso$"))' "$REL" | head -n1)"
     [[ -n "$name" ]] || die "no installer ISO for $arch in $tag"
     local u sha mb
     u="$(asset_url "$name")"; mb="$(asset_mb "$name")"; sha="$(asset_sha "$name")"
@@ -106,27 +106,27 @@ ${arm64}
 
 <h2>2. Check the download</h2>
 <p>Compare the checksum with the one above:</p>
-<pre>shasum -a 256 sedir-*-install-*.iso      # macOS
-sha256sum sedir-*-install-*.iso          # Linux</pre>
+<pre>shasum -a 256 sediros-*-install-*.iso      # macOS
+sha256sum sediros-*-install-*.iso          # Linux</pre>
 <p class="muted">All checksums: <a href="${sums_url}">SHA256SUMS</a>.</p>
 
 <h2>3. Install</h2>
 <ol>
   <li><strong>Boot the ISO.</strong> On a PC: write it to a USB stick (balenaEtcher, or <code>dd</code>) and boot from it in UEFI mode. In a VM: attach it as a CD/DVD, with UEFI firmware and the guest type Linux.</li>
-  <li><strong>Start the installer</strong> in the live session that opens: <code>sudo sedir-install install</code></li>
+  <li><strong>Start the installer</strong> in the live session that opens: <code>sudo sediros-install install</code></li>
   <li><strong>Answer the questions:</strong> disk, hostname, keyboard, user, password, SSH key (optional), disk encryption passphrase.</li>
   <li><strong>Power off and remove the ISO</strong> (in a VM: clear the CD/DVD drive while the VM is off). Otherwise the installer starts again.</li>
   <li><strong>Boot from the disk,</strong> enter the encryption passphrase, log in.</li>
-  <li><strong>No SSH key given?</strong> Run <code>sudo sedir-ssh-enroll</code> and follow it: it lets you add your key with <code>ssh-copy-id</code>.</li>
+  <li><strong>No SSH key given?</strong> Run <code>sudo sediros-ssh-enroll</code> and follow it: it lets you add your key with <code>ssh-copy-id</code>.</li>
 </ol>
 <p class="muted">Details and troubleshooting: <a href="https://github.com/sediros/sediros#installing-to-disk">Installing to disk</a>.</p>
 
 <h2>Or: SedirOS VMs on your Mac or Linux machine</h2>
 <pre>brew tap sediros/sediros https://github.com/sediros/sediros
 brew trust sediros/sediros
-brew install sedir
-sedir launch dev
-sedir shell dev</pre>
+brew install sediros
+sediros launch dev
+sediros shell dev</pre>
 <p class="muted">See <a href="https://github.com/sediros/sediros#trying-sediros-in-a-vm">Trying SedirOS in a VM</a>.</p>
 
 <h2>Updates</h2>

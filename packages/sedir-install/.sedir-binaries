@@ -1,2 +1,0 @@
-# <path in package>        <built file, relative to the project root>
-usr/sbin/sedir-install    build/bin/sedir-install-@SEDIR_ARCH@

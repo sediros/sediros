@@ -1,8 +1,8 @@
 # SedirOS release
 #   Triggered by pushing a tag v<release> (e.g. v13.1) that matches RELEASE in
-#   config/sedir.conf, or v<release>-rc<N> for a pre-release (same files,
+#   config/sediros.conf, or v<release>-rc<N> for a pre-release (same files,
 #   marked "Pre-release" on GitHub, for testing before the final release). Builds and tests the images for amd64 and arm64, builds
-#   the sedir CLI for macOS and Linux, collects the .deb packages (for the
+#   the sediros CLI for macOS and Linux, collects the .deb packages (for the
 #   apt repository, see apt-repo.yml), writes SHA256SUMS, attests the build
 #   provenance of every file and creates a DRAFT GitHub release: nothing is
 #   public until a maintainer reviews and publishes it.
@@ -31,9 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - id: v
-        name: Tag must match RELEASE in config/sedir.conf
+        name: Tag must match RELEASE in config/sediros.conf
         run: |
-          release="$(sed -n 's/^RELEASE[[:space:]]*?=[[:space:]]*//p' config/sedir.conf)"
+          release="$(sed -n 's/^RELEASE[[:space:]]*?=[[:space:]]*//p' config/sediros.conf)"
           tag="${GITHUB_REF_NAME#v}"
           prerelease=false
           case "$tag" in
@@ -112,7 +112,7 @@ jobs:
       - name: Collect release files
         run: |
           release="${{ needs.check.outputs.release }}"
-          stem="sedir-${release}-${{ matrix.arch }}"
+          stem="sediros-${release}-${{ matrix.arch }}"
           mkdir -p dist
           # Compressed copy of the base image (the CLI uses it as a read-only
           # backing file; compression costs nothing there).
@@ -120,7 +120,7 @@ jobs:
           for ext in vmlinuz initrd.img cmdline build-info manifest; do
             cp "build/${stem}.${ext}" dist/
           done
-          cp "build/sedir-${release}-install-${{ matrix.arch }}.iso" dist/
+          cp "build/sediros-${release}-install-${{ matrix.arch }}.iso" dist/
           # Packages for the apt repository (apt-repo.yml): arch-independent
           # ones once (from amd64), arch-specific ones from each arch.
           if [ "${{ matrix.arch }}" = amd64 ]; then cp build/debs/*_all.deb dist/; fi
@@ -161,14 +161,14 @@ jobs:
           fi
 
       - name: Build
-        run: cargo build --release --locked --target ${{ matrix.target }} --manifest-path sedir-cli/Cargo.toml
+        run: cargo build --release --locked --target ${{ matrix.target }} --manifest-path sediros-cli/Cargo.toml
 
       - name: Package
         run: |
-          version="$(sed -n 's/^version = "\(.*\)"/\1/p' sedir-cli/Cargo.toml | head -n1)"
-          name="sedir-${version}-${{ matrix.target }}"
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' sediros-cli/Cargo.toml | head -n1)"
+          name="sediros-${version}-${{ matrix.target }}"
           mkdir -p "pkg/$name" dist
-          cp "sedir-cli/target/${{ matrix.target }}/release/sedir" "pkg/$name/"
+          cp "sediros-cli/target/${{ matrix.target }}/release/sediros" "pkg/$name/"
           cp LICENSE NOTICE README.md "pkg/$name/"
           tar -C pkg -czf "dist/$name.tar.gz" "$name"
           ls -la dist
@@ -219,9 +219,9 @@ jobs:
 
           | To... | Download |
           |---|---|
-          | install on a PC or server (Intel/AMD), or a VM on one | `sedir-@RELEASE@-install-amd64.iso` |
-          | install in a VM on a Mac with Apple Silicon (UTM, Parallels), or on an ARM server | `sedir-@RELEASE@-install-arm64.iso` |
-          | run SedirOS VMs with the `sedir` CLI | nothing here: `brew install sedir` (see the README) downloads what it needs |
+          | install on a PC or server (Intel/AMD), or a VM on one | `sediros-@RELEASE@-install-amd64.iso` |
+          | install in a VM on a Mac with Apple Silicon (UTM, Parallels), or on an ARM server | `sediros-@RELEASE@-install-arm64.iso` |
+          | run SedirOS VMs with the `sediros` CLI | nothing here: `brew install sediros` (see the README) downloads what it needs |
 
           Everything else is used by the CLI, the apt repository or for verification. Easier: [sediros.github.io/sediros](https://sediros.github.io/sediros/) lists only the ISOs, with their checksums.
 

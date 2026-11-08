@@ -1,0 +1,15 @@
+#!/bin/sh
+# SedirOS (sediros-boot-hardening): Debian's 10_linux entries, with the
+# top-level default entry marked --unrestricted (boots without the GRUB
+# password). The "Advanced options" submenu (recovery mode) stays restricted.
+# Active only while sediros-grub-password has disabled 10_linux.
+set -e
+
+src=/etc/grub.d/10_linux
+[ -f "$src" ] && [ ! -x "$src" ] || exit 0
+[ -r /etc/sediros/grub-password ] || exit 0
+
+# Separate steps: a failing 10_linux must fail update-grub, not be masked
+# by the pipeline status of sed.
+entries="$(sh "$src")"
+printf '%s\n' "$entries" | sed -e '/^menuentry /s/ --class / --unrestricted --class /'
