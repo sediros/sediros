@@ -4,6 +4,7 @@
 //! 2 the audit could not run.
 
 mod checks;
+mod record;
 mod report;
 mod sys;
 
@@ -12,7 +13,7 @@ use std::process::ExitCode;
 use report::{Header, Status};
 
 const USAGE: &str = "\
-Usage: sediros-audit [--json] [--quiet]
+Usage: sediros-audit [--json] [--quiet] [--record]
 
 Checks that this SedirOS system's hardening is still in place: kernel
 settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM,
@@ -21,6 +22,9 @@ Expected values come from the installed SedirOS packages.
 
   --json    machine-readable output
   -q, --quiet   only warnings and failures
+  --record  the daily run (sediros-audit.timer): keep the result in
+            /var/lib/sediros/audit, write Prometheus metrics, report when
+            the hardening got worse (/etc/sediros/audit.conf)
   -h, --help    this help
   -V, --version version
 
@@ -30,10 +34,12 @@ Run as root: sudo sediros-audit";
 fn main() -> ExitCode {
     let mut json = false;
     let mut quiet = false;
+    let mut record = false;
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
             "--json" => json = true,
             "-q" | "--quiet" => quiet = true,
+            "--record" => record = true,
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return ExitCode::SUCCESS;
@@ -80,7 +86,11 @@ fn main() -> ExitCode {
         time: sys::now_utc(),
     };
 
-    if json {
+    if record {
+        for line in record::record(&header, &findings) {
+            println!("{line}");
+        }
+    } else if json {
         print!("{}", report::json(&header, &findings));
     } else {
         print!("{}", report::text(&header, &findings, quiet));

@@ -112,6 +112,9 @@ fn packages() -> Finding {
     Finding::pass(ID, format!("unmodified: {list}"))
 }
 
+/// Config files that exist to be edited: changing them is not drift.
+const SETTINGS_FILES: &[&str] = &["/etc/sediros/audit.conf"];
+
 /// `dpkg --verify`: "??5?????? c /etc/x" (c = conffile), "missing     /usr/y".
 /// Returns (changed conffiles, other changed or missing files).
 fn parse_dpkg_verify(out: &str) -> (Vec<String>, Vec<String>) {
@@ -122,6 +125,9 @@ fn parse_dpkg_verify(out: &str) -> (Vec<String>, Vec<String>) {
             continue;
         };
         if l.contains(" c /") {
+            if SETTINGS_FILES.contains(&path) {
+                continue;
+            }
             conf.push(path.to_string());
         } else if l.starts_with("missing") {
             other.push(format!("{path} (missing)"));
@@ -135,6 +141,8 @@ fn parse_dpkg_verify(out: &str) -> (Vec<String>, Vec<String>) {
 fn services(ctx: &Ctx) -> Finding {
     const ID: &str = "services";
     let mut units = vec![
+        // The daily audit itself: turning it off silences the reports.
+        "sediros-audit.timer",
         "sediros-ssh-hostkeys.service",
         "sediros-firstboot-ufw.service",
         "sediros-netfilter.service",
@@ -962,7 +970,7 @@ mod tests {
     #[test]
     fn dpkg_verify() {
         let (c, o) = parse_dpkg_verify(
-            "??5?????? c /etc/ssh/sshd_config.d/99-sediros.conf\n??5??????   /usr/sbin/sediros-suid-strip\nmissing     /usr/lib/x\n",
+            "??5?????? c /etc/ssh/sshd_config.d/99-sediros.conf\n??5?????? c /etc/sediros/audit.conf\n??5??????   /usr/sbin/sediros-suid-strip\nmissing     /usr/lib/x\n",
         );
         assert_eq!(c, ["/etc/ssh/sshd_config.d/99-sediros.conf"]);
         assert_eq!(

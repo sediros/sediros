@@ -221,6 +221,15 @@ It compares the running system with the hardening of the installed SedirOS packa
 
 Exit status: 0 no failures (warnings allowed), 1 failures, 2 the audit could not run.
 
+**Every day, and reports when something got worse.** `sediros-audit.timer` runs the audit daily. Its result is shown when you log in (`Hardening: 17 passed, 0 warnings, 0 failed · <time>`) and kept in `/var/lib/sediros/audit/` (`last.json` for tools). When a check got worse than the day before, for example the firewall was turned off, it reports it; set where to in `/etc/sediros/audit.conf`:
+
+```bash
+MAILTO=admin@example.org                     # through the local mail transfer agent
+WEBHOOK=https://ntfy.sh/your-private-topic   # plain text; WEBHOOK_FORMAT=slack for Slack/Mattermost
+```
+
+With Prometheus' node_exporter, the metrics `sediros_audit_check{check,status}` and `sediros_audit_findings{status}` are written to its textfile collector directory (`/var/lib/prometheus/node-exporter`, or `PROMETHEUS_DIR=`). Nothing is sent anywhere until you configure it.
+
 ### Which build am I running?
 
 ```bash

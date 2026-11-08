@@ -1,0 +1,12 @@
+[Unit]
+Description=SedirOS daily hardening audit
+Documentation=https://github.com/sediros/sediros
+
+[Timer]
+OnBootSec=10min
+OnCalendar=daily
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

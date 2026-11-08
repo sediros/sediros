@@ -26,7 +26,7 @@ impl Status {
             Status::Skip => "-",
         }
     }
-    fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Status::Pass => "pass",
             Status::Info => "info",

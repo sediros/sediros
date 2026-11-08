@@ -1,0 +1,11 @@
+#!/bin/sh
+# sediros-audit postinst
+set -e
+if [ "$1" = configure ]; then
+    deb-systemd-helper enable sediros-audit.timer >/dev/null || true
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload >/dev/null 2>&1 || true
+        systemctl start sediros-audit.timer >/dev/null 2>&1 || true
+    fi
+fi
+exit 0

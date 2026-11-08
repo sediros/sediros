@@ -248,6 +248,15 @@ else fail "modprobe" "loadable: ${bad[*]}"; fi
 if [[ "$(ulimit -Hc)" == "0" ]]; then pass "core dumps: hard limit 0"
 else fail "core dumps" "hard limit $(ulimit -Hc)"; fi
 
+# --- the daily audit: timer on, a run keeps its result ------------------------------------
+# --record exits 1 when a check fails; the summary is written either way.
+sudo sediros-audit --record >/dev/null 2>&1
+if systemctl is-enabled -q sediros-audit.timer && [[ -s /var/lib/sediros/audit/last-summary ]]; then
+    pass "daily audit: timer enabled, $(cat /var/lib/sediros/audit/last-summary)"
+else
+    fail "daily audit" "timer $(systemctl is-enabled sediros-audit.timer 2>&1), no /var/lib/sediros/audit/last-summary"
+fi
+
 # --- sediros-audit: the user-facing check agrees -----------------------------------------
 if audit="$(sudo sediros-audit --quiet 2>&1)"; then
     pass "sediros-audit: $(tail -n1 <<<"$audit")"

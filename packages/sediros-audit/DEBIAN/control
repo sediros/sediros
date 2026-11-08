@@ -1,10 +1,11 @@
 Package: sediros-audit
-Version: 0.2.0
+Version: 0.3.0
 Architecture: @SEDIROS_ARCH@
 Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
 Section: admin
 Priority: optional
 Depends: libc6, sediros-hardening, dpkg, iproute2, util-linux, mount, kmod, nftables, ufw, apt, systemd
+Recommends: curl
 Description: Check that a SedirOS system's hardening is still in place
  sediros-audit compares the running system with the hardening of the
  installed SedirOS packages: kernel settings, SSH, firewall, AppArmor,
@@ -13,3 +14,7 @@ Description: Check that a SedirOS system's hardening is still in place
  It reports what was changed and, where it can, which file changed it.
  .
  Run: sudo sediros-audit   (--json for tools, --quiet for problems only)
+ .
+ It also runs daily (sediros-audit.timer): the result is shown at login,
+ written as Prometheus metrics, and reported by e-mail or webhook when the
+ hardening got worse (/etc/sediros/audit.conf).

@@ -1,0 +1,15 @@
+[Unit]
+Description=SedirOS daily hardening audit
+Documentation=https://github.com/sediros/sediros
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/sediros-audit --record
+# Reads the whole system, writes only its state and the metrics file.
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
+Nice=10
+IOSchedulingClass=idle

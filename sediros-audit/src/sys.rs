@@ -99,6 +99,38 @@ pub fn euid() -> Option<u32> {
         .ok()
 }
 
+/// Seconds since the epoch.
+pub fn epoch() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Runs a program with `input` on stdin; Err carries its stderr.
+pub fn run_input(prog: &str, args: &[&str], input: &str) -> Result<(), String> {
+    use std::io::Write;
+    let mut child = Command::new(prog)
+        .args(args)
+        .env("LC_ALL", "C")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("{prog}: {e}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(input.as_bytes())
+            .map_err(|e| e.to_string())?;
+    }
+    let out = child.wait_with_output().map_err(|e| e.to_string())?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+    }
+}
+
 pub fn now_utc() -> String {
     run("date", &["-u", "+%Y-%m-%d %H:%M UTC"])
         .map(|s| s.trim().to_string())
