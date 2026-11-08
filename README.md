@@ -340,6 +340,18 @@ All releases with the same major number are one line. A newer release is a fresh
 
 Installed systems receive Debian's security updates for as long as Debian supports the Debian release underneath: Debian's [security support](https://www.debian.org/security/faq), then [Debian LTS](https://wiki.debian.org/LTS). SedirOS's own packages come from the SedirOS apt repository. SedirOS is a volunteer project and makes no support promise beyond that.
 
+## How SedirOS protects a server
+
+Three layers, in order of importance:
+
+1. **Updates.** Debian's security team fixes the bugs; SedirOS installs their fixes automatically every day (unattended-upgrades), and its own packages through the SedirOS apt repository. A fixed kernel only runs after a **reboot**: SedirOS says so at login and `sediros-audit` reports it as a warning, so plan reboots.
+2. **A smaller attack surface.** The hardening turns off what servers do not need, so that bugs in that code cannot be reached, including bugs nobody has found yet. It does not fix bugs and does not replace updates.
+3. **Checking that it stays so.** `sediros-audit` runs every day and reports when a setting drifted, by e-mail, webhook or Prometheus.
+
+An example, CVE-2026-98432 (a remote use-after-free in the kernel's IPv4 TCP connection setup, rated critical): the fix is Debian's kernel 6.12.113 or later, which the 1.0 images ship and installed systems get through updates. Until a server reboots into it, SedirOS's hardening still blocks the network path to the bug: IPv4 TCP packets carrying IP options are dropped before they reach the TCP code (no normal internet traffic uses them), and the two other ways in, request-socket migration and Multipath TCP, are turned off.
+
+What SedirOS does not do: it does not patch the kernel or other Debian packages itself, it is not an intrusion detection system, and it cannot protect software you run with weak settings (open ports, default passwords). Report security problems in SedirOS as described in [SECURITY.md](SECURITY.md).
+
 ## Security defaults and their side effects
 
 | Setting | Effect you may notice |
