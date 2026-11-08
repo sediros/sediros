@@ -164,7 +164,7 @@ Installed systems get updates of SedirOS's packages from `https://sediros.github
 - `sediros-archive-keyring` installs the key, `sources.list.d/sediros.sources` (`Signed-By` that key) and `preferences.d/sediros`, which only accepts `sediros-*` from the repository's host. `sediros-hardening` lets unattended-upgrades install from it (`origin=SedirOS,site=sediros.github.io`). The host name appears in all three files; change them together.
 - `make apt-test` (also in CI on amd64) boots a VM, serves it a repository signed with a throwaway key (`tests/apt_fixture.sh`) and checks the signature, the unattended update, the pin and a repository signed with another key.
 
-Signing key (Ed25519, fingerprint `2E46F4E24105D45BA8A273760E9353DF89690935`, expires 2029-11-06):
+Signing key (Ed25519, fingerprint `D17BC3DCE5196167A7A0F3A46D4E0DA8534FFDAD`, expires 2029-11-07):
 - The private key is the repository secret `APT_SIGNING_KEY`; an offline copy and a revocation certificate are kept by the maintainer, never in the repository.
 - Rotation (before it expires, or if it leaks): create a new key, ship both public keys in a new `sediros-archive-keyring` version, publish a release, switch `APT_SIGNING_KEY` to the new key in a later release, then drop the old public key. Systems that never install the intermediate version need the keyring package once by hand, as in the README.
 

@@ -181,7 +181,7 @@ With a GRUB password the default entry still boots unattended, but editing boot 
 - SedirOS's packages come from the SedirOS apt repository (`https://sediros.github.io/sediros/apt`), set up by the `sediros-archive-keyring` package:
   - The source is bound to SedirOS's signing key (`Signed-By`): that key cannot sign anything else, and no other key can sign this repository.
   - An apt pin (`/etc/apt/preferences.d/sediros`) only accepts `sediros-*` packages from it. Even with a stolen signing key, the repository cannot replace Debian packages such as `openssh-server`.
-  - Signing key fingerprint: `2E46 F4E2 4105 D45B A8A2  7376 0E93 53DF 8969 0935`
+  - Signing key fingerprint: `D17B C3DC E519 6167 A7A0  F3A4 6D4E 0DA8 534F FDAD`
 
 ### Is the hardening still in place?
 
