@@ -384,6 +384,8 @@ If `curl http://<address>` works from your computer but the browser does not ope
 ## More
 
 - [CHANGELOG.md](CHANGELOG.md): what changed in each release
+- [ROADMAP.md](ROADMAP.md): what is planned next
+- [SECURITY.md](SECURITY.md): reporting a security problem
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): building SedirOS, tests, repository layout, release process
 
 ## License
