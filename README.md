@@ -37,6 +37,8 @@ The two are independent: an installed system does not need the CLI, and the CLI 
 | PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sediros-1.0-install-amd64.iso` |
 | Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sediros-1.0-install-arm64.iso` |
 
+Every release is also mirrored on SourceForge: <https://sourceforge.net/projects/sediros/files/>. Use it when GitHub's downloads are slow or fail; check the file against `SHA256SUMS` either way.
+
 For the `sediros` CLI you download nothing by hand: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm).
 
 <details>

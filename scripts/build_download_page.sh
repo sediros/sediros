@@ -7,7 +7,9 @@
 #  <release.json> is the newest published release (pre-releases included):
 #    gh release view <tag> --json tagName,url,publishedAt,isPrerelease,assets
 #  The page links the release's files directly and shows the checksum of
-#  each ISO, so nobody has to dig through the release's asset list.
+#  each ISO, so nobody has to dig through the release's asset list. Each ISO
+#  also links the SourceForge mirror, which copies every GitHub release
+#  (webhook) and serves it when GitHub's downloads do not.
 #  The apt-repo workflow runs it after every published release.
 # =============================================================================
 set -Eeuo pipefail
@@ -35,6 +37,9 @@ pre="$(jq -r .isPrerelease "$REL")"
 version="${tag#v}"
 [[ "$tag" == v* && "$url" == https://github.com/* ]] || die "unexpected release data in $REL"
 
+SF_PROJECT="${SEDIROS_SF_PROJECT:-sediros}"
+mirror_url() { printf 'https://sourceforge.net/projects/%s/files/%s/%s/download' "$SF_PROJECT" "$tag" "$1"; }
+
 # Download URL and size (MB) of an asset, by exact name.
 asset_url()  { jq -r --arg n "$1" '.assets[] | select(.name == $n) | .url' "$REL"; }
 asset_mb()   { jq -r --arg n "$1" '.assets[] | select(.name == $n) | (.size / 1048576 | floor)' "$REL"; }
@@ -53,6 +58,7 @@ iso_row() {
   <h3>${arch}</h3>
   <p class="who">${who}</p>
   <p><a class="button" href="${u}">Download ISO</a> <span class="muted">${mb} MB</span></p>
+  <p class="muted">Mirror: <a href="$(mirror_url "$name")">SourceForge</a></p>
   <p class="sha">SHA-256 <code>${sha}</code></p>
 </div>
 EOF
