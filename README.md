@@ -238,6 +238,8 @@ MAILTO=admin@example.org                     # through the local mail transfer a
 WEBHOOK=https://ntfy.sh/your-private-topic   # plain text; WEBHOOK_FORMAT=slack for Slack/Mattermost
 ```
 
+**Why settings drift.** Nothing in SedirOS changes them, but other things do: software you install (Docker publishes container ports past ufw and turns on IP forwarding; other packages add their own `/etc/sysctl.d` files or open ports), a Debian update that changes a default, a cloud provider's agent, or a temporary change someone forgot to undo. The audit only reports; it never reverts a change, since it may have been made on purpose.
+
 **Many servers at once.** From your machine, `sediros fleet` shows the last daily result of every server in a file (one ssh destination per line: host, `user@host`, an ssh config alias or `ssh://user@host:port`):
 
 ```
