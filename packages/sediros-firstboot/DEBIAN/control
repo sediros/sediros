@@ -1,0 +1,17 @@
+Package: sediros-firstboot
+Version: 0.1.0
+Architecture: @SEDIROS_ARCH@
+Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
+Section: admin
+Priority: optional
+Depends: libc6, openssh-server, openssh-client, util-linux, fdisk, e2fsprogs, hostname, systemd
+Description: First-boot setup of SedirOS cloud images
+ For SedirOS images on cloud and VPS providers. On the first boot of each
+ new instance (a new instance id, also after cloning a disk) it creates new
+ SSH host keys, sets the hostname, adds the admin user's SSH keys and grows
+ the root file system to the disk, from the provider's metadata: a NoCloud
+ seed (label cidata) or the EC2-style service at 169.254.169.254.
+ .
+ User-data scripts are never run: SedirOS does not execute code from the
+ provider's control panel as root. From #cloud-config only hostname and
+ ssh_authorized_keys are used; anything else is reported at login.

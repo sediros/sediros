@@ -46,6 +46,7 @@ Settings are in `config/sediros.conf` and can be overridden on the command line,
 | `make iso-test` | boots the ISO with Secure Boot enforced and checks it from the live session |
 | `make install-test` | installs from the ISO to an empty disk and boots it, both with Secure Boot enforced |
 | `make apt-test` | updates a throwaway VM through a test apt repository (signature, pin, unattended upgrade) |
+| `make firstboot-test` | installs `sediros-firstboot` in a throwaway VM and sets it up as two new instances: from a NoCloud seed and from a fake EC2-style metadata service on the host (`tests/firstboot.sh`) |
 
 ## Repository layout
 

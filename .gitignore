@@ -10,6 +10,7 @@
 /sediros-cli/target/
 /sediros-install/target/
 /sediros-audit/target/
+/sediros-firstboot/target/
 
 # Secrets / local
 *.key

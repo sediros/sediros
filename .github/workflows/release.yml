@@ -99,6 +99,12 @@ jobs:
           make test
           make apt-test
 
+      - name: sediros-firstboot test (NoCloud seed, metadata service)
+        if: matrix.smoke
+        run: |
+          sudo chmod 0666 /dev/kvm
+          make firstboot-test
+
       - name: Build installer and ISO
         run: make iso
 

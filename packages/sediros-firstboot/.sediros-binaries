@@ -1,0 +1,2 @@
+# <path in package>           <built file, relative to the project root>
+usr/sbin/sediros-firstboot     build/bin/sediros-firstboot-@SEDIROS_ARCH@

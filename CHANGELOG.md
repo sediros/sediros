@@ -2,6 +2,13 @@
 
 Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 = Debian 13) and is tagged `v<release>` in git; see "Versions and support" in the README. Package and tool versions are listed when they change.
 
+## [1.1] - unreleased
+
+### Cloud images (`sediros-firstboot` 0.1.0)
+- `sediros-firstboot` sets up a cloud or VPS instance on its first boot, from a NoCloud seed (label `cidata`) or the EC2-style metadata service at 169.254.169.254 (Vultr, Hetzner, AWS, OpenStack): new SSH host keys, hostname, the admin user's SSH keys, root file system grown to the disk. A new instance id (a cloned disk) runs it again; a known one changes nothing.
+- User-data scripts are never run. From `#cloud-config` only `hostname` and `ssh_authorized_keys` are used; anything else is reported at login (`/etc/motd.d/50-sediros-firstboot`).
+- Built and published as a package; no image contains it yet (cloud images follow). No Rust dependencies, like `sediros-audit`.
+
 ## [1.0] - 2026-11-08
 
 First release, based on Debian 13 (trixie).

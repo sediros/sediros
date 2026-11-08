@@ -12,7 +12,8 @@
 #    packages/<pkg>/          DEBIAN/control Version must differ
 #    packages/sediros-base-files/  RELEASE in config/sediros.conf must differ
 #                             (its version is the release)
-#    sediros-cli/, sediros-install/, sediros-audit/  version in Cargo.toml must differ
+#    sediros-cli/, sediros-install/, sediros-audit/, sediros-firstboot/
+#                             version in Cargo.toml must differ
 #  Packages that did not exist at the base are new and always pass.
 # =============================================================================
 set -Eeuo pipefail
@@ -59,7 +60,7 @@ for dir in packages/*/; do
     [[ "$old" != "$new" ]] || fail "$pkg changed since $base but Version is still $new ($dir/DEBIAN/control)"
 done
 
-for crate in sediros-cli sediros-install sediros-audit; do
+for crate in sediros-cli sediros-install sediros-audit sediros-firstboot; do
     existed "$crate/Cargo.toml" || continue
     changed "$crate/src" || changed "$crate/Cargo.toml" || changed "$crate/Cargo.lock" || continue
     old="$(at_base "$crate/Cargo.toml" | field version =)"

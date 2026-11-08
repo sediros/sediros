@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  SedirOS - build a Rust tool of the image (sediros-install,
-#  sediros-audit) for the image architecture
+#  sediros-audit, sediros-firstboot) for the image architecture
 #
 #  Usage : ./scripts/build_installer.sh [crate]   (default: sediros-install)
 #  Host  : Linux with cargo (native build), or any host with Docker
@@ -38,7 +38,7 @@ die() { printf '  ✗ %s\n' "$*" >&2; exit 1; }
 case "${1:-}" in
     -h|--help) awk 'NR>2 && /^# =====/ {exit} NR>2 {sub(/^#/, ""); sub(/^ /, ""); print}' "$0"; exit 0 ;;
     "") ;;
-    sediros-install|sediros-audit) NAME="$1" ;;
+    sediros-install|sediros-audit|sediros-firstboot) NAME="$1" ;;
     *) die "Unknown argument: $1" ;;
 esac
 CRATE="${PROJECT_ROOT}/${NAME}"

@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    deb-systemd-helper enable sediros-firstboot.service >/dev/null || true
+fi

@@ -1,0 +1,20 @@
+[package]
+name = "sediros-firstboot"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "First-boot setup of SedirOS cloud images from the provider's metadata"
+license = "Apache-2.0"
+authors = ["The SedirOS Authors <ahmetatakan.tech@gmail.com>"]
+publish = false
+
+# No dependencies on purpose, like sediros-audit: it runs as root on every
+# boot of a cloud image and talks to the network, so the surface stays small.
+[dependencies]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

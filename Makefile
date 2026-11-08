@@ -34,6 +34,9 @@ INSTALL_DEBS  := $(LIVE_DEB) $(INSTALLER_DEB)
 # In every image (vm and install profile).
 AUDIT_BIN     := $(BUILD)/bin/sediros-audit-$(ARCH)
 AUDIT_DEB     := $(BUILD)/debs/sediros-audit_$(call pkg_version,sediros-audit)_$(ARCH).deb
+# Built and published (apt repository), but in no image yet: it is for cloud images.
+FIRSTBOOT_BIN := $(BUILD)/bin/sediros-firstboot-$(ARCH)
+FIRSTBOOT_DEB := $(BUILD)/debs/sediros-firstboot_$(call pkg_version,sediros-firstboot)_$(ARCH).deb
 
 # Linux builds need root (debootstrap/chroot, file ownership); -E keeps SEDIROS_* env.
 SUDO := $(if $(filter Linux,$(UNAME_S)),$(if $(filter-out 0,$(shell id -u)),sudo -E,),)
@@ -56,7 +59,7 @@ PKG_INPUTS    := scripts/build_packages.sh scripts/lib/release.sh config/sediros
 CLI_INPUTS    := sediros-cli/Cargo.toml $(shell find sediros-cli/src -name '*.rs')
 SHELL_SCRIPTS := $(wildcard scripts/*.sh scripts/lib/*.sh tests/*.sh tests/lib/*.sh)
 
-.PHONY: help deb rootfs image build iso iso-run iso-test install-test apt-test cli installer audit install test lint fmt launch shell stop clean
+.PHONY: help deb rootfs image build iso iso-run iso-test install-test apt-test firstboot-test cli installer audit firstboot install test lint fmt launch shell stop clean
 
 help: ## Show this help
 	@echo "SedirOS $(RELEASE) ($(ARCH), profile $(PROFILE)) - usage: make <target> [RELEASE=..] [PROFILE=vm|install] [VM=..]"
@@ -92,6 +95,11 @@ $(AUDIT_BIN): sediros-audit/Cargo.toml sediros-audit/Cargo.lock $(shell find sed
 $(AUDIT_DEB): $(PKG_INPUTS) $(AUDIT_BIN)
 	scripts/build_packages.sh sediros-audit
 
+$(FIRSTBOOT_BIN): sediros-firstboot/Cargo.toml sediros-firstboot/Cargo.lock $(shell find sediros-firstboot/src -name '*.rs') scripts/build_installer.sh
+	scripts/build_installer.sh sediros-firstboot
+$(FIRSTBOOT_DEB): $(PKG_INPUTS) $(FIRSTBOOT_BIN)
+	scripts/build_packages.sh sediros-firstboot
+
 ifneq ($(PROFILE),install)
 # Same recipe as $(ROOTFS_TAR), install profile.
 $(INSTALL_ROOTFS_TAR): $(ROOTFS_INPUTS) $(INSTALL_DEBS)
@@ -107,13 +115,14 @@ $(CLI): $(CLI_INPUTS)
 deb: $(DEBS) ## Build SedirOS .deb packages (build/debs)
 rootfs: $(ROOTFS_TAR) ## Build the hardened rootfs archive (only if inputs changed)
 image: $(IMAGE) ## Build the qcow2 base image
-build: $(IMAGE) $(CLI) ## rootfs + image + sediros binary
+build: $(IMAGE) $(CLI) $(FIRSTBOOT_DEB) ## rootfs + image + sediros binary + packages outside the image
 iso: $(ISO) ## Build the live/installer ISO (install profile)
 
 cli: $(CLI) ## Build sediros-cli (release)
 
 installer: $(INSTALLER_BIN) ## Build sediros-install for Linux (Docker on macOS)
 audit: $(AUDIT_BIN) ## Build sediros-audit for Linux (Docker on macOS)
+firstboot: $(FIRSTBOOT_DEB) ## Build the sediros-firstboot package (Docker on macOS)
 
 install: $(CLI) ## Install 'sediros' into ~/.cargo/bin
 	cargo install --path sediros-cli --locked --force
@@ -124,6 +133,10 @@ test: $(CLI) $(IMAGE) ## Boot a throwaway VM and run the hardening smoke test (v
 	@test "$(PROFILE)" = vm || { echo "make test needs PROFILE=vm (install images have no key and no passwordless sudo)"; exit 1; }
 	SEDIROS_BIN=$(CLI) SEDIROS_IMAGE=$(IMAGE) tests/smoke.sh
 
+firstboot-test: $(CLI) $(IMAGE) $(FIRSTBOOT_DEB) ## Install sediros-firstboot in a throwaway VM and set it up from a fake metadata service
+	@test "$(PROFILE)" = vm || { echo "make firstboot-test needs PROFILE=vm"; exit 1; }
+	SEDIROS_BIN=$(CLI) SEDIROS_IMAGE=$(IMAGE) tests/firstboot.sh $(FIRSTBOOT_DEB)
+
 apt-test: $(CLI) $(IMAGE) $(DEBS) ## Update a throwaway VM through a test apt repository (signature, pin, unattended-upgrades)
 	@test "$(PROFILE)" = vm || { echo "make apt-test needs PROFILE=vm"; exit 1; }
 	SEDIROS_BIN=$(CLI) SEDIROS_IMAGE=$(IMAGE) tests/apt_repo.sh
@@ -133,7 +146,7 @@ lint: ## bash -n + shellcheck (if installed) + rustfmt + clippy + package versio
 	@for f in $(SHELL_SCRIPTS); do bash -n "$$f" || exit 1; done; echo "bash -n: ok"
 	@if command -v shellcheck >/dev/null; then shellcheck -x $(SHELL_SCRIPTS) && echo "shellcheck: ok"; \
 	 else echo "shellcheck: not installed, skipped"; fi
-	@for c in sediros-cli sediros-install sediros-audit; do \
+	@for c in sediros-cli sediros-install sediros-audit sediros-firstboot; do \
 	    cargo fmt --manifest-path $$c/Cargo.toml --check && \
 	    cargo clippy --release --manifest-path $$c/Cargo.toml -- -D warnings || exit 1; \
 	done
@@ -142,6 +155,7 @@ fmt: ## Format Rust code
 	cargo fmt --manifest-path sediros-cli/Cargo.toml
 	cargo fmt --manifest-path sediros-install/Cargo.toml
 	cargo fmt --manifest-path sediros-audit/Cargo.toml
+	cargo fmt --manifest-path sediros-firstboot/Cargo.toml
 
 # --- VM shortcuts ------------------------------------------------------------
 
@@ -168,3 +182,4 @@ clean: ## Remove build/ artifacts and Rust target/ (VMs are kept)
 	cargo clean --manifest-path sediros-cli/Cargo.toml
 	cargo clean --manifest-path sediros-install/Cargo.toml
 	cargo clean --manifest-path sediros-audit/Cargo.toml
+	cargo clean --manifest-path sediros-firstboot/Cargo.toml

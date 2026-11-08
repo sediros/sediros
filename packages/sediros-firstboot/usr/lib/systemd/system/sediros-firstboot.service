@@ -1,0 +1,18 @@
+[Unit]
+Description=SedirOS first-boot setup from cloud metadata
+Documentation=https://github.com/sediros/sediros
+# New host keys and the admin user's keys must be in place before sshd starts.
+Before=ssh.service sshd.service systemd-user-sessions.service
+After=systemd-networkd-wait-online.service local-fs.target
+Wants=systemd-networkd-wait-online.service
+ConditionPathExists=!/etc/sediros/firstboot.disabled
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/sediros-firstboot
+RemainAfterExit=yes
+StandardOutput=journal+console
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
