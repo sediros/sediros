@@ -24,7 +24,11 @@ TAG="${1:?usage: $0 v<release>}"
 REPO="${SEDIROS_REPO:-sediros/sediros}"
 BASE="${SEDIROS_RELEASE_URL:-https://github.com/${REPO}/releases/download/${TAG}}"
 
-sums="$(curl -fsSL "$BASE/SHA256SUMS")" || { echo "cannot download $BASE/SHA256SUMS" >&2; exit 1; }
+# The GitHub API (gh) is a second path when the download URL fails.
+sums="$(curl -fsSL "$BASE/SHA256SUMS" 2>/dev/null)" \
+    || { [[ -z "${SEDIROS_RELEASE_URL:-}" ]] && command -v gh >/dev/null \
+         && sums="$(gh release download "$TAG" -R "$REPO" -p SHA256SUMS -O -)"; } \
+    || { echo "cannot download $BASE/SHA256SUMS" >&2; exit 1; }
 
 # CLI version from the tarball names, e.g. sediros-0.3.0-aarch64-apple-darwin.tar.gz
 version="$(sed -n 's/.*sediros-\([0-9][0-9.]*\)-aarch64-apple-darwin\.tar\.gz$/\1/p' <<<"$sums" | head -n1)"
