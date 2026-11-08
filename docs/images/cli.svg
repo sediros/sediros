@@ -8,8 +8,8 @@
 <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" xml:space="preserve">
 <text x="16" y="57"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sediros launch demo</tspan></text>
 <text x="16" y="76"><tspan fill="#d8d8dc">Launched &#x27;demo&#x27; (arm64, hvf, 2 vCPU, 1024 MiB) - ssh on 127.0.0.1:2223</tspan></text>
-<text x="16" y="95"><tspan fill="#8b8c94">Waiting for SSH... ready in 4.3s</tspan></text>
+<text x="16" y="95"><tspan fill="#8b8c94">Waiting for SSH... ready in 4.2s</tspan></text>
 <text x="16" y="114"><tspan fill="#8b8c94">Next: sediros shell demo</tspan></text>
 <text x="16" y="133"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sediros shell demo -- grep PRETTY_NAME /etc/os-release</tspan></text>
-<text x="16" y="152"><tspan fill="#d8d8dc">PRETTY_NAME=&quot;SedirOS 13.1 (trixie)&quot;</tspan></text>
+<text x="16" y="152"><tspan fill="#d8d8dc">PRETTY_NAME=&quot;SedirOS 1.0 (based on Debian 13 trixie)&quot;</tspan></text>
 </g></svg>
