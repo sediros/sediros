@@ -2,7 +2,7 @@
 
 What is planned, by release. The details, and the discussion, are in the linked issues; [milestones](https://github.com/sediros/sediros/milestones) show the progress. Plans change: a release ships what is ready and tested.
 
-## 1.1 (release candidate out)
+## 1.1 (released 2026-11-08)
 
 - [x] `sediros-firstboot`: first-boot setup of cloud images from the provider's metadata, never running user-data scripts ([#1](https://github.com/sediros/sediros/issues/1))
 - [x] Daily audit: reports when the hardening got worse, by e-mail, webhook or Prometheus ([#2](https://github.com/sediros/sediros/issues/2))

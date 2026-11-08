@@ -2,7 +2,7 @@
 
 Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 = Debian 13) and is tagged `v<release>` in git; see "Versions and support" in the README. Package and tool versions are listed when they change.
 
-## [1.1] - unreleased
+## [1.1] - 2026-11-08
 
 ### Hardening (`sediros-hardening` 0.5.6)
 - Depends on `whiptail`: without it, every `apt upgrade` that configured the hardening printed debconf's "unable to initialize frontend" messages (pam-auth-update uses debconf), and package questions fell back to plain text.
