@@ -11,6 +11,7 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 - The audit checks that its own timer is enabled: turning it off would silence the reports.
 
 ### Tools (`sediros` CLI 0.7.0)
+- `sediros unlock <host>` unlocks an encrypted SedirOS server over SSH at boot: it waits until the boot-time SSH server answers, sends the passphrase on ssh's stdin, and can keep it in the macOS Keychain or the Linux Secret Service (`--save`, `--forget`). Tested against an installed disk booting in QEMU.
 - `sediros pull` keeps working when GitHub does not: image files come from the SourceForge mirror, the checksums from the download page on GitHub Pages (never from the mirror, so a tampered mirror cannot pass the check), and the newest release's name from the download page when GitHub's API does not answer. It says which source it used.
 
 ### Login greeting (`sediros-base-files` 1.1)

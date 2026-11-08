@@ -6,6 +6,7 @@ mod paths;
 mod pull;
 mod purge;
 mod ssh;
+mod unlock;
 mod vm;
 
 use anyhow::Result;
@@ -36,5 +37,6 @@ fn run(cli: Cli) -> Result<()> {
         Command::List => vm::list(&paths),
         Command::Stop(args) => vm::stop_cmd(&paths, &args),
         Command::Purge(args) => purge::run(&paths, &args),
+        Command::Unlock(args) => unlock::run(&args),
     }
 }

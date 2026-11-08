@@ -54,6 +54,35 @@ pub enum Command {
     Stop(StopArgs),
     /// Stop VMs and delete their disks and state
     Purge(PurgeArgs),
+    /// Unlock an encrypted SedirOS server over SSH at boot: sediros unlock server.example.org
+    Unlock(UnlockArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct UnlockArgs {
+    /// Server name or address (the boot-time SSH server listens as root)
+    pub host: String,
+
+    /// Port of the boot-time SSH server (set by the installer)
+    #[arg(short, long, default_value_t = 2222)]
+    pub port: u16,
+
+    /// SSH private key to use (default: ssh's own choice)
+    #[arg(short, long)]
+    pub identity: Option<PathBuf>,
+
+    /// Seconds to wait for the server to reach the unlock prompt
+    #[arg(long, default_value_t = 600)]
+    pub wait: u64,
+
+    /// Keep the passphrase in the system's keychain (macOS Keychain, Linux
+    /// Secret Service) after it worked, for the next unlock of this host
+    #[arg(long)]
+    pub save: bool,
+
+    /// Delete this host's passphrase from the keychain and exit
+    #[arg(long)]
+    pub forget: bool,
 }
 
 #[derive(Args, Debug)]

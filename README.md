@@ -181,6 +181,16 @@ Port 2222 exists only during that wait. Once the system is running, the connecti
 - Compare the host key fingerprint with the one the installer printed on your first connection.
 - The network is configured with DHCP; a static address is not supported yet.
 
+With the `sediros` CLI (macOS, Linux) one command does it, and waits for the server to reach the prompt, so you can run it right after a reboot:
+
+```bash
+sediros unlock server.example.org            # asks for the passphrase
+sediros unlock server.example.org --save     # and keeps it in the keychain for next time
+sediros unlock server.example.org --forget   # removes it from the keychain
+```
+
+The passphrase is sent to the server's stdin over SSH, never as an argument. `--save` uses the system's keychain: macOS Keychain, or the Secret Service on Linux (`secret-tool`, package `libsecret-tools`).
+
 ### Protecting the boot menu
 
 ```bash
