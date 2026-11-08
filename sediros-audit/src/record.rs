@@ -95,10 +95,30 @@ pub fn prometheus(findings: &[Finding], epoch: u64) -> String {
     out
 }
 
+/// The `sudo` group's id: admins read the results (sediros fleet logs in as
+/// one), other local users do not.
+fn sudo_gid() -> Option<u32> {
+    sys::read("/etc/group")?
+        .lines()
+        .find(|l| l.starts_with("sudo:"))?
+        .split(':')
+        .nth(2)?
+        .parse()
+        .ok()
+}
+
+/// root:sudo, 0750 for the directory and 0640 for files.
+fn restrict(path: &Path, mode: u32) {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = std::os::unix::fs::chown(path, Some(0), sudo_gid());
+    let _ = fs::set_permissions(path, fs::Permissions::from_mode(mode));
+}
+
 /// Writes through a temporary file, so readers never see half a file.
-fn write_atomic(path: &Path, text: &str) -> Result<(), String> {
+fn write_atomic(path: &Path, text: &str, mode: u32) -> Result<(), String> {
     let tmp = path.with_extension("tmp");
     fs::write(&tmp, text).map_err(|e| format!("{}: {e}", tmp.display()))?;
+    restrict(&tmp, mode);
     fs::rename(&tmp, path).map_err(|e| format!("{}: {e}", path.display()))
 }
 
@@ -176,6 +196,7 @@ pub fn record(header: &Header, findings: &[Finding]) -> Vec<String> {
     if let Err(e) = fs::create_dir_all(dir) {
         return vec![format!("✗ {STATE_DIR}: {e}")];
     }
+    restrict(dir, 0o750);
     let before = sys::read(dir.join("last-status")).map(|t| parse_status(&t));
     let status: String = findings
         .iter()
@@ -187,7 +208,7 @@ pub fn record(header: &Header, findings: &[Finding]) -> Vec<String> {
         ("last-status", status),
     ];
     for (name, text) in results {
-        if let Err(e) = write_atomic(&dir.join(name), &text) {
+        if let Err(e) = write_atomic(&dir.join(name), &text, 0o640) {
             log.push(format!("✗ {e}"));
         }
     }
@@ -200,7 +221,8 @@ pub fn record(header: &Header, findings: &[Finding]) -> Vec<String> {
         .unwrap_or_else(|| NODE_EXPORTER_DIR.into());
     if Path::new(&prom_dir).is_dir() {
         let path = Path::new(&prom_dir).join("sediros_audit.prom");
-        match write_atomic(&path, &prometheus(findings, sys::epoch())) {
+        // node_exporter runs as its own user.
+        match write_atomic(&path, &prometheus(findings, sys::epoch()), 0o644) {
             Ok(()) => log.push(format!("metrics: {}", path.display())),
             Err(e) => log.push(format!("✗ metrics: {e}")),
         }

@@ -238,6 +238,17 @@ MAILTO=admin@example.org                     # through the local mail transfer a
 WEBHOOK=https://ntfy.sh/your-private-topic   # plain text; WEBHOOK_FORMAT=slack for Slack/Mattermost
 ```
 
+**Many servers at once.** From your machine, `sediros fleet` shows the last daily result of every server in a file (one ssh destination per line: host, `user@host`, an ssh config alias or `ssh://user@host:port`):
+
+```
+$ sediros fleet servers.txt
+HOST  RESULT       PASS WARN FAIL  CHECKED               PROBLEMS
+web1  ok             17    0    0  2026-11-08 04:12 UTC
+db1   FAIL           16    0    1  2026-11-08 04:31 UTC  firewall✗
+```
+
+It reads `/var/lib/sediros/audit/last.json` (readable by the `sudo` group) and needs no sudo; `--live` runs the audit now instead, which needs passwordless sudo for `sediros-audit`. It exits with 1 when a server failed, could not be reached or has no recent result, so it can run from cron or CI.
+
 With Prometheus' node_exporter, the metrics `sediros_audit_check{check,status}` and `sediros_audit_findings{status}` are written to its textfile collector directory (`/var/lib/prometheus/node-exporter`, or `PROMETHEUS_DIR=`). Nothing is sent anywhere until you configure it.
 
 ### Which build am I running?

@@ -56,6 +56,28 @@ pub enum Command {
     Purge(PurgeArgs),
     /// Unlock an encrypted SedirOS server over SSH at boot: sediros unlock server.example.org
     Unlock(UnlockArgs),
+    /// Hardening state of many SedirOS servers in one table: sediros fleet hosts.txt
+    Fleet(FleetArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct FleetArgs {
+    /// File with one ssh destination per line (host, user@host, ssh config
+    /// alias, ssh://user@host:port); # starts a comment
+    pub hosts: PathBuf,
+
+    /// Run the audit now (needs passwordless sudo for sediros-audit on the
+    /// servers) instead of reading each server's last daily result
+    #[arg(long)]
+    pub live: bool,
+
+    /// Servers checked at the same time
+    #[arg(long, default_value_t = 8)]
+    pub jobs: usize,
+
+    /// ssh configuration file to use instead of ~/.ssh/config (ssh -F)
+    #[arg(short = 'F', long)]
+    pub ssh_config: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]

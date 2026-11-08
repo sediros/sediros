@@ -2,6 +2,7 @@
 
 mod builder;
 mod cli;
+mod fleet;
 mod paths;
 mod pull;
 mod purge;
@@ -38,5 +39,6 @@ fn run(cli: Cli) -> Result<()> {
         Command::Stop(args) => vm::stop_cmd(&paths, &args),
         Command::Purge(args) => purge::run(&paths, &args),
         Command::Unlock(args) => unlock::run(&args),
+        Command::Fleet(args) => fleet::run(&args),
     }
 }

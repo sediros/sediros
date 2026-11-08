@@ -9,8 +9,10 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 - When a check got worse than the previous run, it is reported by e-mail (`MAILTO`) or webhook (`WEBHOOK`, plain text or Slack format), set in `/etc/sediros/audit.conf`; nothing is sent until one is set. Editing that file is not reported as drift.
 - Prometheus metrics for node_exporter's textfile collector: `sediros_audit_check`, `sediros_audit_findings`, `sediros_audit_last_run_timestamp_seconds`.
 - The audit checks that its own timer is enabled: turning it off would silence the reports.
+- The results in `/var/lib/sediros/audit` are readable by root and the `sudo` group only; the Prometheus file stays readable for node_exporter.
 
 ### Tools (`sediros` CLI 0.7.0)
+- `sediros fleet <hosts-file>` shows the hardening state of many servers in one table, over SSH: the last daily audit by default (no sudo needed), the audit run now with `--live`. Unreachable servers, failures and results older than two days count as needing attention (exit status 1). `-F` uses another ssh config.
 - `sediros unlock <host>` unlocks an encrypted SedirOS server over SSH at boot: it waits until the boot-time SSH server answers, sends the passphrase on ssh's stdin, and can keep it in the macOS Keychain or the Linux Secret Service (`--save`, `--forget`). Tested against an installed disk booting in QEMU.
 - `sediros pull` keeps working when GitHub does not: image files come from the SourceForge mirror, the checksums from the download page on GitHub Pages (never from the mirror, so a tampered mirror cannot pass the check), and the newest release's name from the download page when GitHub's API does not answer. It says which source it used.
 
