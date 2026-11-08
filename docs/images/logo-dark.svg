@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 160" width="440" height="160" role="img" aria-label="SedirOS">
+  <!-- SedirOS logo: a cedar (sedir) in a shield -->
+  <g transform="translate(12,6)">
+    <path d="M72 4 L136 26 V76 C136 112 108 136 72 148 C36 136 8 112 8 76 V26 Z" fill="#2f6b4f"/>
+    <g fill="#9fd3b5">
+      <rect x="69" y="98" width="6" height="30" rx="1" fill="#e9dcc8"/>
+      <path d="M72 30 C80 36 90 40 98 41 C90 45 80 45 72 43 C64 45 54 45 46 41 C54 40 64 36 72 30Z"/>
+      <path d="M72 48 C84 56 100 60 112 61 C100 67 86 67 72 64 C58 67 44 67 32 61 C44 60 60 56 72 48Z"/>
+      <path d="M72 70 C86 79 106 84 120 85 C104 92 88 92 72 88 C56 92 40 92 24 85 C38 84 58 79 72 70Z"/>
+    </g>
+  </g>
+  <text x="168" y="100" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="64" font-weight="600" fill="#f5f5f7">Sedir<tspan fill="#9fd3b5" font-weight="300">OS</tspan></text>
+</svg>

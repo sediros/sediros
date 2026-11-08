@@ -1,4 +1,9 @@
-# SedirOS
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+    <img src="docs/images/logo.svg" alt="SedirOS" width="300">
+  </picture>
+</h1>
 
 SedirOS is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sediros`, a small CLI that boots SedirOS VMs in seconds.
 
