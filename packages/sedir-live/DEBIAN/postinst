@@ -1,0 +1,7 @@
+#!/bin/sh
+# sedir-live postinst
+set -e
+case "$1" in
+    configure) deb-systemd-helper enable sedir-live.service >/dev/null ;;
+esac
+exit 0

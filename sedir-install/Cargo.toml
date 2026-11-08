@@ -1,0 +1,25 @@
+[package]
+name = "sedir-install"
+version = "0.3.4"
+edition = "2021"
+rust-version = "1.74"
+description = "Install SedirOS from the live ISO to a disk (UEFI, LUKS2)"
+license = "Apache-2.0"
+authors = ["The SedirOS Authors <ahmetatakan.tech@gmail.com>"]
+publish = false
+
+[[bin]]
+name = "sedir-install"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,4 +1,4 @@
-# Sisura CI
+# SedirOS CI
 #   lint  : bash -n, shellcheck, rustfmt, clippy
 #   build : rootfs + qcow2 + ISO for amd64 (KVM smoke test) and arm64 (build only)
 name: ci
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: sisura-cli
+          workspaces: sedir-cli
       - run: rustup component add rustfmt clippy
       - run: make lint
 
@@ -72,7 +72,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: sisura-cli
+          workspaces: sedir-cli
 
       - name: Build rootfs + image + cli
         run: make build
@@ -105,7 +105,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: sisura-${{ matrix.arch }}
+          name: sedir-${{ matrix.arch }}
           retention-days: 7
           if-no-files-found: error
           path: |

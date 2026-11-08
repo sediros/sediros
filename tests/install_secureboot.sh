@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Sisura - install from the ISO to an empty disk and boot the installed
+#  SedirOS - install from the ISO to an empty disk and boot the installed
 #  system, both with Secure Boot enforced.
 #
-#  Usage : tests/install_secureboot.sh build/sisura-<release>-install-<arch>.iso
+#  Usage : tests/install_secureboot.sh build/sedir-<release>-install-<arch>.iso
 #  Needs : UEFI firmware with Secure Boot, see tests/lib/sbvm.sh
-#  Env   : SISURA_SB_KEEP_DISK=<path>  keep the installed disk there
+#  Env   : SEDIR_SB_KEEP_DISK=<path>  keep the installed disk there
 #
-#  1. Live ISO: sisura-install --yes with a LUKS passphrase, an admin
+#  1. Live ISO: sedir-install --yes with a LUKS passphrase, an admin
 #     password and a GRUB password (signed GRUB must handle password_pbkdf2
 #     and still boot the default entry unattended).
 #  2. Installed disk (same EFI variable store, so the firmware uses the
@@ -42,9 +42,9 @@ sb_mark
 sb_send "printf '%s\\n' '$PASSPHRASE' > /tmp/pp; printf '%s\\n' '$PASSWORD' > /tmp/pw"
 # A non-US layout: its keymap goes into the initramfs (LUKS prompt), and
 # console-setup's ckbcomp prints a warning per unmapped key while building it.
-sb_send "sudo sisura-install install --yes --disk vda --keyboard tr --passphrase-file /tmp/pp --password-file /tmp/pw --grub-password-file /tmp/pw; echo SISURA-INSTALL-RC-\$?"
-sb_wait 'SISURA-INSTALL-RC-[0-9]+' 2400
-grep -aq 'SISURA-INSTALL-RC-0' <<<"$(sb_console)" || sb_fail "sisura-install failed"
+sb_send "sudo sedir-install install --yes --disk vda --keyboard tr --passphrase-file /tmp/pp --password-file /tmp/pw --grub-password-file /tmp/pw; echo SEDIR-INSTALL-RC-\$?"
+sb_wait 'SEDIR-INSTALL-RC-[0-9]+' 2400
+grep -aq 'SEDIR-INSTALL-RC-0' <<<"$(sb_console)" || sb_fail "sedir-install failed"
 # Those warnings are filtered: dozens of them hid the real output.
 if grep -aq 'Unknown X keysym' <<<"$(sb_console)"; then
     sb_fail "ckbcomp keymap warnings shown during the install"
@@ -62,7 +62,7 @@ grep -aq 'source has no extended attributes' <<<"$(sb_console)" \
 # The live session runs on the serial console, so the installed system must
 # use it too (otherwise the LUKS prompt only appears on the screen).
 grep -aqE 'Serial console tty(S|AMA)0' <<<"$(sb_console)" \
-    || sb_fail "sisura-install did not detect the serial console"
+    || sb_fail "sedir-install did not detect the serial console"
 echo "      installed in $((SECONDS - start))s"
 sb_send "sudo poweroff"
 sb_stopped 120
@@ -75,7 +75,7 @@ sb_wait 'Please unlock disk' 600
 sb_send "$PASSPHRASE"
 sb_wait 'login: *$' 600
 sb_banner_ok
-sb_send "sisura"
+sb_send "sedir"
 sb_wait 'Password: *$' 60
 sb_mark
 sb_send "$PASSWORD"
@@ -88,33 +88,33 @@ sb_send "$PASSWORD"
 sb_wait ':~\$' 60
 sb_mark
 sb_send "$SB_CHECK"
-sb_wait 'SISURA-SB-[01] ' 60
+sb_wait 'SEDIR-SB-[01] ' 60
 out="$(sb_console)"
-grep -aq 'SISURA-SB-1 ' <<<"$out" || sb_fail "installed system booted, but Secure Boot is not enforced"
+grep -aq 'SEDIR-SB-1 ' <<<"$out" || sb_fail "installed system booted, but Secure Boot is not enforced"
 # Every package fully configured (no half-installed or triggers-pending).
 sb_mark
 # shellcheck disable=SC2016  # expanded in the guest
-sb_send 'echo SISURA-AUDIT-$(sudo dpkg --audit | wc -l)-END'
-sb_wait 'SISURA-AUDIT-[0-9]+-END' 60
-grep -aq 'SISURA-AUDIT-0-END' <<<"$(sb_console)" || sb_fail "dpkg --audit reports packages on the installed system"
+sb_send 'echo SEDIR-AUDIT-$(sudo dpkg --audit | wc -l)-END'
+sb_wait 'SEDIR-AUDIT-[0-9]+-END' 60
+grep -aq 'SEDIR-AUDIT-0-END' <<<"$(sb_console)" || sb_fail "dpkg --audit reports packages on the installed system"
 # The virtio-gpu initramfs hook ran (initramfs-tools skips hooks that are
 # not executable): VMs with a virtio-gpu display show the LUKS prompt.
 sb_mark
 # shellcheck disable=SC2016  # expanded in the guest
-sb_send 'echo SISURA-GPU-$(lsinitramfs /boot/initrd.img-* | grep -c virtio-gpu)-END'
-sb_wait 'SISURA-GPU-[0-9]+-END' 120
-if grep -aq 'SISURA-GPU-0-END' <<<"$(sb_console)"; then
+sb_send 'echo SEDIR-GPU-$(lsinitramfs /boot/initrd.img-* | grep -c virtio-gpu)-END'
+sb_wait 'SEDIR-GPU-[0-9]+-END' 120
+if grep -aq 'SEDIR-GPU-0-END' <<<"$(sb_console)"; then
     sb_fail "virtio-gpu is not in the installed system's initramfs"
 fi
-lockdown="$(grep -ao 'SISURA-LOCKDOWN-.*' <<<"$out" | tail -n1)"
+lockdown="$(grep -ao 'SEDIR-LOCKDOWN-.*' <<<"$out" | tail -n1)"
 loader="$(tr -d '\r' < "$SB_LOG" | grep -ao 'BdsDxe: starting [^"]*"[^"]*"' | head -n1 || true)"
 echo "PASS  installed system boots with Secure Boot enforced in $((SECONDS - start))s"
 echo "      firmware: ${loader:-?}"
-echo "      kernel: ${lockdown#SISURA-}"
+echo "      kernel: ${lockdown#SEDIR-}"
 
-if [[ -n "${SISURA_SB_KEEP_DISK:-}" ]]; then
+if [[ -n "${SEDIR_SB_KEEP_DISK:-}" ]]; then
     sb_send "sudo poweroff"
     sb_stopped 120
-    mv "$disk" "$SISURA_SB_KEEP_DISK"
-    echo "      disk kept: $SISURA_SB_KEEP_DISK"
+    mv "$disk" "$SEDIR_SB_KEEP_DISK"
+    echo "      disk kept: $SEDIR_SB_KEEP_DISK"
 fi

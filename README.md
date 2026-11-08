@@ -1,48 +1,48 @@
-# Sisura Linux
+# SedirOS
 
-Sisura is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sisura`, a small CLI that boots Sisura VMs in seconds.
+SedirOS is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sedir`, a small CLI that boots SedirOS VMs in seconds.
 
-> **Status:** Sisura 13.1 is in testing. Release candidates are on the [download page](https://sisura-linux.github.io/sisura/); the final 13.1 follows once they hold up.
+> **Status:** SedirOS 13.1 is in testing (release candidates up to 13.1-rc11 were called Sisura). Release candidates are on the [download page](https://sediros.github.io/sediros/); the final 13.1 follows once they hold up.
 
 ## What you get
 
 - **Hardened by default:** kernel and network hardening (sysctl), AppArmor, a firewall that denies incoming traffic, key-only SSH with modern cryptography, no unnecessary SUID programs, automatic Debian security updates.
-- **Checkable:** `sudo sisura-audit` tells you whether that hardening is still in place, and which file changed it if not.
+- **Checkable:** `sudo sedir-audit` tells you whether that hardening is still in place, and which file changed it if not.
 - **Encrypted installs:** the installer sets up full disk encryption (LUKS2) and can let you unlock the disk over SSH at boot, for servers you cannot reach physically.
-- **Plain Debian underneath:** Sisura adds a few packages to Debian; it does not replace it. Your Debian knowledge, documentation and packages apply.
-- **Fast throwaway VMs:** `sisura launch` starts a Sisura VM on macOS (Apple Silicon) or Linux in a few seconds.
+- **Plain Debian underneath:** SedirOS adds a few packages to Debian; it does not replace it. Your Debian knowledge, documentation and packages apply.
+- **Fast throwaway VMs:** `sedir launch` starts a SedirOS VM on macOS (Apple Silicon) or Linux in a few seconds.
 
-## Two ways to use Sisura
+## Two ways to use SedirOS
 
 | I want to... | Use | Start here |
 |---|---|---|
-| run Sisura as the operating system of a server, PC or cloud VM | the installer ISO | [Installing to disk](#installing-to-disk) |
-| try Sisura, or get fast throwaway Linux VMs on my Mac or Linux machine | the `sisura` CLI | [Trying Sisura in a VM](#trying-sisura-in-a-vm) |
+| run SedirOS as the operating system of a server, PC or cloud VM | the installer ISO | [Installing to disk](#installing-to-disk) |
+| try SedirOS, or get fast throwaway Linux VMs on my Mac or Linux machine | the `sedir` CLI | [Trying SedirOS in a VM](#trying-sediros-in-a-vm) |
 
 The two are independent: an installed system does not need the CLI, and the CLI never installs anything to disk.
 
-## Getting Sisura
+## Getting SedirOS
 
-**Download page: <https://sisura-linux.github.io/sisura/>**: the newest installer ISOs with their checksums, nothing else. Which one:
+**Download page: <https://sediros.github.io/sediros/>**: the newest installer ISOs with their checksums, nothing else. Which one:
 
 | Your machine | ISO |
 |---|---|
-| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sisura-13.1-install-amd64.iso` |
-| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sisura-13.1-install-arm64.iso` |
+| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sedir-13.1-install-amd64.iso` |
+| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sedir-13.1-install-arm64.iso` |
 
-For the `sisura` CLI you download nothing by hand: see [Trying Sisura in a VM](#trying-sisura-in-a-vm).
+For the `sedir` CLI you download nothing by hand: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm).
 
 <details>
 <summary>All release files, and verifying them</summary>
 
-Everything is published on the [GitHub releases page](https://github.com/sisura-linux/sisura/releases). Each release has, for `amd64` and `arm64`:
+Everything is published on the [GitHub releases page](https://github.com/sediros/sediros/releases). Each release has, for `amd64` and `arm64`:
 
 | File | What it is |
 |---|---|
-| `sisura-13.1-install-<arch>.iso` | live system and installer |
-| `sisura-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sisura pull` |
-| `sisura-<version>-<platform>.tar.gz` | the `sisura` CLI for macOS and Linux |
-| `sisura-*.deb` | Sisura's packages (also in the [apt repository](https://sisura-linux.github.io/sisura/apt/)) |
+| `sedir-13.1-install-<arch>.iso` | live system and installer |
+| `sedir-13.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sedir pull` |
+| `sedir-<version>-<platform>.tar.gz` | the `sedir` CLI for macOS and Linux |
+| `sedir-*.deb` | SedirOS's packages (also in the [apt repository](https://sediros.github.io/sediros/apt/)) |
 | `SHA256SUMS` | checksums of all files |
 
 **Verify what you downloaded** before using it:
@@ -55,7 +55,7 @@ shasum -a 256 -c SHA256SUMS --ignore-missing      # macOS
 To also check that a file was built by this repository's release workflow (needs the GitHub CLI):
 
 ```bash
-gh attestation verify sisura-13.1-install-amd64.iso --repo sisura-linux/sisura
+gh attestation verify sedir-13.1-install-amd64.iso --repo sediros/sediros
 ```
 
 </details>
@@ -64,32 +64,32 @@ gh attestation verify sisura-13.1-install-amd64.iso --repo sisura-linux/sisura
 
 ### Quick steps
 
-1. **Download** the ISO for your machine from the [download page](https://sisura-linux.github.io/sisura/).
+1. **Download** the ISO for your machine from the [download page](https://sediros.github.io/sediros/).
 2. **Boot it:**
    - PC or server: write it to a USB stick ([how](#writing-the-usb-stick)) and boot from the stick in **UEFI** mode.
    - VM: attach it as a CD/DVD, with **UEFI** firmware and the guest type **Linux** ([details](#installing-in-a-virtual-machine)).
-3. **Install:** in the live session that opens, run `sudo sisura-install install` and answer the questions ([what it asks](#the-installers-questions)).
+3. **Install:** in the live session that opens, run `sudo sedir-install install` and answer the questions ([what it asks](#the-installers-questions)).
 4. **Power off and remove the ISO** or the USB stick. In a VM, clear the CD/DVD drive *while the VM is off*.
 5. **Boot from the disk:** enter the disk encryption passphrase, then log in with your user and password.
-6. **SSH:** if you gave an SSH key, log in with `ssh <user>@<address>`. If not, run `sudo sisura-ssh-enroll` on the console and follow it ([details](#logging-in)).
+6. **SSH:** if you gave an SSH key, log in with `ssh <user>@<address>`. If not, run `sudo sedir-ssh-enroll` on the console and follow it ([details](#logging-in)).
 
 ### Requirements
 
 - A 64-bit PC or server (amd64) or ARM machine (arm64) that boots with **UEFI**. Legacy BIOS/CSM boot is not supported; the installer stops if the ISO was started that way.
-- **Secure Boot** can stay on: Sisura boots with Debian's signed boot chain (shim signed by Microsoft, Debian-signed GRUB and kernel), which machines with Microsoft's UEFI keys accept. With Secure Boot on, the kernel runs in lockdown mode, and kernel modules that are not part of Debian (DKMS) need a key enrolled with `mokutil`.
+- **Secure Boot** can stay on: SedirOS boots with Debian's signed boot chain (shim signed by Microsoft, Debian-signed GRUB and kernel), which machines with Microsoft's UEFI keys accept. With Secure Boot on, the kernel runs in lockdown mode, and kernel modules that are not part of Debian (DKMS) need a key enrolled with `mokutil`.
 - At least 8 GiB of disk space; the whole disk is used and erased. Installation has been tested with 2 GiB of RAM.
 
 ### Writing the USB stick
 
 Everything on the stick is erased.
 - Any system: a graphical tool such as [balenaEtcher](https://etcher.balena.io/).
-- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
-- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sisura-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
+- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sedir-13.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
+- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sedir-13.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
 - VPS: most panels have "mount ISO"; attach it and boot from it.
 
 ### The installer's questions
 
-Disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written; you confirm by typing the disk name, and the installation takes under a minute. For automated installs every question has a flag: `sisura-install install --help`.
+Disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written; you confirm by typing the disk name, and the installation takes under a minute. For automated installs every question has a flag: `sedir-install install --help`.
 
 What the installer creates:
 
@@ -106,26 +106,25 @@ Good to know:
 
 ### Installing in a virtual machine
 
-For a hypervisor such as UTM, VirtualBox, VMware, Proxmox or virt-manager (for throwaway VMs, the `sisura` CLI is quicker: see [Trying Sisura in a VM](#trying-sisura-in-a-vm)):
+For a hypervisor such as UTM, VirtualBox, VMware, Proxmox or virt-manager (for throwaway VMs, the `sedir` CLI is quicker: see [Trying SedirOS in a VM](#trying-sediros-in-a-vm)):
 - Choose **UEFI** firmware and **Linux / Debian 64-bit** as the guest type, not "Other".
-- **Remove the ISO after installing, while the VM is off**, otherwise the VM boots the live session again. A prompt of `sisura@sisura` with "live session" in the login banner means you are not in the installed system; the banner also warns when the disk already holds a Sisura installation.
+- **Remove the ISO after installing, while the VM is off**, otherwise the VM boots the live session again. A prompt of `sedir@sedir` with "live session" in the login banner means you are not in the installed system; the banner also warns when the disk already holds a SedirOS installation.
 
 UTM on a Mac, step by step:
-1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sisura-13.1-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
-2. Start the VM and install (`sudo sisura-install install`), then `sudo poweroff`.
+1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sedir-13.1-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
+2. Start the VM and install (`sudo sedir-install install`), then `sudo poweroff`.
 3. With the VM off: right-click it → **Edit** → under **Drives** select the **USB Drive** that holds the ISO → **Clear** → **Save**. (Ejecting it from the toolbar while the VM runs lasts only until the next start.)
 4. Start the VM: it asks for the disk encryption passphrase on the screen.
 
 Known issues:
 - UTM on a Mac with Apple Silicon: the amd64 ISO needs **Emulate** (Intel ICH9 / x86_64), which is very slow (minutes to boot, an empty screen for a while is normal); **Virtualize** creates an ARM64 VM, which needs the arm64 ISO and otherwise stops at "No bootable option".
 - UTM: with the guest type "Other" the screen stays at "Display output is not active". Choose "Linux".
-- Installed from 13.1-rc7 in a VM with a virtio-gpu display (UTM's default): the screen shows "Display output is not active" while the disk passphrase is asked. Type it blind and press Enter; after `sudo apt update && sudo apt upgrade` the prompt appears on the screen. Installed from rc6 or earlier: the prompt goes to the serial console; reinstall from the current ISO.
 
 ## After installation
 
 ### Logging in
 
-SSH accepts keys only, for members of the `sudo` group (the admin user) and of `sisura-ssh`. Passwords are not accepted over SSH (except in the short window `sisura-ssh-enroll` opens, below); the admin password is for `sudo` and the local console. After 5 failed password attempts in 15 minutes the account is locked for 15 minutes.
+SSH accepts keys only, for members of the `sudo` group (the admin user) and of `sedir-ssh`. Passwords are not accepted over SSH (except in the short window `sedir-ssh-enroll` opens, below); the admin password is for `sudo` and the local console. After 5 failed password attempts in 15 minutes the account is locked for 15 minutes.
 
 ```bash
 ssh <admin user>@<address of the machine>     # port 22; find the address with: ip -4 -br addr
@@ -134,7 +133,7 @@ ssh <admin user>@<address of the machine>     # port 22; find the address with: 
 No SSH key given to the installer? Logging in on the console reminds you; run
 
 ```bash
-sudo sisura-ssh-enroll
+sudo sedir-ssh-enroll
 ```
 
 It allows a password login over SSH for your user only, from local networks only, and prints the command to run on your computer:
@@ -164,50 +163,39 @@ Port 2222 exists only during that wait. Once the system is running, the connecti
 ### Protecting the boot menu
 
 ```bash
-sudo sisura-grub-password set       # set a password (at least 12 characters)
-sudo sisura-grub-password status
-sudo sisura-grub-password disable
+sudo sedir-grub-password set       # set a password (at least 12 characters)
+sudo sedir-grub-password status
+sudo sedir-grub-password disable
 ```
 
 With a GRUB password the default entry still boots unattended, but editing boot entries (for example `init=/bin/bash`), the GRUB shell, recovery entries and firmware settings require the password. It does not stop booting from other media: with a remote console (IPMI, VPS panel) also use a firmware password and keep the disk encrypted.
 
 ### Updates
 
-- Debian security updates and updates of Sisura's own packages (`sisura-*`) are installed automatically every day. The system never reboots on its own; after a kernel update a "System restart required" notice appears at login. To allow automatic reboots on a server, put your settings in a file of your own, so package updates never have to ask about your changes:
+- Debian security updates and updates of SedirOS's own packages (`sedir-*`) are installed automatically every day. The system never reboots on its own; after a kernel update a "System restart required" notice appears at login. To allow automatic reboots on a server, put your settings in a file of your own, so package updates never have to ask about your changes:
   ```bash
   echo 'Unattended-Upgrade::Automatic-Reboot "true"; Unattended-Upgrade::Automatic-Reboot-Time "04:00";' \
     | sudo tee /etc/apt/apt.conf.d/60local-reboot
   ```
 - Other updates: `sudo apt update && sudo apt upgrade`, as on Debian.
-- Sisura's packages come from the Sisura apt repository (`https://sisura-linux.github.io/sisura/apt`), set up by the `sisura-archive-keyring` package:
-  - The source is bound to Sisura's signing key (`Signed-By`): that key cannot sign anything else, and no other key can sign this repository.
-  - An apt pin (`/etc/apt/preferences.d/sisura`) only accepts `sisura-*` packages from it. Even with a stolen signing key, the repository cannot replace Debian packages such as `openssh-server`.
+- SedirOS's packages come from the SedirOS apt repository (`https://sediros.github.io/sediros/apt`), set up by the `sedir-archive-keyring` package:
+  - The source is bound to SedirOS's signing key (`Signed-By`): that key cannot sign anything else, and no other key can sign this repository.
+  - An apt pin (`/etc/apt/preferences.d/sedir`) only accepts `sedir-*` packages from it. Even with a stolen signing key, the repository cannot replace Debian packages such as `openssh-server`.
   - Signing key fingerprint: `2E46 F4E2 4105 D45B A8A2  7376 0E93 53DF 8969 0935`
-
-Systems installed from 13.1-rc1 or rc2 do not have the repository yet. Add it once:
-
-```bash
-curl -fsSLo /tmp/sisura-archive-keyring.deb \
-  https://sisura-linux.github.io/sisura/apt/pool/main/s/sisura-archive-keyring/sisura-archive-keyring_0.1.0_all.deb
-sudo apt install /tmp/sisura-archive-keyring.deb
-sha256sum /usr/share/keyrings/sisura-archive-keyring.pgp
-# must be 8acb4e38a8ab506b14dc02dc936339c03e3c9c8d28826621b65a925c13569112
-sudo apt update && sudo apt upgrade
-```
 
 ### Is the hardening still in place?
 
 ```bash
-sudo sisura-audit            # all checks
-sudo sisura-audit --quiet    # only warnings and failures
-sudo sisura-audit --json     # for scripts and monitoring
+sudo sedir-audit            # all checks
+sudo sedir-audit --quiet    # only warnings and failures
+sudo sedir-audit --json     # for scripts and monitoring
 ```
 
-It compares the running system with the hardening of the installed Sisura packages: kernel settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM, kernel modules, automatic updates, the Sisura apt repository, boot parameters, disk encryption and Secure Boot. Each line is `✓` (in place), `!` (a warning, for example a setting an admin changed on purpose, or a reboot that is due), `✗` (hardening missing or broken) or `·` (information). Where it can, it names the file that changed a setting:
+It compares the running system with the hardening of the installed SedirOS packages: kernel settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM, kernel modules, automatic updates, the SedirOS apt repository, boot parameters, disk encryption and Secure Boot. Each line is `✓` (in place), `!` (a warning, for example a setting an admin changed on purpose, or a reboot that is due), `✗` (hardening missing or broken) or `·` (information). Where it can, it names the file that changed a setting:
 
 ```
  ✗ ssh          SSH hardening weakened
-                passwordauthentication: yes (Sisura: no), set in /etc/ssh/sshd_config.d/50-local.conf
+                passwordauthentication: yes (SedirOS: no), set in /etc/ssh/sshd_config.d/50-local.conf
 ```
 
 Exit status: 0 no failures (warnings allowed), 1 failures, 2 the audit could not run.
@@ -215,34 +203,34 @@ Exit status: 0 no failures (warnings allowed), 1 failures, 2 the audit could not
 ### Which build am I running?
 
 ```bash
-cat /etc/sisura/build-info
+cat /etc/sedir/build-info
 ```
 
 shows the release, the build id (for example `13.1`, `20261105.1523-2d85457`) and when the system was installed. Please include both when reporting a problem.
 
-## Trying Sisura in a VM
+## Trying SedirOS in a VM
 
-The `sisura` CLI starts Sisura VMs with QEMU on macOS and Linux (amd64 or arm64). VMs use your machine's architecture. It is tested on Apple Silicon Macs and amd64/arm64 Linux; Intel Macs are untested.
+The `sedir` CLI starts SedirOS VMs with QEMU on macOS and Linux (amd64 or arm64). VMs use your machine's architecture. It is tested on Apple Silicon Macs and amd64/arm64 Linux; Intel Macs are untested.
 
 **1. Install the CLI and QEMU.**
 
 *macOS* (Homebrew; also installs QEMU):
 
 ```bash
-brew tap sisura-linux/sisura https://github.com/sisura-linux/sisura
-brew trust sisura-linux/sisura      # Homebrew 7+: allow formulae from this tap
-brew install sisura
+brew tap sediros/sediros https://github.com/sediros/sediros
+brew trust sediros/sediros      # Homebrew 7+: allow formulae from this tap
+brew install sedir
 ```
 
 *Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
 
 ```bash
-VERSION=0.6.0 RELEASE=13.1-rc11 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
-URL=https://github.com/sisura-linux/sisura/releases/download/v$RELEASE
-curl -LO $URL/sisura-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
+VERSION=0.6.0 RELEASE=13.1-rc12 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
+URL=https://github.com/sediros/sediros/releases/download/v$RELEASE
+curl -LO $URL/sedir-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
-tar -xzf sisura-$VERSION-$TARGET.tar.gz
-sudo install -m 0755 sisura-$VERSION-$TARGET/sisura /usr/local/bin/sisura
+tar -xzf sedir-$VERSION-$TARGET.tar.gz
+sudo install -m 0755 sedir-$VERSION-$TARGET/sedir /usr/local/bin/sedir
 ```
 
 Then install QEMU and allow your user to use KVM (without it VMs run very slowly):
@@ -253,14 +241,14 @@ sudo dnf install qemu-kvm qemu-img openssh-clients curl            # Fedora
 sudo usermod -aG kvm $USER                                         # then log out and in again
 ```
 
-Homebrew on Linux works too (`brew tap`, `brew trust` and `brew install sisura` as above).
+Homebrew on Linux works too (`brew tap`, `brew trust` and `brew install sedir` as above).
 
-*macOS without Homebrew:* download `sisura-<version>-aarch64-apple-darwin.tar.gz` (Apple Silicon) or `...-x86_64-apple-darwin.tar.gz` (Intel) the same way, verify it with `shasum -a 256 -c SHA256SUMS --ignore-missing`, put `sisura` on your `PATH`, and install QEMU (`brew install qemu` or MacPorts). A binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sisura` allows it.
+*macOS without Homebrew:* download `sedir-<version>-aarch64-apple-darwin.tar.gz` (Apple Silicon) or `...-x86_64-apple-darwin.tar.gz` (Intel) the same way, verify it with `shasum -a 256 -c SHA256SUMS --ignore-missing`, put `sedir` on your `PATH`, and install QEMU (`brew install qemu` or MacPorts). A binary downloaded with a browser may be blocked by Gatekeeper; `xattr -d com.apple.quarantine sedir` allows it.
 
 **2. Download the VM image** (once per release, a few hundred MB):
 
 ```bash
-sisura pull                # latest release; or: sisura pull --release 13.1
+sedir pull                # latest release; or: sedir pull --release 13.1
 ```
 
 Every file is checked against the release's `SHA256SUMS`.
@@ -268,24 +256,24 @@ Every file is checked against the release's `SHA256SUMS`.
 **3. Use VMs:**
 
 ```bash
-sisura launch dev          # start a VM (created on first use), ready in a few seconds
-sisura shell dev           # SSH into it
-sisura shell dev -- uname -a
-sisura transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
-sisura transfer dev:/var/log/syslog .  # and back; -r for directories
-sisura forward dev 8080:80             # http://localhost:8080 -> port 80 in the VM
-sisura snapshot dev before-nginx       # VM stopped: save its state (list: sisura snapshot dev)
-sisura restore dev before-nginx        # back to it; later changes are lost
-sisura list                # VMs, their state and build id
-sisura stop dev
-sisura purge dev           # delete the VM
+sedir launch dev          # start a VM (created on first use), ready in a few seconds
+sedir shell dev           # SSH into it
+sedir shell dev -- uname -a
+sedir transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
+sedir transfer dev:/var/log/syslog .  # and back; -r for directories
+sedir forward dev 8080:80             # http://localhost:8080 -> port 80 in the VM
+sedir snapshot dev before-nginx       # VM stopped: save its state (list: sedir snapshot dev)
+sedir restore dev before-nginx        # back to it; later changes are lost
+sedir list                # VMs, their state and build id
+sedir stop dev
+sedir purge dev           # delete the VM
 ```
 
 - Each VM runs on its own copy-on-write disk on top of the read-only image, so `purge` and a new `launch` give you a fresh system.
-- The VM's SSH port is reachable on `127.0.0.1` only. Images contain no SSH key: the CLI creates its own key pair in `~/.local/share/sisura/` and gives the public key to each VM when it starts.
-- `sisura forward` (or `launch --forward 8080:80`) makes a service in the VM reachable from this machine. The port is opened on `127.0.0.1` only, kept with the VM and restored at every launch, and the VM's firewall admits it from this machine only. `sisura forward dev` lists the forwards, `--remove 8080` removes one. Installed systems do not need this: they have their own address on your network; open the port with `sudo ufw allow 80/tcp`.
+- The VM's SSH port is reachable on `127.0.0.1` only. Images contain no SSH key: the CLI creates its own key pair in `~/.local/share/sedir/` and gives the public key to each VM when it starts.
+- `sedir forward` (or `launch --forward 8080:80`) makes a service in the VM reachable from this machine. The port is opened on `127.0.0.1` only, kept with the VM and restored at every launch, and the VM's firewall admits it from this machine only. `sedir forward dev` lists the forwards, `--remove 8080` removes one. Installed systems do not need this: they have their own address on your network; open the port with `sudo ufw allow 80/tcp`.
 - VMs have passwordless `sudo`; they are meant for testing and development, not for installing to disk.
-- Everything (images, VMs, the key) lives in `~/.local/share/sisura/`; set `SISURA_HOME` to use another place.
+- Everything (images, VMs, the key) lives in `~/.local/share/sedir/`; set `SEDIR_HOME` to use another place.
 
 ## Security defaults and their side effects
 
@@ -296,9 +284,9 @@ sisura purge dev           # delete the VM
 | Firewall denies incoming traffic | Only SSH (22/tcp) is open; open other ports with `ufw` (see below) |
 | No SSH over vsock or local sockets | systemd's `systemd-ssh-generator` is masked, so SSH is reachable only through port 22, which the firewall controls; `ssh` to a VM through the hypervisor's vsock does not work |
 | SSH rate limit | More than 6 SSH connections from one address within 30 seconds are refused for a while ("Connection refused"); wait half a minute |
-| SUID bits removed outside an allowlist | Some rarely used tools that need SUID stop working (see `/etc/sisura/suid-allowlist`) |
+| SUID bits removed outside an allowlist | Some rarely used tools that need SUID stop working (see `/etc/sedir/suid-allowlist`) |
 | unattended-upgrades | About 30-40 MB of disk and 20 MB of RAM for Python |
-| No documentation installed | `man` pages, info pages and translations are left out to keep the system small, so `man` does not work and `apt install` prints harmless `update-alternatives: warning: skip creation of /usr/share/man/...` lines. To get man pages: delete the `path-exclude=/usr/share/man/*` line in `/etc/dpkg/dpkg.cfg.d/01-sisura-nodoc`, then `sudo apt install man-db` (packages installed before that need `sudo apt install --reinstall <package>` for their pages) |
+| No documentation installed | `man` pages, info pages and translations are left out to keep the system small, so `man` does not work and `apt install` prints harmless `update-alternatives: warning: skip creation of /usr/share/man/...` lines. To get man pages: delete the `path-exclude=/usr/share/man/*` line in `/etc/dpkg/dpkg.cfg.d/01-sedir-nodoc`, then `sudo apt install man-db` (packages installed before that need `sudo apt install --reinstall <package>` for their pages) |
 
 Files under `/etc` that you change are kept: package updates never overwrite them.
 
@@ -314,13 +302,13 @@ sudo ufw status numbered                                       # list the rules
 sudo ufw delete <number>                                       # remove one
 ```
 
-If `curl http://<address>` works from your computer but the browser does not open the page, the browser has probably switched to `https://`, which has no listener: type the address with `http://`, or use a private window. VMs started with the `sisura` CLI use [`sisura forward`](#trying-sisura-in-a-vm) instead, which also opens the port in the VM's firewall.
+If `curl http://<address>` works from your computer but the browser does not open the page, the browser has probably switched to `https://`, which has no listener: type the address with `http://`, or use a private window. VMs started with the `sedir` CLI use [`sedir forward`](#trying-sediros-in-a-vm) instead, which also opens the port in the VM's firewall.
 
 ## More
 
 - [CHANGELOG.md](CHANGELOG.md): what changed in each release
-- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): building Sisura, tests, repository layout, release process
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): building SedirOS, tests, repository layout, release process
 
 ## License
 
-Sisura's own code (build scripts, packages, `sisura-cli`, `sisura-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The Sisura Authors (see [NOTICE](NOTICE)). The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a Sisura system.
+SedirOS's own code (build scripts, packages, `sedir-cli`, `sedir-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The SedirOS Authors (see [NOTICE](NOTICE)). The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a SedirOS system.

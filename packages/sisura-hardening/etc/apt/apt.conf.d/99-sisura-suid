@@ -1,4 +1,0 @@
-// Sisura: re-strip setuid/setgid bits after every dpkg run
-// (package upgrades restore them; dpkg-statoverride is unreliable with
-// merged-/usr path aliases).
-DPkg::Post-Invoke { "if [ -x /usr/sbin/sisura-suid-strip ]; then /usr/sbin/sisura-suid-strip >/dev/null || true; fi"; };

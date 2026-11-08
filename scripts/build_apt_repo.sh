@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Sisura - build and sign the apt repository from .deb files
+#  SedirOS - build and sign the apt repository from .deb files
 #
 #  Usage : ./scripts/build_apt_repo.sh --debs <dir> --out <dir> --key <file>
 #            [--pubkey <file>] [--suite <codename>] [--arch "amd64 arm64"]
@@ -9,8 +9,8 @@
 #    --out     output directory, created empty: becomes the repository root
 #    --key     armored OpenPGP secret key that signs the repository
 #    --pubkey  key the signature must verify with
-#              (default: the key in sisura-archive-keyring)
-#    --suite   Debian codename (default: from config/sisura.conf)
+#              (default: the key in sedir-archive-keyring)
+#    --suite   Debian codename (default: from config/sedir.conf)
 #
 #  Host  : Linux with dpkg-dev, apt-utils and gnupg, or macOS with Docker
 #          (re-runs itself in a container).
@@ -19,7 +19,7 @@
 #    pool/main/s/<package>/<file>.deb
 #    dists/<suite>/main/binary-<arch>/Packages{,.gz,.xz}
 #    dists/<suite>/{Release,InRelease,Release.gpg}
-#    sisura-archive-keyring.pgp     public key, for setting up older systems
+#    sedir-archive-keyring.pgp     public key, for setting up older systems
 #
 #  The repository is rebuilt from scratch each time (no state). It is signed
 #  with the key from --key and then checked with gpgv against --pubkey, so a
@@ -31,8 +31,8 @@ umask 022
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DOCKER_IMAGE="${SISURA_DOCKER_IMAGE:-debian:trixie}"
-KEYRING_PKG="packages/sisura-archive-keyring/usr/share/keyrings/sisura-archive-keyring.pgp"
+DOCKER_IMAGE="${SEDIR_DOCKER_IMAGE:-debian:trixie}"
+KEYRING_PKG="packages/sedir-archive-keyring/usr/share/keyrings/sedir-archive-keyring.pgp"
 
 log() { printf '==> %s\n' "$*"; }
 ok()  { printf '  ✓ %s\n' "$*"; }
@@ -70,7 +70,7 @@ PUBKEY="$(abspath "$PUBKEY")"
 if [[ -z "$SUITE" ]]; then
     # shellcheck source=scripts/lib/release.sh
     source "${SCRIPT_DIR}/lib/release.sh"
-    sisura_resolve_release || die "Release configuration error"
+    sedir_resolve_release || die "Release configuration error"
 fi
 
 missing=()
@@ -78,21 +78,21 @@ for t in dpkg-scanpackages apt-ftparchive gpg gpgv xz gzip; do
     command -v "$t" >/dev/null 2>&1 || missing+=("$t")
 done
 if ((${#missing[@]})); then
-    [[ "$(uname -s)" != Linux || -n "${SISURA_IN_DOCKER:-}" ]] \
+    [[ "$(uname -s)" != Linux || -n "${SEDIR_IN_DOCKER:-}" ]] \
         || die "Missing: ${missing[*]} (apt install dpkg-dev apt-utils gnupg gpgv xz-utils)"
-    [[ -z "${SISURA_IN_DOCKER:-}" ]] || die "Missing in container: ${missing[*]}"
+    [[ -z "${SEDIR_IN_DOCKER:-}" ]] || die "Missing in container: ${missing[*]}"
     command -v docker >/dev/null 2>&1 || die "Missing: ${missing[*]}, and no docker to run in"
     log "Re-running inside ${DOCKER_IMAGE} (missing: ${missing[*]})"
     mkdir -p "$OUT"
     debs="$(abspath "$DEBS")" out="$(abspath "$OUT")" key="$(abspath "$KEY")" pub="$(abspath "$PUBKEY")"
     exec docker run --rm --platform "$(docker_platform)" \
-        -v "${PROJECT_ROOT}:/sisura:ro" -v "$debs:/in/debs:ro" -v "$out:/out" \
+        -v "${PROJECT_ROOT}:/sedir:ro" -v "$debs:/in/debs:ro" -v "$out:/out" \
         -v "$key:/in/key.asc:ro" -v "$pub:/in/pub.pgp:ro" \
-        -e SISURA_IN_DOCKER=1 "$DOCKER_IMAGE" bash -c '
+        -e SEDIR_IN_DOCKER=1 "$DOCKER_IMAGE" bash -c '
             set -e
             apt-get update -qq >/dev/null
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends dpkg-dev apt-utils gnupg gpgv xz-utils >/dev/null
-            /sisura/scripts/build_apt_repo.sh --debs /in/debs --out /out --key /in/key.asc \
+            /sedir/scripts/build_apt_repo.sh --debs /in/debs --out /out --key /in/key.asc \
                 --pubkey /in/pub.pgp --suite "$1" --arch "$2"
             chown -R "$3" /out' _ "$SUITE" "$ARCHS" "$(id -u):$(id -g)"
 fi
@@ -112,9 +112,9 @@ for deb in "${debs[@]}"; do
     pkg="$(dpkg-deb -f "$deb" Package)"
     ver="$(dpkg-deb -f "$deb" Version)"
     arch="$(dpkg-deb -f "$deb" Architecture)"
-    # SISURA_APT_ALLOW_FOREIGN: tests only (tests/apt_fixture.sh checks the pin).
-    [[ "$pkg" == sisura-* || -n "${SISURA_APT_ALLOW_FOREIGN:-}" ]] \
-        || die "$(basename "$deb"): only sisura-* packages belong here"
+    # SEDIR_APT_ALLOW_FOREIGN: tests only (tests/apt_fixture.sh checks the pin).
+    [[ "$pkg" == sedir-* || -n "${SEDIR_APT_ALLOW_FOREIGN:-}" ]] \
+        || die "$(basename "$deb"): only sedir-* packages belong here"
     id="${pkg}_${ver}_${arch}"
     [[ -z "${seen[$id]:-}" ]] || die "$id provided twice ($(basename "$deb"), ${seen[$id]})"
     seen[$id]="$(basename "$deb")"
@@ -136,13 +136,13 @@ for arch in $ARCHS; do
 done
 
 (cd "$dist" && apt-ftparchive \
-    -o APT::FTPArchive::Release::Origin=Sisura \
-    -o APT::FTPArchive::Release::Label=Sisura \
+    -o APT::FTPArchive::Release::Origin=SedirOS \
+    -o APT::FTPArchive::Release::Label=SedirOS \
     -o APT::FTPArchive::Release::Suite="$SUITE" \
     -o APT::FTPArchive::Release::Codename="$SUITE" \
     -o APT::FTPArchive::Release::Architectures="$ARCHS" \
     -o APT::FTPArchive::Release::Components=main \
-    -o APT::FTPArchive::Release::Description="Sisura Linux packages" \
+    -o APT::FTPArchive::Release::Description="SedirOS packages" \
     release . > "$OUT/Release.tmp")
 mv "$OUT/Release.tmp" "$dist/Release"
 
@@ -166,11 +166,11 @@ gpgv --quiet --keyring "$PUBKEY" "$dist/Release.gpg" "$dist/Release" 2>/dev/null
     || die "Release.gpg does not verify with $(basename "$PUBKEY")"
 ok "signed by $want"
 
-cp "$PUBKEY" "$OUT/sisura-archive-keyring.pgp"
+cp "$PUBKEY" "$OUT/sedir-archive-keyring.pgp"
 
 # --- index.html: what a browser shows at the repository URL ----------------------
 # apt never reads it; without it GitHub Pages answers the URL with a 404.
-keyring_deb="$(cd "$OUT" && find pool -name 'sisura-archive-keyring_*_all.deb' | sort -V | tail -n1)"
+keyring_deb="$(cd "$OUT" && find pool -name 'sedir-archive-keyring_*_all.deb' | sort -V | tail -n1)"
 key_sha="$(sha256sum "$PUBKEY" | cut -d' ' -f1)"
 fpr_spaced="$(sed -E 's/(.{4})/\1 /g; s/ $//' <<<"$want")"
 rows="$(for arch in $ARCHS; do
@@ -183,7 +183,7 @@ cat > "$OUT/index.html" <<EOF
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sisura apt repository</title>
+<title>SedirOS apt repository</title>
 <style>
   :root { color-scheme: light dark; --fg: #1d1d1f; --bg: #fff; --muted: #6e6e73; --code: #f2f2f4; }
   @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --bg: #111113; --muted: #a1a1a6; --code: #1e1e22; } }
@@ -198,23 +198,15 @@ cat > "$OUT/index.html" <<EOF
 </style>
 </head>
 <body>
-<h1>Sisura apt repository</h1>
-<p class="lead">Updates of Sisura Linux's own packages (<code>sisura-*</code>) for Debian ${SUITE}. Debian's packages and security updates still come from Debian.</p>
+<h1>SedirOS apt repository</h1>
+<p class="lead">Updates of SedirOS's own packages (<code>sedir-*</code>) for Debian ${SUITE}. Debian's packages and security updates still come from Debian.</p>
 
 <h2>Already set up</h2>
-<p>Systems installed from Sisura 13.1-rc3 or later use this repository automatically: <code>sisura-archive-keyring</code> configures it, and unattended-upgrades installs the updates.</p>
-
-<h2>Older Sisura systems (13.1-rc1, rc2)</h2>
-<pre>curl -fsSLo /tmp/sisura-archive-keyring.deb \\
-  https://sisura-linux.github.io/sisura/apt/${keyring_deb}
-sudo apt install /tmp/sisura-archive-keyring.deb
-sha256sum /usr/share/keyrings/sisura-archive-keyring.pgp
-# must be ${key_sha}
-sudo apt update &amp;&amp; sudo apt upgrade</pre>
+<p>Installed SedirOS systems use this repository automatically: <code>sedir-archive-keyring</code> configures it, and unattended-upgrades installs the updates. Its key (sha256 <code>${key_sha}</code>) is in <a href="${keyring_deb}"><code>sedir-archive-keyring</code></a>.</p>
 
 <h2>Trust</h2>
 <p>Signing key fingerprint: <code>${fpr_spaced}</code><br>
-The source is bound to this key (<code>Signed-By</code>), and an apt pin only accepts <code>sisura-*</code> packages from this host, so the repository cannot replace Debian packages.</p>
+The source is bound to this key (<code>Signed-By</code>), and an apt pin only accepts <code>sedir-*</code> packages from this host, so the repository cannot replace Debian packages.</p>
 
 <h2>Packages</h2>
 <table>
@@ -222,7 +214,7 @@ The source is bound to this key (<code>Signed-By</code>), and an apt pin only ac
 ${rows}
 </table>
 
-<p style="margin-top:2rem"><a href="https://github.com/sisura-linux/sisura">github.com/sisura-linux/sisura</a></p>
+<p style="margin-top:2rem"><a href="https://github.com/sediros/sediros">github.com/sediros/sediros</a></p>
 </body>
 </html>
 EOF

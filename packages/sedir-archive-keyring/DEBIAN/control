@@ -1,0 +1,16 @@
+Package: sedir-archive-keyring
+Version: 0.1.0
+Architecture: all
+Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
+Section: admin
+Priority: optional
+Depends: apt (>= 2.4)
+Description: SedirOS apt repository: signing key and source
+ Lets apt install updates of SedirOS's own packages (sedir-*):
+  - the repository's OpenPGP signing key
+  - /etc/apt/sources.list.d/sedir.sources, bound to that key only
+    (Signed-By), so the key cannot sign any other repository and other
+    keys cannot sign this one
+  - an apt pin that only accepts sedir-* packages from the repository:
+    even a compromised repository or key cannot replace Debian packages
+    such as openssh-server

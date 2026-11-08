@@ -1,8 +1,8 @@
-# Sisura apt repository
+# SedirOS apt repository
 #   Rebuilds the repository from the .deb files of every published release
 #   (pre-releases included), signs it with APT_SIGNING_KEY and deploys it to
-#   GitHub Pages: https://sisura-linux.github.io/sisura/apt, together with
-#   the download page at https://sisura-linux.github.io/sisura/ (links to
+#   GitHub Pages: https://sediros.github.io/sediros/apt, together with
+#   the download page at https://sediros.github.io/sediros/ (links to
 #   the newest release's ISOs).
 #   Runs when a release is published (drafts are not), or manually.
 #   The repository has no state of its own: each run builds it from the
@@ -43,8 +43,10 @@ jobs:
           gh release list --exclude-drafts --limit 500 --json tagName,publishedAt \
               -q 'sort_by(.publishedAt) | .[].tagName' |
           while read -r tag; do
-            if gh release view "$tag" --json assets -q '.assets[].name' | grep -q '\.deb$'; then
-              gh release download "$tag" --pattern '*.deb' --dir debs --skip-existing
+            # Only SedirOS's packages: releases from before the rename
+            # (Sisura, 13.1-rc1..rc11) carry sisura-*.deb, which are not served.
+            if gh release view "$tag" --json assets -q '.assets[].name' | grep -q '^sedir-.*\.deb$'; then
+              gh release download "$tag" --pattern 'sedir-*.deb' --dir debs --skip-existing
             fi
           done
           ls -la debs

@@ -1,0 +1,30 @@
+#!/bin/sh
+# SedirOS guest: add the public keys passed by `sedir launch` (systemd
+# credential sedir.ssh.authorized_keys) to the admin user's authorized_keys.
+# Keys already present are kept; nothing is removed.
+set -eu
+
+cred="${CREDENTIALS_DIRECTORY:?no credentials directory}/sedir.ssh.authorized_keys"
+user="$(sed -n 's/^USER=//p' /etc/sedir/build-info)"
+echo "$user" | grep -Eqx '[a-z_][a-z0-9_-]{0,31}' || { echo "sedir-guest: no valid USER in /etc/sedir/build-info" >&2; exit 1; }
+home="$(getent passwd "$user" | cut -d: -f6)"
+[ -d "$home" ] || { echo "sedir-guest: home of $user not found" >&2; exit 1; }
+
+install -d -m 0700 -o "$user" -g "$user" "$home/.ssh"
+ak="$home/.ssh/authorized_keys"
+[ -e "$ak" ] || install -m 0600 -o "$user" -g "$user" /dev/null "$ak"
+
+added=0
+while IFS= read -r key || [ -n "$key" ]; do
+    # Plain public keys only: no authorized_keys options (command=, from=...).
+    case "$key" in
+        ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-nistp*\ *|sk-ssh-ed25519@openssh.com\ *|sk-ecdsa-sha2-nistp256@openssh.com\ *) ;;
+        "") continue ;;
+        *) echo "sedir-guest: ignoring a line that is not a public key" >&2; continue ;;
+    esac
+    if ! grep -qxF "$key" "$ak"; then
+        printf '%s\n' "$key" >> "$ak"
+        added=$((added + 1))
+    fi
+done < "$cred"
+echo "sedir-guest: $added key(s) added for $user"

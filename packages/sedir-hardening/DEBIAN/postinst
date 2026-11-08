@@ -1,0 +1,43 @@
+#!/bin/sh
+# sedir-hardening postinst
+set -e
+
+UNITS="sedir-ssh-hostkeys.service sedir-firstboot-ufw.service sedir-netfilter.service"
+
+case "$1" in
+    configure)
+        # Extra SSH group for non-admin users (sshd: AllowGroups sudo sedir-ssh).
+        getent group sedir-ssh >/dev/null || groupadd --system sedir-ssh
+
+        # On a machine whose firewall is already managed, the first-boot unit
+        # must not 'ufw reset' the admin's rules: mark it as done.
+        if grep -qs '^ENABLED=yes' /etc/ufw/ufw.conf; then
+            mkdir -p /var/lib/sedir
+            : > /var/lib/sedir/ufw-initialized
+        fi
+
+        # pam_faillock profiles (/usr/share/pam-configs/sedir-faillock*).
+        pam-auth-update --package
+
+        for unit in $UNITS; do
+            deb-systemd-helper enable "$unit" >/dev/null
+        done
+
+        # Running system (not an image build chroot): apply immediately.
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload || true
+            systemctl restart systemd-sysctl.service || true
+            systemctl restart sedir-netfilter.service \
+                || echo "sedir-hardening: sedir-netfilter.service failed to start" >&2
+            if sshd -t 2>/dev/null; then
+                systemctl try-reload-or-restart ssh.service || true
+            else
+                echo "sedir-hardening: sshd config test failed, ssh not reloaded" >&2
+            fi
+        fi
+
+        /usr/sbin/sedir-suid-strip >/dev/null || true
+        ;;
+esac
+
+exit 0

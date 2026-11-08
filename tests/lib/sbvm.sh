@@ -1,14 +1,14 @@
 # shellcheck shell=bash
 # =============================================================================
-#  Sisura - helpers for tests that boot a VM with Secure Boot enforced and
+#  SedirOS - helpers for tests that boot a VM with Secure Boot enforced and
 #  drive it over its serial console. Sourced by tests/iso_secureboot.sh and
 #  tests/install_secureboot.sh.
 #
 #  Firmware: UEFI with Secure Boot and Microsoft's keys enrolled
 #    amd64: OVMF_CODE_4M.secboot.fd + OVMF_VARS_4M.ms.fd  (apt install ovmf)
 #    arm64: AAVMF_CODE.secboot.fd   + AAVMF_VARS.ms.fd    (apt install qemu-efi-aarch64)
-#  in SISURA_FIRMWARE_DIR (default /usr/share/OVMF or /usr/share/AAVMF).
-#  SISURA_SB_ACCEL overrides the QEMU accelerator (default: kvm if usable,
+#  in SEDIR_FIRMWARE_DIR (default /usr/share/OVMF or /usr/share/AAVMF).
+#  SEDIR_SB_ACCEL overrides the QEMU accelerator (default: kvm if usable,
 #  else tcg; Debian's AAVMF hangs right after start under macOS HVF).
 # =============================================================================
 
@@ -24,14 +24,14 @@ sb_init() {
     case "$arch" in
         amd64)
             SB_QEMU="qemu-system-x86_64"; native="x86_64"
-            local fwdir="${SISURA_FIRMWARE_DIR:-/usr/share/OVMF}"
+            local fwdir="${SEDIR_FIRMWARE_DIR:-/usr/share/OVMF}"
             SB_CODE="$fwdir/OVMF_CODE_4M.secboot.fd"; SB_VARS="$fwdir/OVMF_VARS_4M.ms.fd"
             # OVMF's Secure Boot build keeps its variables in SMM-protected flash.
             SB_MACHINE=(-machine "q35,smm=on" -global "driver=cfi.pflash01,property=secure,value=on")
             ;;
         arm64)
             SB_QEMU="qemu-system-aarch64"; native="aarch64"
-            local fwdir="${SISURA_FIRMWARE_DIR:-/usr/share/AAVMF}"
+            local fwdir="${SEDIR_FIRMWARE_DIR:-/usr/share/AAVMF}"
             SB_CODE="$fwdir/AAVMF_CODE.secboot.fd"; SB_VARS="$fwdir/AAVMF_VARS.ms.fd"
             SB_MACHINE=(-machine virt)
             ;;
@@ -48,10 +48,10 @@ sb_init() {
     if [[ "$host" == "$native" && "$(uname -s)" != Darwin && -w /dev/kvm ]]; then
         SB_ACCEL=kvm
     fi
-    SB_ACCEL="${SISURA_SB_ACCEL:-$SB_ACCEL}"
+    SB_ACCEL="${SEDIR_SB_ACCEL:-$SB_ACCEL}"
     SB_CPU=max; [[ "$SB_ACCEL" != tcg ]] && SB_CPU=host
 
-    SB_WORK="$(mktemp -d "${TMPDIR:-/tmp}/sisura-sb.XXXXXX")"
+    SB_WORK="$(mktemp -d "${TMPDIR:-/tmp}/sedir-sb.XXXXXX")"
     cp "$SB_VARS" "$SB_WORK/vars.fd"
     trap sb_cleanup EXIT
 }
@@ -93,12 +93,12 @@ sb_mark() { SB_FROM="$(wc -c < "$SB_LOG")"; }
 
 sb_send() { printf '%s\r' "$1" >&3; }
 
-# sb_banner_ok: the login banner seen so far is Sisura's (issue file from
-# sisura-base-files), not Debian's /etc/issue.
+# sb_banner_ok: the login banner seen so far is SedirOS's (issue file from
+# sedir-base-files), not Debian's /etc/issue.
 sb_banner_ok() {
     local out; out="$(sb_console)"
-    if ! grep -aq 'Sisura Linux' <<<"$out" || grep -aq 'Debian GNU/Linux' <<<"$out"; then
-        sb_fail "login banner is not Sisura's"
+    if ! grep -aq 'SedirOS' <<<"$out" || grep -aq 'Debian GNU/Linux' <<<"$out"; then
+        sb_fail "login banner is not SedirOS's"
     fi
 }
 
@@ -132,8 +132,8 @@ sb_cleanup() {
     [[ -n "$SB_WORK" ]] && rm -rf "$SB_WORK"
 }
 
-# Check run inside a guest shell: prints SISURA-SB-<0|1> (last byte of the
+# Check run inside a guest shell: prints SEDIR-SB-<0|1> (last byte of the
 # SecureBoot EFI variable) and the kernel lockdown mode. The command echo
-# never contains "SISURA-SB-1 ", only its output does.
+# never contains "SEDIR-SB-1 ", only its output does.
 # shellcheck disable=SC2016,SC2034  # expanded in the guest; used by the tests
-SB_CHECK='echo SISURA-SB-$(tail -c1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c | od -An -tu1 | tr -d " ") SISURA-LOCKDOWN-$(sudo cat /sys/kernel/security/lockdown)'
+SB_CHECK='echo SEDIR-SB-$(tail -c1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c | od -An -tu1 | tr -d " ") SEDIR-LOCKDOWN-$(sudo cat /sys/kernel/security/lockdown)'

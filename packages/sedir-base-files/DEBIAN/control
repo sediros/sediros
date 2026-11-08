@@ -1,0 +1,14 @@
+Package: sedir-base-files
+Version: @SEDIR_RELEASE@
+Architecture: all
+Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
+Section: admin
+Priority: required
+Depends: base-files
+Description: SedirOS release identification
+ Identifies the system as SedirOS @SEDIR_RELEASE@ (based on Debian
+ @SEDIR_CODENAME@) through /usr/lib/os-release. ID_LIKE=debian keeps tools
+ that look for Debian working.
+ .
+ Debian's os-release is kept as /usr/lib/os-release.debian (dpkg-divert)
+ and restored when this package is removed.

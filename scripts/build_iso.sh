@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Sisura Linux - RootFS archive -> live ISO
+#  SedirOS - RootFS archive -> live ISO
 #
 #  Usage : ./scripts/build_iso.sh [--rootfs <tar.zst>]
 #  Host  : Linux (root), or macOS with Docker (re-runs itself in a container).
 #
-#  Input : build/sisura-rootfs-<release>-install-<arch>.tar.zst
-#          (install profile: live-boot, sisura-live, installer tools)
-#          build/sisura-<release>-install-<arch>.cmdline  (optional)
-#  Output: build/sisura-<release>-install-<arch>.iso (+ .sha256)
+#  Input : build/sedir-rootfs-<release>-install-<arch>.tar.zst
+#          (install profile: live-boot, sedir-live, installer tools)
+#          build/sedir-<release>-install-<arch>.cmdline  (optional)
+#  Output: build/sedir-<release>-install-<arch>.iso (+ .sha256)
 #          amd64: hybrid BIOS + UEFI, bootable from CD or USB
 #          arm64: UEFI
 #
@@ -20,7 +20,7 @@
 #
 #  Built from the same build_rootfs.sh as the qcow2 image (one hardening
 #  source, no live-build config). Root is squashfs + tmpfs overlay
-#  (live-boot). The squashfs is also what sisura-install copies to disk, so
+#  (live-boot). The squashfs is also what sedir-install copies to disk, so
 #  it keeps /boot (kernel, config) but not the live initrd.
 # =============================================================================
 set -Eeuo pipefail
@@ -30,9 +30,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly SCRIPT_DIR PROJECT_ROOT
 
-BUILD_DIR="${SISURA_BUILD_DIR:-${PROJECT_ROOT}/build}"
+BUILD_DIR="${SEDIR_BUILD_DIR:-${PROJECT_ROOT}/build}"
 GRUB_TEMPLATE="${PROJECT_ROOT}/config/iso/grub.cfg"
-DOCKER_IMAGE="${SISURA_DOCKER_IMAGE:-debian:bookworm}"
+DOCKER_IMAGE="${SEDIR_DOCKER_IMAGE:-debian:bookworm}"
 # Containers run with the host's architecture: a local image tag that was
 # pulled for another platform would otherwise build for that one (emulated).
 docker_platform() {
@@ -68,11 +68,11 @@ done
 if [[ "$(uname -s)" != "Linux" ]]; then
     command -v docker >/dev/null 2>&1 || die "Non-Linux host and no docker found."
     [[ "$BUILD_DIR" == "$PROJECT_ROOT"/* ]] \
-        || die "On macOS SISURA_BUILD_DIR must be inside the project (bind-mounted)."
+        || die "On macOS SEDIR_BUILD_DIR must be inside the project (bind-mounted)."
     log "Non-Linux host, re-running inside ${DOCKER_IMAGE}"
     exec docker run --rm --platform "$(docker_platform)" \
-        -v "${PROJECT_ROOT}:/sisura" -w /sisura \
-        -e SISURA_BUILD_DIR="/sisura/${BUILD_DIR#"$PROJECT_ROOT"/}" \
+        -v "${PROJECT_ROOT}:/sedir" -w /sedir \
+        -e SEDIR_BUILD_DIR="/sedir/${BUILD_DIR#"$PROJECT_ROOT"/}" \
         "$DOCKER_IMAGE" bash -c '
             set -e
             case "$(dpkg --print-architecture)" in
@@ -96,7 +96,7 @@ done
 [[ -r "$GRUB_TEMPLATE" ]] || die "Missing $GRUB_TEMPLATE"
 
 if [[ -z "$ROOTFS_TAR" ]]; then
-    ROOTFS_TAR="$(find "$BUILD_DIR" -maxdepth 1 -name 'sisura-rootfs-*.tar.zst' -print | sort -V | tail -n1)"
+    ROOTFS_TAR="$(find "$BUILD_DIR" -maxdepth 1 -name 'sedir-rootfs-*.tar.zst' -print | sort -V | tail -n1)"
 fi
 [[ -n "$ROOTFS_TAR" && -r "$ROOTFS_TAR" ]] \
     || die "RootFS archive not found in $BUILD_DIR - run build_rootfs.sh first."
@@ -106,8 +106,8 @@ if [[ -r "${ROOTFS_TAR}.sha256" ]]; then
         || die "Checksum mismatch: $ROOTFS_TAR"
 fi
 
-name="$(basename "$ROOTFS_TAR" .tar.zst)"       # sisura-rootfs-13.1-arm64
-name="sisura-${name#sisura-rootfs-}"             # sisura-13.1-arm64
+name="$(basename "$ROOTFS_TAR" .tar.zst)"       # sedir-rootfs-13.1-arm64
+name="sedir-${name#sedir-rootfs-}"             # sedir-13.1-arm64
 arch="${name##*-}"
 case "$arch" in
     amd64) console="console=tty0 console=ttyS0,115200"; efi=x64;  grub_efi=x86_64-efi ;;
@@ -122,7 +122,7 @@ if [[ "$arch" == amd64 ]]; then
 fi
 OUT="${BUILD_DIR}/${name}.iso"
 
-WORK="$(mktemp -d /tmp/sisura-iso.XXXXXX)"
+WORK="$(mktemp -d /tmp/sedir-iso.XXXXXX)"
 trap 'rm -rf --one-file-system "$WORK"' EXIT
 
 log "Extracting $(basename "$ROOTFS_TAR")"
@@ -133,8 +133,8 @@ zstd -dc "$ROOTFS_TAR" \
 [[ -d "$WORK/root/usr/lib/live/boot" ]] \
     || die "live-boot is not installed in this rootfs - rebuild it with the current build_rootfs.sh"
 
-# Live system: root is the live-boot overlay, there is no LABEL=sisura-root disk.
-sed -i '/LABEL=sisura-root/d' "$WORK/root/etc/fstab"
+# Live system: root is the live-boot overlay, there is no LABEL=sedir-root disk.
+sed -i '/LABEL=sedir-root/d' "$WORK/root/etc/fstab"
 
 vmlinuz="$(find "$WORK/root/boot" -maxdepth 1 -name 'vmlinuz-*' | sort -V | tail -n1)"
 initrd="$(find "$WORK/root/boot" -maxdepth 1 -name 'initrd.img-*' | sort -V | tail -n1)"
@@ -156,13 +156,13 @@ if [[ -r "$BUILD_DIR/${name}.cmdline" ]]; then
     [[ "$arch" == "amd64" ]] || cmdline="$(sed -E 's/(^| )vsyscall=[^ ]*//g' <<<"$cmdline")"
 fi
 # "13.1 build 20261105.1432-47888b3 (arm64)" from the image's build-info.
-info="$WORK/root/etc/sisura/build-info"
+info="$WORK/root/etc/sedir/build-info"
 release="$(sed -n 's/^RELEASE=//p' "$info" 2>/dev/null)"
 build_id="$(sed -n 's/^BUILD_ID=//p' "$info" 2>/dev/null)"
 if [[ -n "$release" && -n "$build_id" ]]; then
     version="${release} build ${build_id} (${arch})"
 else
-    version="${name#sisura-} $(date -u +%Y-%m-%d)"
+    version="${name#sedir-} $(date -u +%Y-%m-%d)"
 fi
 sed -e "s|@VERSION@|${version}|g" \
     -e "s|@CONSOLE@|${console}|g" \
@@ -183,9 +183,9 @@ gcd="$WORK/root/usr/lib/grub/${grub_efi}-signed/gcd${efi}.efi.signed"
 for f in "$shim" "$mok" "$gcd"; do
     [[ -r "$f" ]] || die "Missing ${f#"$WORK/root"} in the rootfs (shim-signed, grub-efi-${arch}-signed)"
 done
-iso_id="sisura-${build_id:-$(date -u +%Y%m%d.%H%M%S)}"
+iso_id="sedir-${build_id:-$(date -u +%Y%m%d.%H%M%S)}"
 mkdir -p "$WORK/iso/.disk"
-printf 'Sisura Linux %s\n' "$version" > "$WORK/iso/.disk/info"
+printf 'SedirOS %s\n' "$version" > "$WORK/iso/.disk/info"
 : > "$WORK/iso/.disk/${iso_id}"
 cat > "$WORK/efi-grub.cfg" <<GRUBCFG
 search --no-floppy --set=root --file /.disk/${iso_id}
@@ -196,7 +196,7 @@ GRUBCFG
 log "Building EFI image (shim + signed GRUB)"
 efi_img="$WORK/iso/boot/grub/efi.img"
 truncate -s 8M "$efi_img"
-mkfs.vfat -n SISURA_EFI "$efi_img" >/dev/null
+mkfs.vfat -n SEDIR_EFI "$efi_img" >/dev/null
 mmd -i "$efi_img" ::/EFI ::/EFI/BOOT
 mcopy -i "$efi_img" "$shim" "::/EFI/BOOT/${EFI_BOOT}"
 mcopy -i "$efi_img" "$gcd" "::/EFI/BOOT/grub${efi}.efi"
@@ -204,7 +204,7 @@ mcopy -i "$efi_img" "$mok" "::/EFI/BOOT/mm${efi}.efi"
 mcopy -i "$efi_img" "$WORK/efi-grub.cfg" ::/EFI/BOOT/grub.cfg
 ok "EFI: ${EFI_BOOT} (shim) -> grub${efi}.efi (signed GRUB)"
 
-xorriso_args=(-as mkisofs -o "${OUT}.tmp" -r -J -joliet-long -V "SISURA_${release//./_}")
+xorriso_args=(-as mkisofs -o "${OUT}.tmp" -r -J -joliet-long -V "SEDIR_${release//./_}")
 if [[ "$arch" == amd64 ]]; then
     # BIOS: El Torito core image with GRUB's i386-pc modules on the ISO; the
     # hybrid MBR boots the same core from a USB stick.

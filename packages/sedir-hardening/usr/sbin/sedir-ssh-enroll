@@ -1,0 +1,131 @@
+#!/bin/bash
+# =============================================================================
+#  sedir-ssh-enroll - add your first SSH key with ssh-copy-id
+#
+#  Usage : sudo sedir-ssh-enroll [--minutes N] [--anywhere]
+#          sedir-ssh-enroll --close      (used by the safety timer)
+#
+#  SedirOS's SSH accepts keys only. To add the first key without copying it
+#  by hand, this opens a short window in which the calling user may log in
+#  over SSH with their password - from local networks only, unless
+#  --anywhere - and waits until a new key appears in their
+#  ~/.ssh/authorized_keys (which ssh-copy-id writes). Then, on Ctrl-C or
+#  after N minutes (default 10), whichever comes first, the window closes.
+#
+#  The window is a file in /run (RAM): a reboot always closes it, and a
+#  systemd timer closes it should this command be killed.
+# =============================================================================
+set -Eeuo pipefail
+
+CONF_DIR=/run/sedir
+CONF="$CONF_DIR/ssh-enroll.conf"
+TIMER_UNIT=sedir-ssh-enroll-close
+LOCAL_NETS="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,fc00::/7,fe80::/10"
+
+die() { printf 'sedir-ssh-enroll: %s\n' "$*" >&2; exit 1; }
+
+reload_sshd() { systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true; }
+
+close_window() {
+    if [[ -e "$CONF" ]]; then
+        rm -f "$CONF"
+        reload_sshd
+    fi
+    systemctl stop "$TIMER_UNIT.timer" >/dev/null 2>&1 || true
+}
+
+key_count() {
+    [[ -f "$1" ]] || { echo 0; return; }
+    grep -cE '^(ssh-|ecdsa-|sk-)' "$1" || true
+}
+
+minutes=10
+anywhere=0
+while (($#)); do
+    case "$1" in
+        --close) [[ $EUID -eq 0 ]] || die "run as root"; close_window; exit 0 ;;
+        --minutes) [[ "${2:-}" =~ ^[0-9]+$ && "$2" -ge 1 && "$2" -le 60 ]] || die "--minutes: 1-60"
+                   minutes="$2"; shift ;;
+        --anywhere) anywhere=1 ;;
+        -h|--help) awk 'NR>2 && /^# =====/ {exit} NR>2 {sub(/^#/, ""); sub(/^ /, ""); print}' "$0"; exit 0 ;;
+        *) die "unknown argument: $1 (see --help)" ;;
+    esac
+    shift
+done
+
+[[ $EUID -eq 0 ]] || die "run it with sudo: sudo sedir-ssh-enroll"
+# The live ISO session keeps nothing: a key added here would be lost.
+[[ ! -d /run/live/rootfs ]] \
+    || die "this is the live session (booted from the ISO), not an installed system.
+  Install first (sudo sedir-install), or if it is installed: remove the ISO
+  and boot from the disk, then run this command there."
+user="${SUDO_USER:-}"
+[[ -n "$user" && "$user" != root ]] || die "run it with sudo as the user who wants SSH access"
+home="$(getent passwd "$user" | cut -d: -f6)"
+[[ -d "$home" ]] || die "no home directory for $user"
+[[ "$(passwd -S "$user" | awk '{print $2}')" == P ]] \
+    || die "$user has no usable password (set one with: passwd), ssh-copy-id needs it once"
+id -nG "$user" | tr ' ' '\n' | grep -qxE 'sudo|sedir-ssh' \
+    || die "$user is not in the sudo or sedir-ssh group: SSH does not accept it at all"
+[[ ! -e "$CONF" ]] || die "a window is already open (close it: sudo sedir-ssh-enroll --close)"
+
+keys="$home/.ssh/authorized_keys"
+before="$(key_count "$keys")"
+
+# Match only this user, only from these addresses; everything else keeps
+# the key-only rule. Included by /etc/ssh/sshd_config.d/05-sedir-enroll.conf.
+from="$LOCAL_NETS"
+((anywhere)) && from="*"
+install -d -m 0755 "$CONF_DIR"
+umask 077
+cat > "$CONF" <<EOF
+# Temporary, written by sedir-ssh-enroll for $user; removed when done.
+Match User $user Address $from
+    PasswordAuthentication yes
+    AuthenticationMethods publickey password
+EOF
+if ! sshd -t 2>/dev/null; then
+    rm -f "$CONF"
+    die "sshd rejected the temporary configuration; nothing changed"
+fi
+trap close_window EXIT
+trap 'exit 130' INT TERM
+reload_sshd
+# Safety net should this process be killed (a reboot clears /run anyway).
+systemd-run --quiet --unit "$TIMER_UNIT" --on-active="$((minutes + 1))min" \
+    /usr/sbin/sedir-ssh-enroll --close 2>/dev/null || true
+
+addrs="$(ip -4 -o addr show scope global 2>/dev/null | awk '{sub(/\/.*/, "", $4); print $4}')"
+echo
+echo "  SSH password login is open for '$user' for $minutes minutes"
+((anywhere)) && echo "  from ANY address" || echo "  from local networks only"
+echo
+echo "  On your computer, run (with the public key you want to use; without"
+echo "  -i, ssh-copy-id may pick another key from ~/.ssh or your ssh-agent):"
+if [[ -n "$addrs" ]]; then
+    while read -r a; do echo "      ssh-copy-id -i ~/.ssh/id_ed25519.pub $user@$a"; done <<<"$addrs"
+else
+    echo "      ssh-copy-id -i ~/.ssh/id_ed25519.pub $user@<address of this machine>"
+fi
+echo "  No key yet? Create one there first: ssh-keygen -t ed25519"
+echo
+echo "  Waiting for a new key in $keys (Ctrl-C to cancel) ..."
+
+deadline=$((SECONDS + minutes * 60))
+while ((SECONDS < deadline)); do
+    if (( $(key_count "$keys") > before )); then
+        close_window
+        echo
+        echo "  ✓ key added:"
+        tail -n $(( $(key_count "$keys") - before )) "$keys" | ssh-keygen -lf - 2>/dev/null | sed 's/^/      /'
+        echo "  Check that it is yours: on your computer, the same fingerprint"
+        echo "  must come from: ssh-keygen -lf ~/.ssh/id_ed25519.pub"
+        echo "  SSH password login is closed again: log in with your key now,"
+        echo "  e.g. ssh -i ~/.ssh/id_ed25519 $user@${addrs%%$'\n'*}"
+        exit 0
+    fi
+    sleep 2
+done
+echo
+echo "  No key arrived within $minutes minutes; SSH password login is closed again."
+exit 1

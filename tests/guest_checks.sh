@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Sisura - in-guest hardening checks.
+#  SedirOS - in-guest hardening checks.
 #  Runs inside the VM as the admin user (needs sudo), streamed over SSH by
-#  tests/smoke.sh:  sisura shell <vm> -- bash -s -- <max_ram_mb> <release> < guest_checks.sh
+#  tests/smoke.sh:  sedir shell <vm> -- bash -s -- <max_ram_mb> <release> < guest_checks.sh
 #  Prints one PASS/FAIL line per check, exits non-zero if anything failed.
 # =============================================================================
 set -uo pipefail
@@ -31,14 +31,14 @@ fi
 
 # --- release identification -----------------------------------------------------
 # shellcheck disable=SC1091
-read -r os_id os_rel < <(. /etc/os-release && echo "$ID ${SISURA_RELEASE:-none}")
-if [[ "$os_id" == sisura && "$os_rel" != none && ( -z "$WANT_RELEASE" || "$os_rel" == "$WANT_RELEASE" ) ]]; then
-    pass "os-release: Sisura $os_rel"
+read -r os_id os_rel < <(. /etc/os-release && echo "$ID ${SEDIR_RELEASE:-none}")
+if [[ "$os_id" == sediros && "$os_rel" != none && ( -z "$WANT_RELEASE" || "$os_rel" == "$WANT_RELEASE" ) ]]; then
+    pass "os-release: SedirOS $os_rel"
 else
-    fail "os-release" "ID=$os_id SISURA_RELEASE=$os_rel, want sisura ${WANT_RELEASE:-<any>}"
+    fail "os-release" "ID=$os_id SEDIR_RELEASE=$os_rel, want sediros ${WANT_RELEASE:-<any>}"
 fi
 
-# --- sysctl: every value in 99-sisura.conf is live --------------------------
+# --- sysctl: every value in 99-sedir.conf is live --------------------------
 bad=()
 checked=0
 while IFS= read -r line || [[ -n "$line" ]]; do
@@ -58,7 +58,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     want="$(trim "$(tr -s '[:space:]' ' ' <<<"$want")")"
     checked=$((checked + 1))
     [[ "$got" == "$want" ]] || bad+=("$key: want '$want' got '$got'")
-done < /etc/sysctl.d/99-sisura.conf
+done < /etc/sysctl.d/99-sedir.conf
 if ((${#bad[@]} == 0)); then
     pass "sysctl: $checked keys applied"
 else
@@ -99,7 +99,7 @@ if [[ -z "$external" ]]; then pass "listeners: only :22 exposed"
 else fail "listeners" "unexpected: $(tr '\n' ' ' <<<"$external")"; fi
 
 # --- setuid/setgid ---------------------------------------------------------------
-mapfile -t allowed < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' /etc/sisura/suid-allowlist)
+mapfile -t allowed < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' /etc/sedir/suid-allowlist)
 extra=()
 while IFS= read -r f; do
     keep=0
@@ -111,7 +111,7 @@ else fail "suid/sgid" "${extra[*]}"; fi
 
 # --- no extra SSH paths ------------------------------------------------------------
 # systemd-ssh-generator would also offer sshd on AF_VSOCK (to the hypervisor)
-# and a local AF_UNIX socket, outside the firewall; Sisura masks it.
+# and a local AF_UNIX socket, outside the firewall; SedirOS masks it.
 if [[ "$(readlink /etc/systemd/system-generators/systemd-ssh-generator)" == /dev/null ]] \
     && ! systemctl list-units --all --no-legend 'sshd-vsock*' 'sshd-unix-local*' 2>/dev/null | grep -q .; then
     pass "systemd-ssh-generator masked (no vsock/unix SSH sockets)"
@@ -124,14 +124,14 @@ sshd="$(sudo sshd -T 2>/dev/null)"
 bad=()
 for kv in "permitrootlogin no" "passwordauthentication no" \
           "kbdinteractiveauthentication no" "x11forwarding no" "allowtcpforwarding no" \
-          "allowgroups sudo" "allowgroups sisura-ssh"; do
+          "allowgroups sudo" "allowgroups sedir-ssh"; do
     grep -qx "$kv" <<<"$sshd" || bad+=("$kv")
 done
 if ((${#bad[@]} == 0)); then pass "sshd: key-only, no root, no forwarding, AllowGroups"
 else fail "sshd" "missing: ${bad[*]}"; fi
 
-# --- Sisura packages --------------------------------------------------------------
-for p in sisura-base-files sisura-archive-keyring sisura-hardening sisura-boot-hardening sisura-guest sisura-audit; do
+# --- SedirOS packages --------------------------------------------------------------
+for p in sedir-base-files sedir-archive-keyring sedir-hardening sedir-boot-hardening sedir-guest sedir-audit; do
     pkg="$(dpkg-query -W -f='${Status} ${Version}' "$p" 2>/dev/null)"
     if [[ "$pkg" != "install ok installed "* ]]; then
         fail "package" "$p not installed (${pkg:-missing})"
@@ -141,28 +141,28 @@ for p in sisura-base-files sisura-archive-keyring sisura-hardening sisura-boot-h
         pass "package: $p ${pkg##* } installed, files unmodified"
     fi
 done
-for unit in sisura-ssh-hostkeys.service sisura-firstboot-ufw.service sisura-netfilter.service sisura-guest-ssh-keys.service sisura-guest-ufw.service; do
+for unit in sedir-ssh-hostkeys.service sedir-firstboot-ufw.service sedir-netfilter.service sedir-guest-ssh-keys.service sedir-guest-ufw.service; do
     [[ "$(systemctl is-enabled "$unit" 2>/dev/null)" == "enabled" ]] \
         || fail "units" "$unit not enabled"
 done
 
-# --- SSH key came from `sisura launch`, none was baked into the image ---------
-if systemctl is-active -q sisura-guest-ssh-keys.service \
-   && grep -q ' sisura-cli$' ~/.ssh/authorized_keys \
-   && ! grep -qv ' sisura-cli$' ~/.ssh/authorized_keys; then
-    pass "ssh key: only the sisura CLI key (passed at boot)"
+# --- SSH key came from `sedir launch`, none was baked into the image ---------
+if systemctl is-active -q sedir-guest-ssh-keys.service \
+   && grep -q ' sedir-cli$' ~/.ssh/authorized_keys \
+   && ! grep -qv ' sedir-cli$' ~/.ssh/authorized_keys; then
+    pass "ssh key: only the sedir CLI key (passed at boot)"
 else
     fail "ssh key" "authorized_keys: $(awk '{print $NF}' ~/.ssh/authorized_keys | tr '\n' ' ')"
 fi
 
 # --- extra packet filter (IPv4 TCP with IP options) ---------------------------------
-if systemctl is-active -q sisura-netfilter.service \
-   && grep -q 'ip hdrlength > 5 .*drop' <<<"$(sudo nft list table ip sisura 2>/dev/null)"; then
+if systemctl is-active -q sedir-netfilter.service \
+   && grep -q 'ip hdrlength > 5 .*drop' <<<"$(sudo nft list table ip sedir 2>/dev/null)"; then
     pass "nftables: TCP with IP options dropped"
 else
-    fail "nftables" "table ip sisura missing or sisura-netfilter.service inactive"
+    fail "nftables" "table ip sedir missing or sedir-netfilter.service inactive"
     # Diagnostics for CI logs.
-    sudo systemctl status sisura-netfilter.service --no-pager -n 15 2>&1 | sed 's/^/      /'
+    sudo systemctl status sedir-netfilter.service --no-pager -n 15 2>&1 | sed 's/^/      /'
     sudo nft list tables 2>&1 | sed 's/^/      nft: /'
 fi
 
@@ -172,39 +172,39 @@ bad=()
 grep -q '^APT::Periodic::Unattended-Upgrade "1";' <<<"$apt_cfg" || bad+=("Periodic::Unattended-Upgrade")
 grep -q '^APT::Periodic::Update-Package-Lists "1";' <<<"$apt_cfg" || bad+=("Periodic::Update-Package-Lists")
 grep -q 'Origins-Pattern:: "origin=Debian,label=Debian-Security";' <<<"$apt_cfg" || bad+=("Origins-Pattern Debian")
-grep -q 'Origins-Pattern:: "origin=Sisura,site=sisura-linux.github.io";' <<<"$apt_cfg" || bad+=("Origins-Pattern Sisura")
+grep -q 'Origins-Pattern:: "origin=SedirOS,site=sediros.github.io";' <<<"$apt_cfg" || bad+=("Origins-Pattern SedirOS")
 for t in apt-daily.timer apt-daily-upgrade.timer; do
     [[ "$(systemctl is-enabled "$t" 2>/dev/null)" == "enabled" ]] || bad+=("$t disabled")
 done
-if ((${#bad[@]} == 0)); then pass "unattended-upgrades: Debian security + Sisura, timers enabled"
+if ((${#bad[@]} == 0)); then pass "unattended-upgrades: Debian security + SedirOS, timers enabled"
 else fail "unattended-upgrades" "${bad[*]}"; fi
 
-# --- Sisura apt repository: source bound to its key, pinned to sisura-* -----------
-src=/etc/apt/sources.list.d/sisura.sources
-kr=/usr/share/keyrings/sisura-archive-keyring.pgp
+# --- SedirOS apt repository: source bound to its key, pinned to sedir-* -----------
+src=/etc/apt/sources.list.d/sedir.sources
+kr=/usr/share/keyrings/sedir-archive-keyring.pgp
 bad=()
 grep -q "^Signed-By: $kr\$" "$src" 2>/dev/null || bad+=("Signed-By")
 grep -q '^URIs: https://' "$src" 2>/dev/null || bad+=("https URI")
 [[ -s "$kr" ]] || bad+=("keyring missing")
-# The pin: only sisura-* may come from the repository.
-pin="$(awk '/^Package:/{p=$2} /^Pin-Priority:/{print p"="$2}' /etc/apt/preferences.d/sisura 2>/dev/null | tr '\n' ' ')"
-[[ "$pin" == "sisura-*=500 *=-1 " ]] || bad+=("pin: ${pin:-missing}")
-if ((${#bad[@]} == 0)); then pass "apt: Sisura repository signed-by its key, pinned to sisura-*"
+# The pin: only sedir-* may come from the repository.
+pin="$(awk '/^Package:/{p=$2} /^Pin-Priority:/{print p"="$2}' /etc/apt/preferences.d/sedir 2>/dev/null | tr '\n' ' ')"
+[[ "$pin" == "sedir-*=500 *=-1 " ]] || bad+=("pin: ${pin:-missing}")
+if ((${#bad[@]} == 0)); then pass "apt: SedirOS repository signed-by its key, pinned to sedir-*"
 else fail "apt repository" "${bad[*]}"; fi
 
 # --- accounts -------------------------------------------------------------------
 if [[ "$(sudo passwd -S root | awk '{print $2}')" == "L" ]]; then pass "root: password locked"
 else fail "root" "password not locked"; fi
 
-if grep -qE '^BUILD_ID=[0-9A-Za-z._-]+$' /etc/sisura/build-info 2>/dev/null; then
-    pass "build-info: $(sed -n 's/^RELEASE=//p' /etc/sisura/build-info) build $(sed -n 's/^BUILD_ID=//p' /etc/sisura/build-info)"
+if grep -qE '^BUILD_ID=[0-9A-Za-z._-]+$' /etc/sedir/build-info 2>/dev/null; then
+    pass "build-info: $(sed -n 's/^RELEASE=//p' /etc/sedir/build-info) build $(sed -n 's/^BUILD_ID=//p' /etc/sedir/build-info)"
 else
-    fail "build-info" "/etc/sisura/build-info missing or without BUILD_ID"
+    fail "build-info" "/etc/sedir/build-info missing or without BUILD_ID"
 fi
 
-profile="$(sed -n 's/^PROFILE=//p' /etc/sisura/build-info 2>/dev/null)"
+profile="$(sed -n 's/^PROFILE=//p' /etc/sedir/build-info 2>/dev/null)"
 if [[ "$profile" == vm && "$(sudo passwd -S "$USER" | awk '{print $2}')" == "L" ]] \
-   && sudo test -f /etc/sudoers.d/90-sisura-vm; then
+   && sudo test -f /etc/sudoers.d/90-sedir-vm; then
     pass "profile vm: $USER password locked, NOPASSWD sudo"
 else
     fail "profile" "profile=${profile:-unknown}, $USER $(sudo passwd -S "$USER" | awk '{print $2}')"
@@ -242,11 +242,11 @@ else fail "modprobe" "loadable: ${bad[*]}"; fi
 if [[ "$(ulimit -Hc)" == "0" ]]; then pass "core dumps: hard limit 0"
 else fail "core dumps" "hard limit $(ulimit -Hc)"; fi
 
-# --- sisura-audit: the user-facing check agrees -----------------------------------------
-if audit="$(sudo sisura-audit --quiet 2>&1)"; then
-    pass "sisura-audit: $(tail -n1 <<<"$audit")"
+# --- sedir-audit: the user-facing check agrees -----------------------------------------
+if audit="$(sudo sedir-audit --quiet 2>&1)"; then
+    pass "sedir-audit: $(tail -n1 <<<"$audit")"
 else
-    fail "sisura-audit" "exit $?"
+    fail "sedir-audit" "exit $?"
     while IFS= read -r line; do printf '      %s\n' "$line"; done <<<"$audit"
 fi
 

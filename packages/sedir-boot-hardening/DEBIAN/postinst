@@ -1,0 +1,14 @@
+#!/bin/sh
+# sedir-boot-hardening postinst
+set -e
+
+case "$1" in
+    configure)
+        # Only on systems that boot through GRUB (not image chroots or VMs).
+        if [ -f /boot/grub/grub.cfg ] && command -v update-grub >/dev/null 2>&1; then
+            update-grub || echo "sedir-boot-hardening: update-grub failed" >&2
+        fi
+        ;;
+esac
+
+exit 0

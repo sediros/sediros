@@ -1,7 +1,0 @@
-#!/bin/sh
-# sisura-live postrm
-set -e
-case "$1" in
-    purge) deb-systemd-helper purge sisura-live.service >/dev/null || true ;;
-esac
-exit 0

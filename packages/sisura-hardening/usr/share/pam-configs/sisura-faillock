@@ -1,6 +1,0 @@
-Name: Sisura: refuse authentication while the account is locked (pam_faillock)
-Default: yes
-Priority: 1024
-Auth-Type: Primary
-Auth:
-	requisite	pam_faillock.so preauth deny=5 fail_interval=900 unlock_time=900

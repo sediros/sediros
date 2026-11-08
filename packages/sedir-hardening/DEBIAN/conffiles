@@ -1,0 +1,14 @@
+/etc/sysctl.d/99-sedir.conf
+/etc/modprobe.d/sedir-blacklist.conf
+/etc/security/limits.d/99-sedir.conf
+/etc/ssh/sshd_config.d/99-sedir.conf
+/etc/profile.d/sedir-umask.sh
+/etc/sedir/suid-allowlist
+/etc/apt/apt.conf.d/99-sedir-suid
+/etc/sedir/netfilter.nft
+/etc/apt/apt.conf.d/52sedir-unattended-upgrades
+/etc/profile.d/sedir-reboot-notice.sh
+/etc/sudoers.d/sedir
+/etc/security/pwquality.conf.d/90-sedir.conf
+/etc/ssh/sshd_config.d/05-sedir-enroll.conf
+/etc/profile.d/sedir-ssh-hint.sh

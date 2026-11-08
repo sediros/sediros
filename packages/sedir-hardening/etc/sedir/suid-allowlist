@@ -1,0 +1,7 @@
+# SedirOS: binaries allowed to keep setuid/setgid bits (one per line).
+# Everything else is stripped by /usr/sbin/sedir-suid-strip after every dpkg run.
+/usr/bin/sudo
+/usr/bin/su
+/usr/bin/passwd
+/usr/sbin/unix_chkpwd
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper

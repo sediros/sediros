@@ -1,2 +1,0 @@
-# <path in package>        <built file, relative to the project root>
-usr/sbin/sisura-install    build/bin/sisura-install-@SISURA_ARCH@

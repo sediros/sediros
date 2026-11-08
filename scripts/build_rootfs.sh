@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Sisura Linux - minimal hardened Debian RootFS builder
+#  SedirOS - minimal hardened Debian RootFS builder
 #
 #  Usage : sudo ./scripts/build_rootfs.sh [--release 13.1] [--suite sid]
 #                                         [--clean] [--no-tar] [-h]
@@ -9,28 +9,28 @@
 #
 #  Output (build/):
 #    rootfs/                               unpacked root filesystem
-#    sisura-rootfs-<release>-<arch>.tar.zst  packed rootfs (+ .sha256)
-#    sisura-<release>-<arch>.vmlinuz/.initrd.img  for QEMU direct kernel boot
-#    sisura-<release>-<arch>.cmdline              hardening kernel parameters
-#    sisura-<release>-<arch>.manifest             installed package list
-#    sisura-<release>-<arch>.build-info           release, build id, profile
-#                                                 (also /etc/sisura/build-info)
+#    sedir-rootfs-<release>-<arch>.tar.zst  packed rootfs (+ .sha256)
+#    sedir-<release>-<arch>.vmlinuz/.initrd.img  for QEMU direct kernel boot
+#    sedir-<release>-<arch>.cmdline              hardening kernel parameters
+#    sedir-<release>-<arch>.manifest             installed package list
+#    sedir-<release>-<arch>.build-info           release, build id, profile
+#                                                 (also /etc/sedir/build-info)
 #
 #  Environment overrides:
-#    SISURA_RELEASE         Sisura release, e.g. 13.1 (default: config/sisura.conf)
-#    SISURA_BUILD_ID        Build id (default: <UTC time>-<git sha>[-dirty])
-#    SISURA_SUITE           Debian suite override: sid/unstable only
+#    SEDIR_RELEASE         SedirOS release, e.g. 13.1 (default: config/sedir.conf)
+#    SEDIR_BUILD_ID        Build id (default: <UTC time>-<git sha>[-dirty])
+#    SEDIR_SUITE           Debian suite override: sid/unstable only
 #                           (default: derived from the release, 13 -> trixie)
-#    SISURA_DEBS_DIR        Sisura .deb packages      (default: <repo>/build/debs)
-#    SISURA_ARCH            Target arch, == host arch (default: host)
-#    SISURA_MIRROR          Debian mirror             (default: deb.debian.org)
-#    SISURA_BUILD_DIR       Output directory          (default: <repo>/build)
-#    SISURA_HOSTNAME        Hostname                  (default: sisura)
-#    SISURA_USER            Admin user                (default: sisura)
-#    SISURA_SSH_PUBKEY      Path to a public key for SISURA_USER
-#    SISURA_DEBUG_PASSWORD  Console/sudo password for SISURA_USER (dev only!)
-#    SISURA_PROFILE         vm      = password locked, passwordless sudo
-#                                     (throwaway VMs, sisura launch, CI)
+#    SEDIR_DEBS_DIR        SedirOS .deb packages      (default: <repo>/build/debs)
+#    SEDIR_ARCH            Target arch, == host arch (default: host)
+#    SEDIR_MIRROR          Debian mirror             (default: deb.debian.org)
+#    SEDIR_BUILD_DIR       Output directory          (default: <repo>/build)
+#    SEDIR_HOSTNAME        Hostname                  (default: sedir)
+#    SEDIR_USER            Admin user                (default: sedir)
+#    SEDIR_SSH_PUBKEY      Path to a public key for SEDIR_USER
+#    SEDIR_DEBUG_PASSWORD  Console/sudo password for SEDIR_USER (dev only!)
+#    SEDIR_PROFILE         vm      = password locked, passwordless sudo
+#                                     (throwaway VMs, sedir launch, CI)
 #                           install = empty + expired password: the first
 #                                     console login must set one; sudo asks
 #                                     for it. SSH stays key-only.
@@ -48,20 +48,20 @@ readonly SCRIPT_DIR PROJECT_ROOT
 # ----------------------------------------------------------------------------
 # shellcheck source=scripts/lib/release.sh
 source "${SCRIPT_DIR}/lib/release.sh"
-RELEASE=""  # set by sisura_resolve_release (main)
-BUILD_ID="" # set by sisura_build_id (main)
+RELEASE=""  # set by sedir_resolve_release (main)
+BUILD_ID="" # set by sedir_build_id (main)
 SUITE=""
-ARCH="${SISURA_ARCH:-}"
-MIRROR="${SISURA_MIRROR:-http://deb.debian.org/debian}"
+ARCH="${SEDIR_ARCH:-}"
+MIRROR="${SEDIR_MIRROR:-http://deb.debian.org/debian}"
 SECURITY_MIRROR="http://security.debian.org/debian-security"
-BUILD_DIR="${SISURA_BUILD_DIR:-${PROJECT_ROOT}/build}"
-TARGET_HOSTNAME="${SISURA_HOSTNAME:-sisura}"
-ADMIN_USER="${SISURA_USER:-sisura}"
-SSH_PUBKEY_FILE="${SISURA_SSH_PUBKEY:-}"
-DEBUG_PASSWORD="${SISURA_DEBUG_PASSWORD:-}"
-PROFILE="${SISURA_PROFILE:-vm}"
-DEBS_DIR="${SISURA_DEBS_DIR:-${PROJECT_ROOT}/build/debs}"
-DOCKER_IMAGE="${SISURA_DOCKER_IMAGE:-debian:bookworm}"
+BUILD_DIR="${SEDIR_BUILD_DIR:-${PROJECT_ROOT}/build}"
+TARGET_HOSTNAME="${SEDIR_HOSTNAME:-sedir}"
+ADMIN_USER="${SEDIR_USER:-sedir}"
+SSH_PUBKEY_FILE="${SEDIR_SSH_PUBKEY:-}"
+DEBUG_PASSWORD="${SEDIR_DEBUG_PASSWORD:-}"
+PROFILE="${SEDIR_PROFILE:-vm}"
+DEBS_DIR="${SEDIR_DEBS_DIR:-${PROJECT_ROOT}/build/debs}"
+DOCKER_IMAGE="${SEDIR_DOCKER_IMAGE:-debian:bookworm}"
 # Containers run with the host's architecture: a local image tag that was
 # pulled for another platform would otherwise build for that one (emulated).
 docker_platform() {
@@ -88,21 +88,21 @@ BASE_PACKAGES=(
     e2fsprogs
     # security
     apparmor apparmor-profiles ufw
-    # remote access (used by `sisura shell`)
+    # remote access (used by `sedir shell`)
     openssh-server sudo ca-certificates
     # networking
     iproute2
 )
 
-# Sisura's own packages (scripts/build_packages.sh -> build/debs). They carry
+# SedirOS's own packages (scripts/build_packages.sh -> build/debs). They carry
 # the hardening (sysctl, sshd, modprobe, SUID strip, first-boot units) so that
 # installed systems receive fixes through apt, not only fresh images.
-# sisura-archive-keyring: the apt source for those fixes (signing key, pin).
-# sisura-audit: checks that this hardening is still in place.
-SISURA_PACKAGES=(sisura-base-files sisura-archive-keyring sisura-hardening sisura-boot-hardening sisura-audit)
+# sedir-archive-keyring: the apt source for those fixes (signing key, pin).
+# sedir-audit: checks that this hardening is still in place.
+SEDIR_PACKAGES=(sedir-base-files sedir-archive-keyring sedir-hardening sedir-boot-hardening sedir-audit)
 
 # install profile: the live ISO / installer and the system it installs.
-# grub-efi-* only installs files here; sisura-install runs grub-install.
+# grub-efi-* only installs files here; sedir-install runs grub-install.
 # console-setup: keyboard layout for the LUKS passphrase prompt (initramfs).
 # libpwquality-tools (pwscore): installer checks passwords with the target's
 # rules before touching the disk. curl: SSH keys from github.com/<user>.keys.
@@ -114,19 +114,19 @@ INSTALL_PROFILE_PACKAGES=(
 )
 
 # dropbear-initramfs files moved out of initramfs-tools' reach in the image
-# (see disable_initramfs_ssh); sisura-install moves them back when SSH unlock
-# is enabled. Keep in sync with sisura-install/src/setup.rs.
+# (see disable_initramfs_ssh); sedir-install moves them back when SSH unlock
+# is enabled. Keep in sync with sedir-install/src/setup.rs.
 DROPBEAR_INITRAMFS_FILES=(hooks/dropbear scripts/init-premount/dropbear scripts/init-bottom/dropbear)
-DROPBEAR_DIVERT_DIR=/usr/share/sisura/initramfs-dropbear
-INSTALL_PROFILE_SISURA_PACKAGES=(sisura-live sisura-install)
-# vm profile: SSH keys arrive at boot from `sisura launch` (systemd credential).
-VM_PROFILE_SISURA_PACKAGES=(sisura-guest)
+DROPBEAR_DIVERT_DIR=/usr/share/sedir/initramfs-dropbear
+INSTALL_PROFILE_SEDIR_PACKAGES=(sedir-live sedir-install)
+# vm profile: SSH keys arrive at boot from `sedir launch` (systemd credential).
+VM_PROFILE_SEDIR_PACKAGES=(sedir-guest)
 
 # Kernel parameters for the bootloader / QEMU -append (consumed by stage 2/3).
-# The hardening parameters live in sisura-boot-hardening (GRUB config of
+# The hardening parameters live in sedir-boot-hardening (GRUB config of
 # installed systems); VM images get the same value from that file.
-KERNEL_GRUB_CFG="${PROJECT_ROOT}/packages/sisura-boot-hardening/etc/default/grub.d/90-sisura.cfg"
-KERNEL_CMDLINE_HARDENING="$(sed -n 's/^SISURA_KERNEL_CMDLINE="\(.*\)"$/\1/p' "$KERNEL_GRUB_CFG" 2>/dev/null) quiet loglevel=3"
+KERNEL_GRUB_CFG="${PROJECT_ROOT}/packages/sedir-boot-hardening/etc/default/grub.d/90-sedir.cfg"
+KERNEL_CMDLINE_HARDENING="$(sed -n 's/^SEDIR_KERNEL_CMDLINE="\(.*\)"$/\1/p' "$KERNEL_GRUB_CFG" 2>/dev/null) quiet loglevel=3"
 
 # ----------------------------------------------------------------------------
 # Logging helpers
@@ -152,9 +152,9 @@ usage() {
 parse_args() {
     while (($#)); do
         case "$1" in
-            # Read by sisura_resolve_release (scripts/lib/release.sh).
-            --release) [[ $# -ge 2 ]] || die "--release needs a value"; export SISURA_RELEASE="$2"; shift 2 ;;
-            --suite)   [[ $# -ge 2 ]] || die "--suite needs a value"; export SISURA_SUITE="$2"; shift 2 ;;
+            # Read by sedir_resolve_release (scripts/lib/release.sh).
+            --release) [[ $# -ge 2 ]] || die "--release needs a value"; export SEDIR_RELEASE="$2"; shift 2 ;;
+            --suite)   [[ $# -ge 2 ]] || die "--suite needs a value"; export SEDIR_SUITE="$2"; shift 2 ;;
             --clean)   DO_CLEAN=1; shift ;;
             --no-tar)  DO_TAR=0; shift ;;
             -h|--help) usage 0 ;;
@@ -234,36 +234,36 @@ reexec_in_docker() {
 
     local pubkey_in=""
     if [[ -n "$SSH_PUBKEY_FILE" ]]; then
-        [[ -r "$SSH_PUBKEY_FILE" ]] || die "SISURA_SSH_PUBKEY not readable: $SSH_PUBKEY_FILE"
+        [[ -r "$SSH_PUBKEY_FILE" ]] || die "SEDIR_SSH_PUBKEY not readable: $SSH_PUBKEY_FILE"
         local abs
         abs="$(cd "$(dirname "$SSH_PUBKEY_FILE")" && pwd)/$(basename "$SSH_PUBKEY_FILE")"
         [[ "$abs" == "$PROJECT_ROOT"/* ]] \
-            || die "On macOS SISURA_SSH_PUBKEY must be inside the project dir (bind-mounted)."
-        pubkey_in="/sisura/${abs#"$PROJECT_ROOT"/}"
+            || die "On macOS SEDIR_SSH_PUBKEY must be inside the project dir (bind-mounted)."
+        pubkey_in="/sedir/${abs#"$PROJECT_ROOT"/}"
     fi
 
     log "Non-Linux host, re-running inside a privileged ${DOCKER_IMAGE} container"
     # '-e VAR' without a value forwards the host value only if it is set.
     exec docker run --rm --platform "$(docker_platform)" --privileged \
-        -v "${PROJECT_ROOT}:/sisura" -w /sisura \
-        -e SISURA_RELEASE="$RELEASE" \
-        -e SISURA_BUILD_ID="$BUILD_ID" \
-        -e SISURA_SUITE="$SUITE" \
-        -e SISURA_MIRROR \
-        -e SISURA_HOSTNAME \
-        -e SISURA_USER \
-        -e SISURA_DEBUG_PASSWORD \
-        -e SISURA_PROFILE \
-        -e SISURA_SSH_PUBKEY="$pubkey_in" \
+        -v "${PROJECT_ROOT}:/sedir" -w /sedir \
+        -e SEDIR_RELEASE="$RELEASE" \
+        -e SEDIR_BUILD_ID="$BUILD_ID" \
+        -e SEDIR_SUITE="$SUITE" \
+        -e SEDIR_MIRROR \
+        -e SEDIR_HOSTNAME \
+        -e SEDIR_USER \
+        -e SEDIR_DEBUG_PASSWORD \
+        -e SEDIR_PROFILE \
+        -e SEDIR_SSH_PUBKEY="$pubkey_in" \
         "$DOCKER_IMAGE" bash -c '
             set -e
             apt-get update -qq
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
                 debootstrap zstd ca-certificates >/dev/null
-            SISURA_BUILD_DIR=/build ./scripts/build_rootfs.sh "$@"
-            mkdir -p /sisura/build
-            for f in /build/sisura-*; do
-                [ -f "$f" ] && cp -f "$f" /sisura/build/
+            SEDIR_BUILD_DIR=/build ./scripts/build_rootfs.sh "$@"
+            mkdir -p /sedir/build
+            for f in /build/sedir-*; do
+                [ -f "$f" ] && cp -f "$f" /sedir/build/
             done
             echo "==> Artifacts copied to <project>/build"' _ "$@"
 }
@@ -300,40 +300,40 @@ preflight() {
     esac
 
     case "$PROFILE" in
-        install) SISURA_PACKAGES+=("${INSTALL_PROFILE_SISURA_PACKAGES[@]}") ;;
-        vm)      SISURA_PACKAGES+=("${VM_PROFILE_SISURA_PACKAGES[@]}") ;;
+        install) SEDIR_PACKAGES+=("${INSTALL_PROFILE_SEDIR_PACKAGES[@]}") ;;
+        vm)      SEDIR_PACKAGES+=("${VM_PROFILE_SEDIR_PACKAGES[@]}") ;;
     esac
     local pkg
-    for pkg in "${SISURA_PACKAGES[@]}"; do
-        [[ -n "$(sisura_deb "$pkg")" ]] \
+    for pkg in "${SEDIR_PACKAGES[@]}"; do
+        [[ -n "$(sedir_deb "$pkg")" ]] \
             || die "Missing ${pkg} package for release ${RELEASE} in ${DEBS_DIR} - run make deb"
     done
     if [[ -n "$SSH_PUBKEY_FILE" ]]; then
-        [[ -r "$SSH_PUBKEY_FILE" ]] || die "SISURA_SSH_PUBKEY not readable: $SSH_PUBKEY_FILE"
+        [[ -r "$SSH_PUBKEY_FILE" ]] || die "SEDIR_SSH_PUBKEY not readable: $SSH_PUBKEY_FILE"
         grep -qE '^(ssh-ed25519|ecdsa-sha2-|ssh-rsa|sk-) ' "$SSH_PUBKEY_FILE" \
-            || die "SISURA_SSH_PUBKEY does not look like an OpenSSH public key"
+            || die "SEDIR_SSH_PUBKEY does not look like an OpenSSH public key"
     fi
     case "$PROFILE" in
         vm)
-            # No key in the image: `sisura launch` passes one at boot.
+            # No key in the image: `sedir launch` passes one at boot.
             [[ -z "$SSH_PUBKEY_FILE" ]] \
-                || warn "SISURA_SSH_PUBKEY set: that key is baked into the image (do not publish it)."
+                || warn "SEDIR_SSH_PUBKEY set: that key is baked into the image (do not publish it)."
             ;;
         install)
             [[ -z "$SSH_PUBKEY_FILE" ]] \
-                || warn "install profile with SISURA_SSH_PUBKEY: that key is baked into the image."
+                || warn "install profile with SEDIR_SSH_PUBKEY: that key is baked into the image."
             ;;
-        *) die "Invalid SISURA_PROFILE: $PROFILE (vm|install)" ;;
+        *) die "Invalid SEDIR_PROFILE: $PROFILE (vm|install)" ;;
     esac
-    [[ "$ADMIN_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid SISURA_USER: $ADMIN_USER"
+    [[ "$ADMIN_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid SEDIR_USER: $ADMIN_USER"
     ok "Host OK (arch=$ARCH, release=$RELEASE, build=$BUILD_ID, suite=$SUITE, profile=$PROFILE)"
 }
 
-# .deb to install for a Sisura package: sisura-base-files must carry exactly
+# .deb to install for a SedirOS package: sedir-base-files must carry exactly
 # this release (it writes os-release), the others: newest version built
 # (Architecture: all, or the image architecture for compiled programs).
-sisura_deb() {
-    if [[ "$1" == sisura-base-files ]]; then
+sedir_deb() {
+    if [[ "$1" == sedir-base-files ]]; then
         find "$DEBS_DIR" -maxdepth 1 -name "${1}_${RELEASE}_all.deb"
     else
         find "$DEBS_DIR" -maxdepth 1 \( -name "${1}_*_all.deb" -o -name "${1}_*_${ARCH}.deb" \) \
@@ -352,7 +352,7 @@ init_paths() {
     ROOTFS="${BUILD_DIR}/rootfs"
     # Per release/arch names: several builds can coexist in build/ without
     # pairing an image with another build's kernel.
-    ARTIFACT_PREFIX="${BUILD_DIR}/sisura-${RELEASE}$(profile_tag)-${ARCH}"
+    ARTIFACT_PREFIX="${BUILD_DIR}/sedir-${RELEASE}$(profile_tag)-${ARCH}"
     # Guard rails for every rm -rf below.
     [[ "$BUILD_DIR" != "/" && "$ROOTFS" == "$BUILD_DIR"/rootfs ]] \
         || die "Refusing to operate on suspicious path: $ROOTFS"
@@ -396,8 +396,8 @@ bootstrap() {
 configure_apt() {
     log "Configuring APT and dpkg (debloat)"
 
-    write_file 0644 /etc/apt/apt.conf.d/90-sisura <<'EOF'
-// Sisura: keep the system minimal.
+    write_file 0644 /etc/apt/apt.conf.d/90-sedir <<'EOF'
+// SedirOS: keep the system minimal.
 APT::Install-Recommends "false";
 APT::Install-Suggests "false";
 APT::AutoRemove::RecommendsImportant "false";
@@ -408,8 +408,8 @@ Acquire::CompressionTypes::Order:: "gz";
 Dpkg::Use-Pty "0";
 EOF
 
-    write_file 0644 /etc/dpkg/dpkg.cfg.d/01-sisura-nodoc <<'EOF'
-# Sisura: do not install documentation, man pages or translations.
+    write_file 0644 /etc/dpkg/dpkg.cfg.d/01-sedir-nodoc <<'EOF'
+# SedirOS: do not install documentation, man pages or translations.
 path-exclude=/usr/share/doc/*
 path-include=/usr/share/doc/*/copyright
 path-exclude=/usr/share/man/*
@@ -472,8 +472,8 @@ EOF
 install_packages() {
     log "Installing base packages"
 
-    write_file 0644 /etc/initramfs-tools/conf.d/sisura.conf <<'EOF'
-# Sisura: small, fast initramfs.
+    write_file 0644 /etc/initramfs-tools/conf.d/sedir.conf <<'EOF'
+# SedirOS: small, fast initramfs.
 COMPRESS=zstd
 EOF
 
@@ -489,7 +489,7 @@ EOF
     ok "Packages installed"
 }
 
-# install profile: dropbear-initramfs ships in the image for sisura-install,
+# install profile: dropbear-initramfs ships in the image for sedir-install,
 # but must not be active there. Left alone it would configure the network and
 # start an SSH server in every live ISO initrd, with host keys generated at
 # build time and shared by every installed system. Its initramfs files are
@@ -509,24 +509,24 @@ disable_initramfs_ssh() {
     ok "dropbear diverted, host keys removed"
 }
 
-# Sisura's own .debs, installed with apt so their Depends are resolved. Their
+# SedirOS's own .debs, installed with apt so their Depends are resolved. Their
 # postinst enables the first-boot units and strips SUID bits.
-install_sisura_packages() {
-    log "Installing Sisura packages (${SISURA_PACKAGES[*]})"
+install_sedir_packages() {
+    log "Installing SedirOS packages (${SEDIR_PACKAGES[*]})"
 
-    local stage="/var/cache/sisura-debs" pkg deb debs=()
+    local stage="/var/cache/sedir-debs" pkg deb debs=()
     mkdir -p "${ROOTFS}${stage}"
-    for pkg in "${SISURA_PACKAGES[@]}"; do
-        deb="$(sisura_deb "$pkg")"
+    for pkg in "${SEDIR_PACKAGES[@]}"; do
+        deb="$(sedir_deb "$pkg")"
         cp "$deb" "${ROOTFS}${stage}/"
         debs+=("${stage}/$(basename "$deb")")
     done
     chroot_run apt-get -y install "${debs[@]}"
     rm -rf "${ROOTFS:?}${stage}"
 
-    chroot_run dpkg --verify "${SISURA_PACKAGES[@]}" || die "dpkg --verify failed for Sisura packages"
+    chroot_run dpkg --verify "${SEDIR_PACKAGES[@]}" || die "dpkg --verify failed for SedirOS packages"
     # shellcheck disable=SC2016  # ${Package} is a dpkg-query format, not shell
-    ok "Sisura packages installed: $(chroot_run dpkg-query -W -f='${Package} ${Version}  ' "${SISURA_PACKAGES[@]}")"
+    ok "SedirOS packages installed: $(chroot_run dpkg-query -W -f='${Package} ${Version}  ' "${SEDIR_PACKAGES[@]}")"
 }
 
 # ----------------------------------------------------------------------------
@@ -553,17 +553,17 @@ EOF
         echo "Etc/UTC" > "$ROOTFS/etc/timezone"
     fi
 
-    # Root fs label is the contract with stage 2 (qcow2 builder: mkfs.ext4 -L sisura-root).
+    # Root fs label is the contract with stage 2 (qcow2 builder: mkfs.ext4 -L sedir-root).
     # /tmp is not noexec on purpose: debconf/apt-extracttemplates execute from /tmp.
     write_file 0644 /etc/fstab <<'EOF'
 # <device>          <mount>    <type>  <options>                                    <dump> <pass>
-LABEL=sisura-root   /          ext4    defaults,noatime,errors=remount-ro           0      1
+LABEL=sedir-root   /          ext4    defaults,noatime,errors=remount-ro           0      1
 tmpfs               /tmp       tmpfs   defaults,nosuid,nodev,size=25%,mode=1777     0      0
 tmpfs               /dev/shm   tmpfs   defaults,nosuid,nodev,noexec                 0      0
 EOF
 
     # systemd-networkd: DHCP on any wired NIC (virtio: enp0s*, ens*).
-    write_file 0644 /etc/systemd/network/20-sisura-wired.network <<'EOF'
+    write_file 0644 /etc/systemd/network/20-sedir-wired.network <<'EOF'
 [Match]
 Name=en* eth*
 
@@ -578,7 +578,7 @@ MulticastDNS=no
 UseDomains=yes
 EOF
 
-    write_file 0644 /etc/systemd/resolved.conf.d/99-sisura.conf <<'EOF'
+    write_file 0644 /etc/systemd/resolved.conf.d/99-sedir.conf <<'EOF'
 [Resolve]
 LLMNR=no
 MulticastDNS=no
@@ -589,7 +589,7 @@ DNSSEC=no
 EOF
 
     # Low-RAM journald.
-    write_file 0644 /etc/systemd/journald.conf.d/99-sisura.conf <<'EOF'
+    write_file 0644 /etc/systemd/journald.conf.d/99-sedir.conf <<'EOF'
 [Journal]
 Storage=persistent
 Compress=yes
@@ -603,12 +603,12 @@ EOF
 }
 
 # ----------------------------------------------------------------------------
-# 5) SSH: config comes from sisura-hardening; host keys are per machine
+# 5) SSH: config comes from sedir-hardening; host keys are per machine
 # ----------------------------------------------------------------------------
 configure_ssh() {
     log "Preparing OpenSSH"
     # Keys generated by the openssh-server postinst would be shared by every
-    # VM booted from this image. sisura-ssh-hostkeys.service creates a fresh
+    # VM booted from this image. sedir-ssh-hostkeys.service creates a fresh
     # one on first boot. Validate the effective config first, while the
     # build-time keys still exist (sshd -t needs a host key).
     mkdir -p "$ROOTFS/run/sshd"   # privilege separation dir, checked by sshd -t
@@ -633,7 +633,7 @@ configure_users() {
     log "Configuring users and sudo"
 
     # /etc/login.defs belongs to the 'login' package; editing another
-    # package's conffile is image-time only (not part of sisura-hardening).
+    # package's conffile is image-time only (not part of sedir-hardening).
     set_login_def UMASK 027
     set_login_def HOME_MODE 0700
     set_login_def PASS_MAX_DAYS 365
@@ -644,14 +644,14 @@ configure_users() {
     # Root: no password login at all.
     chroot_run passwd -l root >/dev/null
 
-    # Member of 'sudo' => allowed by sshd (AllowGroups sudo sisura-ssh).
+    # Member of 'sudo' => allowed by sshd (AllowGroups sudo sedir-ssh).
     if ! chroot_run id "$ADMIN_USER" >/dev/null 2>&1; then
         chroot_run useradd --create-home --shell /bin/bash \
             --user-group --groups sudo "$ADMIN_USER"
     fi
 
     if [[ -n "$DEBUG_PASSWORD" ]]; then
-        warn "SISURA_DEBUG_PASSWORD set - development image, do not ship!"
+        warn "SEDIR_DEBUG_PASSWORD set - development image, do not ship!"
         # Passed via stdin, never via argv (not visible in ps). -e: the hash
         # is computed here, so pwquality (enforce_for_root) cannot block it.
         local hash
@@ -677,32 +677,32 @@ configure_users() {
         ok "Installed SSH public key for ${ADMIN_USER}"
     fi
 
-    # sudo policy (Defaults) ships in sisura-hardening: /etc/sudoers.d/sisura.
+    # sudo policy (Defaults) ships in sedir-hardening: /etc/sudoers.d/sedir.
     # The vm profile only adds the NOPASSWD rule; install keeps "%sudo ALL".
     if [[ "$PROFILE" == vm ]]; then
-        local sudoers="/etc/sudoers.d/90-sisura-vm"
-        printf '# Sisura vm profile: throwaway VMs, no password exists.\n%s ALL=(ALL:ALL) NOPASSWD: ALL\n' \
+        local sudoers="/etc/sudoers.d/90-sedir-vm"
+        printf '# SedirOS vm profile: throwaway VMs, no password exists.\n%s ALL=(ALL:ALL) NOPASSWD: ALL\n' \
             "$ADMIN_USER" | write_file 0440 "$sudoers"
     fi
     chroot_run visudo -c >/dev/null || die "Invalid sudoers configuration"
 
-    # Provenance of this image; sisura-install adds INSTALLED= on disk installs.
+    # Provenance of this image; sedir-install adds INSTALLED= on disk installs.
     {
         printf 'RELEASE=%s\n' "$RELEASE"
         printf 'BUILD_ID=%s\n' "$BUILD_ID"
         printf 'BUILD_DATE=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         printf 'SUITE=%s\nARCH=%s\nPROFILE=%s\nUSER=%s\n' "$SUITE" "$ARCH" "$PROFILE" "$ADMIN_USER"
-    } | write_file 0644 /etc/sisura/build-info
+    } | write_file 0644 /etc/sedir/build-info
 
     ok "Users configured (admin=${ADMIN_USER}, profile=${PROFILE})"
 }
 
 # ----------------------------------------------------------------------------
-# 7) Kernel command line (sysctl/modprobe/limits come from sisura-hardening)
+# 7) Kernel command line (sysctl/modprobe/limits come from sedir-hardening)
 # ----------------------------------------------------------------------------
 write_kernel_cmdline() {
     [[ "$KERNEL_CMDLINE_HARDENING" == apparmor=1* ]] \
-        || die "SISURA_KERNEL_CMDLINE not found in $KERNEL_GRUB_CFG"
+        || die "SEDIR_KERNEL_CMDLINE not found in $KERNEL_GRUB_CFG"
     echo "$KERNEL_CMDLINE_HARDENING" > "${ARTIFACT_PREFIX}.cmdline"
     ok "Kernel cmdline: ${ARTIFACT_PREFIX}.cmdline"
 }
@@ -719,13 +719,13 @@ harden_lsm_firewall() {
 
     # UFW applies IPT_SYSCTL on every start: point it at our sysctl file,
     # otherwise /etc/ufw/sysctl.conf would silently override values.
-    # The rules themselves are applied by sisura-firstboot-ufw.service.
+    # The rules themselves are applied by sedir-firstboot-ufw.service.
     sed -i -E \
         -e 's|^IPV6=.*|IPV6=yes|' \
         -e 's|^DEFAULT_INPUT_POLICY=.*|DEFAULT_INPUT_POLICY="DROP"|' \
         -e 's|^DEFAULT_OUTPUT_POLICY=.*|DEFAULT_OUTPUT_POLICY="ACCEPT"|' \
         -e 's|^DEFAULT_FORWARD_POLICY=.*|DEFAULT_FORWARD_POLICY="DROP"|' \
-        -e 's|^IPT_SYSCTL=.*|IPT_SYSCTL=/etc/sysctl.d/99-sisura.conf|' \
+        -e 's|^IPT_SYSCTL=.*|IPT_SYSCTL=/etc/sysctl.d/99-sedir.conf|' \
         "$ROOTFS/etc/default/ufw"
 
     ok "AppArmor + UFW configured"
@@ -736,7 +736,7 @@ harden_lsm_firewall() {
 # ----------------------------------------------------------------------------
 report_suid() {
     log "setuid/setgid binaries after strip"
-    chroot_run /usr/sbin/sisura-suid-strip | sed 's/^/    /'
+    chroot_run /usr/sbin/sedir-suid-strip | sed 's/^/    /'
 }
 
 # ----------------------------------------------------------------------------
@@ -752,7 +752,7 @@ configure_services() {
         systemd-timesyncd.service \
         ssh.service \
         ufw.service
-    # sisura-ssh-hostkeys / sisura-firstboot-ufw: enabled by sisura-hardening postinst.
+    # sedir-ssh-hostkeys / sedir-firstboot-ufw: enabled by sedir-hardening postinst.
 
     # Not needed in a minimal VM, or wasteful on RAM/CPU. apt-daily(-upgrade)
     # stay enabled: they drive unattended security upgrades.
@@ -799,7 +799,7 @@ cleanup_rootfs() {
     ln -s ../run/systemd/resolve/stub-resolv.conf "$ROOTFS/etc/resolv.conf"
 
     {
-        printf '# Sisura %s build %s (%s, %s)\n' "$RELEASE" "$BUILD_ID" "$PROFILE" "$ARCH"
+        printf '# SedirOS %s build %s (%s, %s)\n' "$RELEASE" "$BUILD_ID" "$PROFILE" "$ARCH"
         # shellcheck disable=SC2016  # dpkg-query format, not shell
         chroot_run dpkg-query -W -f='${Package}\t${Version}\n'
     } > "${ARTIFACT_PREFIX}.manifest"
@@ -818,11 +818,11 @@ export_artifacts() {
     [[ -n "$vmlinuz" && -n "$initrd" ]] || die "Kernel or initrd not found in $ROOTFS/boot"
     install -m 0644 "$vmlinuz" "${ARTIFACT_PREFIX}.vmlinuz"
     install -m 0644 "$initrd"  "${ARTIFACT_PREFIX}.initrd.img"
-    install -m 0644 "$ROOTFS/etc/sisura/build-info" "${ARTIFACT_PREFIX}.build-info"
+    install -m 0644 "$ROOTFS/etc/sedir/build-info" "${ARTIFACT_PREFIX}.build-info"
 
     if ((DO_TAR)); then
         local out
-        out="${BUILD_DIR}/sisura-rootfs-${RELEASE}$(profile_tag)-${ARCH}.tar.zst"
+        out="${BUILD_DIR}/sedir-rootfs-${RELEASE}$(profile_tag)-${ARCH}.tar.zst"
         # --xattrs keeps file capabilities (security.capability), e.g. ping.
         tar --numeric-owner --xattrs --xattrs-include='*' --acls \
             -C "$ROOTFS" -cpf - . | zstd -T0 -19 -q -f -o "$out"
@@ -832,7 +832,7 @@ export_artifacts() {
 }
 
 summary() {
-    printf '\n%sSisura rootfs ready%s\n' "$C_GRN" "$C_OFF"
+    printf '\n%sSedirOS rootfs ready%s\n' "$C_GRN" "$C_OFF"
     printf '  rootfs      : %s (%s)\n' "$ROOTFS" "$(du -sh --one-file-system "$ROOTFS" | cut -f1)"
     printf '  kernel      : %s.vmlinuz\n' "$ARTIFACT_PREFIX"
     printf '  initrd      : %s.initrd.img\n' "$ARTIFACT_PREFIX"
@@ -845,8 +845,8 @@ summary() {
 # ----------------------------------------------------------------------------
 main() {
     parse_args "$@"
-    sisura_resolve_release || die "Release configuration error"
-    BUILD_ID="$(sisura_build_id)" || die "Build id error"
+    sedir_resolve_release || die "Release configuration error"
+    BUILD_ID="$(sedir_build_id)" || die "Build id error"
     if [[ "$(uname -s)" != "Linux" ]]; then
         reexec_in_docker "$@"
     fi
@@ -859,7 +859,7 @@ main() {
     mount_chroot
     install_packages
     disable_initramfs_ssh
-    install_sisura_packages
+    install_sedir_packages
     configure_system
     configure_ssh
     configure_users

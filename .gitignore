@@ -7,9 +7,9 @@
 *.sha256
 
 # Rust
-/sisura-cli/target/
-/sisura-install/target/
-/sisura-audit/target/
+/sedir-cli/target/
+/sedir-install/target/
+/sedir-audit/target/
 
 # Secrets / local
 *.key

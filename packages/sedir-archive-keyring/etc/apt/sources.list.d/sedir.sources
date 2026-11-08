@@ -1,0 +1,8 @@
+# SedirOS packages (sedir-*). Debian's packages and security updates come
+# from debian.sources; /etc/apt/preferences.d/sedir limits this repository
+# to SedirOS's own packages.
+Types: deb
+URIs: https://sediros.github.io/sediros/apt
+Suites: @SEDIR_CODENAME@
+Components: main
+Signed-By: /usr/share/keyrings/sedir-archive-keyring.pgp

@@ -1,0 +1,12 @@
+[Unit]
+Description=SedirOS: generate SSH host key on first boot
+Before=ssh.service ssh.socket
+ConditionPathExists=!/etc/ssh/ssh_host_ed25519_key
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ssh-keygen -q -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+Name: SedirOS: count failed authentications (pam_faillock)
+Default: yes
+Priority: 0
+Auth-Type: Primary
+Auth:
+	[default=die]	pam_faillock.so authfail deny=5 fail_interval=900 unlock_time=900

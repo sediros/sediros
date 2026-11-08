@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  Sisura - boot the live ISO with Secure Boot enforced and check it from the
+#  SedirOS - boot the live ISO with Secure Boot enforced and check it from the
 #  live session.
 #
-#  Usage : tests/iso_secureboot.sh build/sisura-<release>-install-<arch>.iso
+#  Usage : tests/iso_secureboot.sh build/sedir-<release>-install-<arch>.iso
 #  Needs : UEFI firmware with Secure Boot, see tests/lib/sbvm.sh
 #
 #  The firmware only starts shim if Microsoft signed it, shim only starts
@@ -29,12 +29,12 @@ sb_start -device virtio-scsi-pci \
 
 # Type only into the shell: keys at the GRUB menu would stop its timeout.
 sb_wait ':~\$' 300
-# Login banner from sisura-base-files' issue file, also with autologin.
+# Login banner from sedir-base-files' issue file, also with autologin.
 sb_banner_ok
 sb_mark
 sb_send "$SB_CHECK"
-sb_wait 'SISURA-SB-[01] ' 60
+sb_wait 'SEDIR-SB-[01] ' 60
 out="$(sb_console)"
-grep -aq 'SISURA-SB-1 ' <<<"$out" || sb_fail "booted, but Secure Boot is not enforced"
-lockdown="$(grep -ao 'SISURA-LOCKDOWN-.*' <<<"$out" | tail -n1)"
-echo "PASS  Secure Boot enforced, live session reached in $((SECONDS - start))s (${lockdown#SISURA-})"
+grep -aq 'SEDIR-SB-1 ' <<<"$out" || sb_fail "booted, but Secure Boot is not enforced"
+lockdown="$(grep -ao 'SEDIR-LOCKDOWN-.*' <<<"$out" | tail -n1)"
+echo "PASS  Secure Boot enforced, live session reached in $((SECONDS - start))s (${lockdown#SEDIR-})"

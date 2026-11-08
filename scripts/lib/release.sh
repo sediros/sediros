@@ -1,24 +1,24 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034  # RELEASE and SUITE are outputs for the sourcing script
 # =============================================================================
-#  Sisura - release <-> Debian suite mapping (sourced by the build scripts).
+#  SedirOS - release <-> Debian suite mapping (sourced by the build scripts).
 #
-#  A Sisura release is "<debian major>.<point>", e.g. 13.1 = Debian 13 (trixie),
-#  first Sisura point release. The suite is derived from the major number;
-#  SISURA_SUITE may only override it with sid/unstable (development builds).
+#  A SedirOS release is "<debian major>.<point>", e.g. 13.1 = Debian 13 (trixie),
+#  first SedirOS point release. The suite is derived from the major number;
+#  SEDIR_SUITE may only override it with sid/unstable (development builds).
 #
-#  Input : SISURA_RELEASE (default: RELEASE from config/sisura.conf)
-#          SISURA_SUITE   (optional)
+#  Input : SEDIR_RELEASE (default: RELEASE from config/sedir.conf)
+#          SEDIR_SUITE   (optional)
 #  Output: RELEASE, SUITE
 # =============================================================================
 
-sisura_default_release() {
+sedir_default_release() {
     local conf
-    conf="$(dirname "${BASH_SOURCE[0]}")/../../config/sisura.conf"
+    conf="$(dirname "${BASH_SOURCE[0]}")/../../config/sedir.conf"
     sed -n 's/^RELEASE[[:space:]]*?=[[:space:]]*//p' "$conf" 2>/dev/null | head -n1
 }
 
-sisura_suite_for_major() {
+sedir_suite_for_major() {
     case "$1" in
         12) echo bookworm ;;
         13) echo trixie ;;
@@ -28,38 +28,38 @@ sisura_suite_for_major() {
 }
 
 # Sets RELEASE and SUITE, or prints an error and returns 1.
-sisura_resolve_release() {
-    RELEASE="${SISURA_RELEASE:-$(sisura_default_release)}"
+sedir_resolve_release() {
+    RELEASE="${SEDIR_RELEASE:-$(sedir_default_release)}"
     if [[ ! "$RELEASE" =~ ^[0-9]+\.[0-9]+$ ]]; then
         echo "Invalid release '${RELEASE}' (expected <debian major>.<point>, e.g. 13.1)" >&2
         return 1
     fi
 
     local mapped=""
-    mapped="$(sisura_suite_for_major "${RELEASE%%.*}")" || mapped=""
+    mapped="$(sedir_suite_for_major "${RELEASE%%.*}")" || mapped=""
 
-    case "${SISURA_SUITE:-}" in
+    case "${SEDIR_SUITE:-}" in
         "")
             [[ -n "$mapped" ]] || { echo "No Debian suite known for release ${RELEASE}" >&2; return 1; }
             SUITE="$mapped" ;;
         sid|unstable)
-            SUITE="$SISURA_SUITE" ;;
+            SUITE="$SEDIR_SUITE" ;;
         "$mapped")
             SUITE="$mapped" ;;
         *)
-            echo "Suite '${SISURA_SUITE}' does not match release ${RELEASE} (${mapped:-unknown})" >&2
+            echo "Suite '${SEDIR_SUITE}' does not match release ${RELEASE} (${mapped:-unknown})" >&2
             return 1 ;;
     esac
 }
 
 # Build identifier: <UTC yyyymmdd.HHMM>-<git short sha>[-dirty]. "-dirty"
 # means the tree had uncommitted changes. Computed once on the host (git is
-# not available in the Docker re-exec) and passed on as SISURA_BUILD_ID.
-sisura_build_id() {
-    if [[ -n "${SISURA_BUILD_ID:-}" ]]; then
-        [[ "$SISURA_BUILD_ID" =~ ^[0-9A-Za-z._-]{1,64}$ ]] \
-            || { echo "Invalid SISURA_BUILD_ID '${SISURA_BUILD_ID}'" >&2; return 1; }
-        printf '%s\n' "$SISURA_BUILD_ID"
+# not available in the Docker re-exec) and passed on as SEDIR_BUILD_ID.
+sedir_build_id() {
+    if [[ -n "${SEDIR_BUILD_ID:-}" ]]; then
+        [[ "$SEDIR_BUILD_ID" =~ ^[0-9A-Za-z._-]{1,64}$ ]] \
+            || { echo "Invalid SEDIR_BUILD_ID '${SEDIR_BUILD_ID}'" >&2; return 1; }
+        printf '%s\n' "$SEDIR_BUILD_ID"
         return 0
     fi
     local root sha dirty=""
