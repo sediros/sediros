@@ -9,22 +9,26 @@ class Sediros < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-aarch64-apple-darwin.tar.gz"
+      url "https://downloads.sourceforge.net/project/sediros/v1.0/sediros-0.6.3-aarch64-apple-darwin.tar.gz"
+      mirror "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-aarch64-apple-darwin.tar.gz"
       sha256 "d0c23b5cd324c31228b07c4e55c1e258dba54dd06fb30a4bcd21fa267b2a84ac"
     end
     on_intel do
-      url "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-x86_64-apple-darwin.tar.gz"
+      url "https://downloads.sourceforge.net/project/sediros/v1.0/sediros-0.6.3-x86_64-apple-darwin.tar.gz"
+      mirror "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-x86_64-apple-darwin.tar.gz"
       sha256 "e86bf4cc4d8769fe48702b0815faf19968f8f3b4ef082631f5568e67dd90f9c6"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-aarch64-unknown-linux-musl.tar.gz"
+      url "https://downloads.sourceforge.net/project/sediros/v1.0/sediros-0.6.3-aarch64-unknown-linux-musl.tar.gz"
+      mirror "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-aarch64-unknown-linux-musl.tar.gz"
       sha256 "f7bc1b154f75e980b8f6ebe924d4762c04ae990285729408a0461967757d0bc8"
     end
     on_intel do
-      url "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-x86_64-unknown-linux-musl.tar.gz"
+      url "https://downloads.sourceforge.net/project/sediros/v1.0/sediros-0.6.3-x86_64-unknown-linux-musl.tar.gz"
+      mirror "https://github.com/sediros/sediros/releases/download/v1.0/sediros-0.6.3-x86_64-unknown-linux-musl.tar.gz"
       sha256 "ad4897afaf8a747e431a860c9e3a1bca18a3c866fcb477d7b01343d19d0f72cc"
     end
   end

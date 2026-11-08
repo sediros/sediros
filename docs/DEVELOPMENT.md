@@ -59,7 +59,7 @@ Settings are in `config/sediros.conf` and can be overridden on the command line,
 | `scripts/build_apt_repo.sh` | `.deb` files → signed apt repository (`pool/`, `dists/`, `index.html`); used by `apt-repo.yml` and `make apt-test` |
 | `scripts/build_download_page.sh` | newest release → download page (`https://sediros.github.io/sediros/`, ISO links and checksums); used by `apt-repo.yml` |
 | `scripts/render_terminal_svg.py` | terminal session (text, `$ ` lines are commands) → SVG for the README (`docs/images/*.svg`); regenerate them from real output when the output changes |
-| `scripts/update_formula.sh` | Homebrew formula from a published release's `SHA256SUMS` |
+| `scripts/update_formula.sh` | Homebrew formula from a published release's `SHA256SUMS`: downloads from the SourceForge mirror first, GitHub as fallback; refuses until the mirror has the files |
 | `scripts/check_versions.sh` | fails when a package changed since the last release tag without a new version |
 | `scripts/lib/release.sh` | release → Debian suite mapping, build id |
 | `scripts/run_iso.sh` | boots an ISO (or an installed disk) in QEMU |
