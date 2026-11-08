@@ -11,6 +11,11 @@
 #  also links the SourceForge mirror, which copies every GitHub release
 #  (webhook) and serves it when GitHub's downloads do not.
 #  The apt-repo workflow runs it after every published release.
+#  Next to the page it writes, for tools (sediros pull) when GitHub's API
+#  or release downloads fail:
+#    latest                        the release's tag
+#    releases/<tag>/SHA256SUMS     its checksums (images may then come from
+#                                  the mirror; the checksums never do)
 # =============================================================================
 set -Eeuo pipefail
 
@@ -22,7 +27,7 @@ while (($#)); do
         --release) REL="${2:-}"; shift ;;
         --sums)    SUMS="${2:-}"; shift ;;
         --out)     OUT="${2:-}"; shift ;;
-        -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) die "unknown argument: $1" ;;
     esac
     shift
@@ -140,4 +145,8 @@ sediros shell dev</pre>
 </body>
 </html>
 EOF
-echo "download page: $OUT ($tag)"
+site="$(dirname "$OUT")"
+printf '%s\n' "$tag" > "$site/latest"
+mkdir -p "$site/releases/$tag"
+cp "$SUMS" "$site/releases/$tag/SHA256SUMS"
+echo "download page: $OUT ($tag), $site/latest, $site/releases/$tag/SHA256SUMS"
