@@ -6,7 +6,7 @@ Notable changes per SedirOS release. A release is `<debian major>.<point>` and i
 
 First release, based on Debian 13 (trixie).
 
-Named after the cedar (*sedir* in Turkish): a hard, long-lived wood that resists decay. Release candidates up to 13.1-rc11 were published as **Sisura**; from 13.1-rc12 on everything is SedirOS, to avoid confusion with an existing Linux security product of a similar name: the GitHub organization and repository (`sediros/sediros`), the download page and apt repository (`sediros.github.io/sediros`), packages (`sedir-*`), commands (`sedir`, `sedir-audit`, `sedir-install`, ...), paths (`/etc/sedir`), the `sedir-ssh` group and `SEDIR_*` variables. Systems installed from a Sisura release candidate are not upgraded to SedirOS; reinstall them.
+Named after the cedar (*sedir* in Turkish): a hard, long-lived wood that resists decay. Release candidates up to 13.1-rc11 were published under the name Sisura.
 
 ### Distribution
 - Minimal Debian trixie image (debootstrap minbase) as a qcow2 VM image and a live/installer ISO (amd64, arm64).

@@ -2,7 +2,7 @@
 
 SedirOS is a minimal, hardened Linux distribution based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sedir`, a small CLI that boots SedirOS VMs in seconds.
 
-> **Status:** SedirOS 13.1 is in testing (release candidates up to 13.1-rc11 were called Sisura). Release candidates are on the [download page](https://sediros.github.io/sediros/); the final 13.1 follows once they hold up.
+> **Status:** SedirOS 13.1 is in testing. Release candidates are on the [download page](https://sediros.github.io/sediros/); the final 13.1 follows once they hold up.
 
 ## What you get
 
