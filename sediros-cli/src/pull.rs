@@ -15,6 +15,28 @@ use crate::paths::{create_private_dir, Paths};
 /// Files of one release that a VM needs (see build_rootfs.sh artifacts).
 const IMAGE_FILES: &[&str] = &["qcow2", "vmlinuz", "initrd.img", "cmdline", "build-info"];
 
+/// The project's SourceForge mirror: it copies every GitHub release.
+const SF_MIRROR: &str = "https://downloads.sourceforge.net/project/sediros";
+
+/// Where a release's files come from. GitHub first; when GitHub fails, the
+/// image files from the SourceForge mirror, but the checksums never from
+/// the mirror: from GitHub Pages (the download page publishes the newest
+/// release's SHA256SUMS), so a tampered mirror cannot pass a check.
+struct Sources {
+    base: String,
+    sums_fallback: Option<String>,
+    mirror: Option<String>,
+}
+
+/// https://<owner>.github.io/<name>: the project's GitHub Pages site.
+fn pages_url(repo: &str) -> Option<String> {
+    let (owner, name) = repo.split_once('/')?;
+    Some(format!(
+        "https://{}.github.io/{name}",
+        owner.to_ascii_lowercase()
+    ))
+}
+
 pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
     let repo = args.repo.as_str();
     if repo.split('/').count() != 2
@@ -45,9 +67,18 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
     }
     let arch = host_debian_arch()?;
     let stem = format!("sediros-{release}-{arch}");
-    let base = match &args.url {
-        Some(u) => u.trim_end_matches('/').to_string(),
-        None => format!("https://github.com/{repo}/releases/download/{tag}"),
+    let sources = match &args.url {
+        // An explicit --url is used as given, without fallbacks.
+        Some(u) => Sources {
+            base: u.trim_end_matches('/').to_string(),
+            sums_fallback: None,
+            mirror: None,
+        },
+        None => Sources {
+            base: format!("https://github.com/{repo}/releases/download/{tag}"),
+            sums_fallback: pages_url(repo).map(|p| format!("{p}/releases/{tag}/SHA256SUMS")),
+            mirror: (repo == "sediros/sediros").then(|| format!("{SF_MIRROR}/{tag}")),
+        },
     };
 
     let dest = paths.downloads_dir().join(&release);
@@ -72,7 +103,7 @@ pub fn run(paths: &Paths, args: &PullArgs) -> Result<()> {
     }
     create_private_dir(&staging)?;
     // A failed download leaves nothing behind (images are hundreds of MB).
-    let result = fetch_into(&staging, &base, &stem, &tag, label.as_str());
+    let result = fetch_into(&staging, &sources, &stem, &tag, label.as_str());
     if result.is_err() {
         let _ = fs::remove_dir_all(&staging);
     }
@@ -116,22 +147,40 @@ fn remove_stale_staging(dir: &Path) {
 }
 
 /// Downloads the release's image files into `staging` and checks them.
-fn fetch_into(staging: &Path, base: &str, stem: &str, tag: &str, label: &str) -> Result<()> {
+fn fetch_into(staging: &Path, src: &Sources, stem: &str, tag: &str, label: &str) -> Result<()> {
     let arch = stem.rsplit('-').next().unwrap_or("?");
+    let base = src.base.as_str();
     println!("Downloading SedirOS {label} ({arch}) from {base}");
-    download(
-        &format!("{base}/SHA256SUMS"),
-        &staging.join("SHA256SUMS"),
-        false,
-    )?;
-    let sums = fs::read_to_string(staging.join("SHA256SUMS"))?;
+    let sums_file = staging.join("SHA256SUMS");
+    if let Err(e) = download(&format!("{base}/SHA256SUMS"), &sums_file, false) {
+        let Some(pages) = &src.sums_fallback else {
+            return Err(e);
+        };
+        println!("GitHub's download failed; checksums from {pages}");
+        download(pages, &sums_file, false).with_context(|| {
+            format!("{e:#}; the download page has no checksums for {tag} either (it keeps the newest release's)")
+        })?;
+    }
+    let sums = fs::read_to_string(&sums_file)?;
+    let mut use_mirror = false;
 
     for ext in IMAGE_FILES {
         let name = format!("{stem}.{ext}");
         let want = expected_sum(&sums, &name)
             .with_context(|| format!("{name} is not listed in the release's SHA256SUMS"))?;
         let file = staging.join(&name);
-        download(&format!("{base}/{name}"), &file, *ext == "qcow2")?;
+        let big = *ext == "qcow2";
+        let from_github = !use_mirror && download(&format!("{base}/{name}"), &file, big).is_ok();
+        if !from_github {
+            let Some(mirror) = &src.mirror else {
+                bail!("download failed: {base}/{name}");
+            };
+            if !use_mirror {
+                println!("GitHub's download failed; using the mirror {mirror}");
+                use_mirror = true;
+            }
+            download(&format!("{mirror}/{name}"), &file, big)?;
+        }
         let got = sha256(&file)?;
         if got != want {
             bail!("checksum mismatch for {name}: expected {want}, got {got}");
@@ -222,18 +271,33 @@ fn latest_tag(repo: &str) -> Result<String> {
     // are never listed). GitHub orders the list by tag, not by date, so
     // v13.1-rc13 would come before v1.0-rc1.
     let out = api("releases?per_page=30")?;
-    let err = String::from_utf8_lossy(&out.stderr);
-    if err.contains("error: 403") || err.contains("error: 429") {
-        bail!(
-            "GitHub refused the request: its API allows 60 requests per hour without \
-             a login, per IP address. Try again later, or name the release: \
-             sediros pull --release <version> (see the download page)"
-        );
-    }
     let body = String::from_utf8_lossy(&out.stdout);
     let tag = match newest_published(&body) {
         Some(tag) if out.status.success() => tag,
-        _ => bail!("no published release found for {repo} (use --release)"),
+        _ => {
+            // The API refused (60 requests per hour without a login) or did
+            // not answer: the download page names the newest release too.
+            let err = String::from_utf8_lossy(&out.stderr);
+            if let Some(tag) = pages_url(repo).and_then(|p| pages_latest(&p)) {
+                println!("GitHub's API did not answer; the download page names {tag}");
+                return Ok(tag);
+            }
+            if err.contains("error: 403") || err.contains("error: 429") {
+                bail!(
+                    "GitHub refused the request: its API allows 60 requests per hour without \
+                     a login, per IP address. Try again later, or name the release: \
+                     sediros pull --release <version> (see the download page)"
+                );
+            }
+            if out.status.success() {
+                bail!("no published release found for {repo} (use --release)");
+            }
+            bail!(
+                "GitHub's API did not answer ({}), nor did the download page. Try again \
+                 later, or name the release: sediros pull --release <version>",
+                err.trim().trim_start_matches("curl: ")
+            );
+        }
     };
     println!("No final release yet, using pre-release {tag}");
     Ok(tag)
@@ -258,6 +322,24 @@ fn newest_published(body: &str) -> Option<String> {
         })
         .max()
         .map(|(_, tag)| tag)
+}
+
+/// The tag in `<pages>/latest`, written by the download page build.
+fn pages_latest(pages: &str) -> Option<String> {
+    let out = curl()
+        .args(["-sS", "--max-time", "20"])
+        .arg(format!("{pages}/latest"))
+        .stdin(Stdio::null())
+        .output()
+        .ok()?;
+    let tag = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let ok = out.status.success()
+        && tag.starts_with('v')
+        && tag.len() <= 32
+        && tag[1..]
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    ok.then_some(tag)
 }
 
 fn tag_name(body: &str) -> Result<String> {

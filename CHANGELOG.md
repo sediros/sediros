@@ -4,6 +4,9 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 
 ## [1.1] - unreleased
 
+### Tools (`sediros` CLI 0.7.0)
+- `sediros pull` keeps working when GitHub does not: image files come from the SourceForge mirror, the checksums from the download page on GitHub Pages (never from the mirror, so a tampered mirror cannot pass the check), and the newest release's name from the download page when GitHub's API does not answer. It says which source it used.
+
 ### Login greeting (`sediros-base-files` 1.1)
 - At every login (console and SSH) SedirOS greets with its logo (the cedar in a shield, as text), the release, the hostname and build, and the hardening state; until the daily audit (#2) records a result it points to `sudo sediros-audit`. Off with `chmod -x /etc/update-motd.d/20-sediros`.
 
