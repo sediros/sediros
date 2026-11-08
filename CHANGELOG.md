@@ -4,6 +4,9 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 
 ## [1.1] - unreleased
 
+### Hardening (`sediros-hardening` 0.5.5)
+- Multipath TCP is turned off (`net.mptcp.enabled = 0`), the second workaround advised for CVE-2026-98432 next to `tcp_migrate_req = 0`; MPTCP clients fall back to plain TCP. SedirOS already dropped IPv4 TCP packets with IP options, the part of that bug reachable from the network, and Debian's fixed kernel (6.12.113 and later) is in the 1.0 images. Installed systems get the setting through apt without a reboot, and `sediros-audit` checks it.
+
 ### Daily audit (`sediros-audit` 0.3.0)
 - `sediros-audit.timer` runs the audit every day (`sediros-audit --record`): the result is shown at login and kept in `/var/lib/sediros/audit/` (`last.json`, `last-summary`).
 - When a check got worse than the previous run, it is reported by e-mail (`MAILTO`) or webhook (`WEBHOOK`, plain text or Slack format), set in `/etc/sediros/audit.conf`; nothing is sent until one is set. Editing that file is not reported as drift.
