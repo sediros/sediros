@@ -68,9 +68,15 @@ impl BaseImage {
             Some(p) => p
                 .canonicalize()
                 .with_context(|| format!("image {}", p.display()))?,
-            // A source checkout's own build wins; otherwise the newest pull.
-            None => match paths.build_dir().ok().filter(|d| d.is_dir()) {
-                Some(dir) => newest_image(&dir)?,
+            // A source checkout's own build wins; otherwise (no checkout, or
+            // nothing built in it yet) the newest pull.
+            None => match paths
+                .build_dir()
+                .ok()
+                .filter(|d| d.is_dir())
+                .and_then(|d| newest_image(&d).ok())
+            {
+                Some(built) => built,
                 None => crate::pull::newest_pulled(paths).context(
                     "no base image: run `sediros pull` (or `sediros build` in a source checkout)",
                 )?,

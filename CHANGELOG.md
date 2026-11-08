@@ -45,7 +45,8 @@ Named after the cedar (*sedir* in Turkish): a hard, long-lived wood that resists
 - Optional disk unlock over SSH at boot (dropbear in the initramfs, port 2222, key-only, restricted to `cryptroot-unlock`, per-machine host key).
 - Secure Boot: the ISO and installed systems boot with Debian's signed chain (Microsoft-signed `shim`, Debian-signed GRUB and kernel); tested with firmware that enforces Secure Boot, for the live ISO, the installation and the installed system.
 
-### Tools (`sediros` CLI 0.6.0)
+### Tools (`sediros` CLI 0.6.1)
+- In a source checkout without a build of its own, `sediros launch` uses the image from `sediros pull` instead of failing.
 - `sediros build/launch/shell/list/stop/purge`: QEMU VMs with HVF (macOS) or KVM (Linux), copy-on-write disks, SSH on localhost only.
 - `launch --data-disk` attaches an empty second disk; `list` shows each VM's build id; `sediros` without a command shows the help with a getting-started section.
 - `sediros pull` downloads a released VM image from GitHub and verifies it against the release's SHA256SUMS; no source checkout needed.
