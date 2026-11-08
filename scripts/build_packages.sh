@@ -145,6 +145,8 @@ for src in "$PKG_SRC"/*/; do
     for d in usr/share/initramfs-tools/hooks usr/share/initramfs-tools/scripts; do
         [[ -d "$stage/$d" ]] && find "$stage/$d" -type f -exec chmod 0755 {} +
     done
+    # pam_motd (run-parts) only runs executable update-motd.d scripts.
+    [[ -d "$stage/etc/update-motd.d" ]] && find "$stage/etc/update-motd.d" -type f -exec chmod 0755 {} +
     # update-grub only runs executable /etc/grub.d scripts.
     [[ -d "$stage/etc/grub.d" ]] && find "$stage/etc/grub.d" -type f -exec chmod 0755 {} +
 

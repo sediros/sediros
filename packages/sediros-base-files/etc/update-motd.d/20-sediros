@@ -1,0 +1,27 @@
+#!/bin/sh
+# SedirOS login greeting (run by pam_motd at every login, as root).
+# Turn it off: chmod -x /etc/update-motd.d/20-sediros
+# The hardening line shows the last result of the daily sediros-audit run
+# when there is one; the audit itself never runs at login (too slow).
+
+pretty="$(. /etc/os-release 2>/dev/null && printf '%s' "$PRETTY_NAME")"
+build="$(sed -n 's/^BUILD_ID=//p' /etc/sediros/build-info 2>/dev/null)"
+host="$(hostname 2>/dev/null)"
+
+summary=/var/lib/sediros/audit/last-summary
+if [ -r "$summary" ]; then
+    audit="Hardening: $(head -n1 "$summary" | cut -c1-60)"
+else
+    audit="Hardening: check it with sudo sediros-audit"
+fi
+
+cat <<GREETING
+
+  ▗▄▄▄▄▄▄▄▖   ${pretty:-SedirOS}
+  ▐   ▲   ▌   ${host}${build:+ · build $build}
+  ▐  ▲▲▲  ▌
+  ▐ ▲▲▲▲▲ ▌   ${audit}
+   ▚  ┃  ▞    github.com/sediros/sediros
+     ▀▀▀
+
+GREETING

@@ -37,6 +37,12 @@ if [[ "$os_id" == sediros && "$os_rel" != none && ( -z "$WANT_RELEASE" || "$os_r
 else
     fail "os-release" "ID=$os_id SEDIROS_RELEASE=$os_rel, want sediros ${WANT_RELEASE:-<any>}"
 fi
+greeting="$(run-parts /etc/update-motd.d 2>/dev/null)"
+if [[ "$greeting" == *"SedirOS $os_rel"* && "$greeting" == *"Hardening:"* ]]; then
+    pass "login greeting: SedirOS $os_rel"
+else
+    fail "login greeting" "run-parts /etc/update-motd.d: $(head -c 200 <<<"$greeting")"
+fi
 
 # --- sysctl: every value in 99-sediros.conf is live --------------------------
 bad=()
