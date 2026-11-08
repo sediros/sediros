@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="815" height="820" viewBox="0 0 815 820" role="img" aria-label="sediros-install">
+<rect width="815" height="820" rx="10" fill="#1e1f24"/>
+<path d="M0 10a10 10 0 0 1 10-10h795a10 10 0 0 1 10 10v20h-815z" fill="#2a2b31"/>
+<circle cx="18" cy="15.0" r="6" fill="#ff5f57"/>
+<circle cx="38" cy="15.0" r="6" fill="#febc2e"/>
+<circle cx="58" cy="15.0" r="6" fill="#28c840"/>
+<text x="407.5" y="19.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#a1a1a6">sediros-install</text>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" xml:space="preserve">
+<text x="16" y="57"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sudo sediros-install install</tspan></text>
+<text x="16" y="76"><tspan fill="#d8d8dc">SedirOS installer. Nothing is written until you confirm at the end.</tspan></text>
+<text x="16" y="95"></text>
+<text x="16" y="114"><tspan fill="#d8d8dc">Disks:</tspan></text>
+<text x="16" y="133"><tspan fill="#d8d8dc">  /dev/vda  16.0 GiB</tspan></text>
+<text x="16" y="152"><tspan fill="#d8d8dc">Install to disk [vda]:</tspan></text>
+<text x="16" y="171"><tspan fill="#d8d8dc">Hostname [sediros]: web1</tspan></text>
+<text x="16" y="190"><tspan fill="#d8d8dc">Keyboard layout (us, tr, tr:f, de, fr, gb, ...) [us]: us</tspan></text>
+<text x="16" y="209"><tspan fill="#d8d8dc">Admin user name [sediros]: deploy</tspan></text>
+<text x="16" y="228"><tspan fill="#d8d8dc">Password for &#x27;deploy&#x27; (sudo, console):</tspan></text>
+<text x="16" y="247"><tspan fill="#d8d8dc">Password for &#x27;deploy&#x27; (sudo, console) (again):</tspan></text>
+<text x="16" y="266"></text>
+<text x="16" y="285"><tspan fill="#d8d8dc">SSH access is key-only. Paste public key lines (end with an empty line),</tspan></text>
+<text x="16" y="304"><tspan fill="#d8d8dc">or type gh:&lt;github-user&gt; to fetch your keys, or just Enter to skip.</tspan></text>
+<text x="16" y="323"><tspan fill="#d8d8dc">SSH key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKKaGH8rp2xWg2JosEbtDqoROBTW60PkhmpNVves42/U</tspan></text>
+<text x="16" y="342"><tspan fill="#d8d8dc">demo@laptop</tspan></text>
+<text x="16" y="361"></text>
+<text x="16" y="380"><tspan fill="#d8d8dc">  1 key(s) accepted</tspan></text>
+<text x="16" y="399"><tspan fill="#d8d8dc">Allow unlocking the disk over SSH at boot (port 2222, your keys only)? (y/n) [y]: y</tspan></text>
+<text x="16" y="418"></text>
+<text x="16" y="437"><tspan fill="#d8d8dc">Disk encryption passphrase: asked at every boot, keyboard layout &#x27;us&#x27;.</tspan></text>
+<text x="16" y="456"><tspan fill="#d8d8dc">It cannot be recovered - without it the data is lost.</tspan></text>
+<text x="16" y="475"><tspan fill="#d8d8dc">LUKS passphrase:</tspan></text>
+<text x="16" y="494"><tspan fill="#d8d8dc">LUKS passphrase (again):</tspan></text>
+<text x="16" y="513"><tspan fill="#d8d8dc">Protect boot entry editing with a GRUB password? (y/n) [y]: n</tspan></text>
+<text x="16" y="532"></text>
+<text x="16" y="551"><tspan fill="#d8d8dc">Install plan:</tspan></text>
+<text x="16" y="570"><tspan fill="#d8d8dc">  disk      /dev/vda  16.0 GiB</tspan></text>
+<text x="16" y="589"><tspan fill="#d8d8dc">            1: 512 MiB ESP  2: 1 GiB /boot  3: rest, LUKS2 -&gt; ext4 /</tspan></text>
+<text x="16" y="608"><tspan fill="#d8d8dc">  source    /run/live/rootfs/filesystem.squashfs (SedirOS 13.1 build 20261108.0248-5c16327)</tspan></text>
+<text x="16" y="627"><tspan fill="#d8d8dc">  hostname  web1</tspan></text>
+<text x="16" y="646"><tspan fill="#d8d8dc">  user      deploy (sudo)</tspan></text>
+<text x="16" y="665"><tspan fill="#d8d8dc">  password  set</tspan></text>
+<text x="16" y="684"><tspan fill="#d8d8dc">  ssh keys  1</tspan></text>
+<text x="16" y="703"><tspan fill="#d8d8dc">  keyboard  us</tspan></text>
+<text x="16" y="722"><tspan fill="#d8d8dc">  unlock    console or SSH (port 2222)</tspan></text>
+<text x="16" y="741"><tspan fill="#d8d8dc">  grub      no password</tspan></text>
+<text x="16" y="760"></text>
+<text x="16" y="779"><tspan fill="#ef7b7b" font-weight="bold">ALL DATA ON /dev/vda WILL BE DESTROYED.</tspan></text>
+<text x="16" y="798"><tspan fill="#d8d8dc">Type &#x27;vda&#x27; to erase it and install, or &#x27;no&#x27; to abort: vda</tspan></text>
+</g></svg>

@@ -17,6 +17,8 @@ SedirOS is a minimal, hardened Linux distribution based on Debian 13 (trixie). I
 - **Plain Debian underneath:** SedirOS adds a few packages to Debian; it does not replace it. Your Debian knowledge, documentation and packages apply.
 - **Fast throwaway VMs:** `sediros launch` starts a SedirOS VM on macOS (Apple Silicon) or Linux in a few seconds.
 
+![sediros-audit on an installed SedirOS system: 17 checks passed](docs/images/audit.svg)
+
 ## Two ways to use SedirOS
 
 | I want to... | Use | Start here |
@@ -95,6 +97,8 @@ Everything on the stick is erased.
 ### The installer's questions
 
 Disk, hostname, keyboard layout, admin user name, sudo password, your SSH public key (paste it, or type `gh:<github-user>` to fetch it from GitHub), whether the disk may be unlocked over SSH, the disk encryption passphrase and an optional GRUB password. Every answer is checked before anything is written; you confirm by typing the disk name, and the installation takes under a minute. For automated installs every question has a flag: `sediros-install install --help`.
+
+![The installer's questions and its install plan](docs/images/install.svg)
 
 What the installer creates:
 
@@ -216,6 +220,8 @@ shows the release, the build id (for example `13.1`, `20261105.1523-2d85457`) an
 ## Trying SedirOS in a VM
 
 The `sediros` CLI starts SedirOS VMs with QEMU on macOS and Linux (amd64 or arm64). VMs use your machine's architecture. It is tested on Apple Silicon Macs and amd64/arm64 Linux; Intel Macs are untested.
+
+![sediros launch starts a VM in about four seconds](docs/images/cli.svg)
 
 **1. Install the CLI and QEMU.**
 

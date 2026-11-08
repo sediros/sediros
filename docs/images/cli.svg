@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="634" height="174" viewBox="0 0 634 174" role="img" aria-label="sediros on macOS">
+<rect width="634" height="174" rx="10" fill="#1e1f24"/>
+<path d="M0 10a10 10 0 0 1 10-10h614a10 10 0 0 1 10 10v20h-634z" fill="#2a2b31"/>
+<circle cx="18" cy="15.0" r="6" fill="#ff5f57"/>
+<circle cx="38" cy="15.0" r="6" fill="#febc2e"/>
+<circle cx="58" cy="15.0" r="6" fill="#28c840"/>
+<text x="317.0" y="19.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#a1a1a6">sediros on macOS</text>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" xml:space="preserve">
+<text x="16" y="57"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sediros launch demo</tspan></text>
+<text x="16" y="76"><tspan fill="#d8d8dc">Launched &#x27;demo&#x27; (arm64, hvf, 2 vCPU, 1024 MiB) - ssh on 127.0.0.1:2223</tspan></text>
+<text x="16" y="95"><tspan fill="#8b8c94">Waiting for SSH... ready in 4.3s</tspan></text>
+<text x="16" y="114"><tspan fill="#8b8c94">Next: sediros shell demo</tspan></text>
+<text x="16" y="133"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sediros shell demo -- grep PRETTY_NAME /etc/os-release</tspan></text>
+<text x="16" y="152"><tspan fill="#d8d8dc">PRETTY_NAME=&quot;SedirOS 13.1 (trixie)&quot;</tspan></text>
+</g></svg>

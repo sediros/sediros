@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="789" height="592" viewBox="0 0 789 592" role="img" aria-label="sediros-audit on an installed system">
+<rect width="789" height="592" rx="10" fill="#1e1f24"/>
+<path d="M0 10a10 10 0 0 1 10-10h769a10 10 0 0 1 10 10v20h-789z" fill="#2a2b31"/>
+<circle cx="18" cy="15.0" r="6" fill="#ff5f57"/>
+<circle cx="38" cy="15.0" r="6" fill="#febc2e"/>
+<circle cx="58" cy="15.0" r="6" fill="#28c840"/>
+<text x="394.5" y="19.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#a1a1a6">sediros-audit on an installed system</text>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" xml:space="preserve">
+<text x="16" y="57"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sudo sediros-audit</tspan></text>
+<text x="16" y="76"><tspan fill="#d8d8dc">SedirOS audit: web1 (SedirOS 13.1 (trixie), build 20261108.0248-5c16327, installed),</tspan></text>
+<text x="16" y="95"><tspan fill="#d8d8dc">2026-11-08 07:45 UTC</tspan></text>
+<text x="16" y="114"></text>
+<text x="16" y="133"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> packages</tspan><tspan fill="#d8d8dc">     unmodified: sediros-archive-keyring 0.1.0, sediros-audit 0.2.0,</tspan></text>
+<text x="16" y="152"><tspan fill="#d8d8dc">                sediros-base-files 13.1, sediros-boot-hardening 0.2.1, sediros-hardening</tspan></text>
+<text x="16" y="171"><tspan fill="#d8d8dc">                0.5.4</tspan></text>
+<text x="16" y="190"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> services</tspan><tspan fill="#d8d8dc">     3 SedirOS units enabled</tspan></text>
+<text x="16" y="209"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> sysctl</tspan><tspan fill="#d8d8dc">       63 kernel settings as configured</tspan></text>
+<text x="16" y="228"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> ssh</tspan><tspan fill="#d8d8dc">          key-only, no root login, no forwarding, modern ciphers</tspan></text>
+<text x="16" y="247"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> firewall</tspan><tspan fill="#d8d8dc">     active, incoming deny by default, outgoing allow</tspan></text>
+<text x="16" y="266"><tspan fill="#d8d8dc">                rate-limited: 22/tcp</tspan></text>
+<text x="16" y="285"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> netfilter</tspan><tspan fill="#d8d8dc">    IPv4 TCP packets with IP options dropped</tspan></text>
+<text x="16" y="304"><tspan fill="#d8d8dc"> </tspan><tspan fill="#8b8c94" font-weight="bold">·</tspan><tspan fill="#d8d8dc" font-weight="bold"> listeners</tspan><tspan fill="#d8d8dc">    listening on the network: 22/tcp sshd, 68/udp systemd-network</tspan></text>
+<text x="16" y="323"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> apparmor</tspan><tspan fill="#d8d8dc">     enabled, 3 profiles enforced, 44 in complain mode</tspan></text>
+<text x="16" y="342"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> suid</tspan><tspan fill="#d8d8dc">         setuid/setgid only on the allowlisted programs</tspan></text>
+<text x="16" y="361"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> accounts</tspan><tspan fill="#d8d8dc">     root locked, no empty passwords, no second root</tspan></text>
+<text x="16" y="380"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> sudo</tspan><tspan fill="#d8d8dc">         pty, audit log /var/log/sudo.log, 5 min timestamp</tspan></text>
+<text x="16" y="399"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> pam</tspan><tspan fill="#d8d8dc">          lockout after failed logins, password quality rules</tspan></text>
+<text x="16" y="418"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> modules</tspan><tspan fill="#d8d8dc">      30 unneeded kernel modules blocked</tspan></text>
+<text x="16" y="437"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> updates</tspan><tspan fill="#d8d8dc">      Debian security and SedirOS updates installed automatically</tspan></text>
+<text x="16" y="456"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> apt-source</tspan><tspan fill="#d8d8dc">   SedirOS repository signed by its key, limited to sediros-* packages</tspan></text>
+<text x="16" y="475"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> kernel</tspan><tspan fill="#d8d8dc">       hardening boot parameters active</tspan></text>
+<text x="16" y="494"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> encryption</tspan><tspan fill="#d8d8dc">   root file system on LUKS</tspan></text>
+<text x="16" y="513"><tspan fill="#d8d8dc"> </tspan><tspan fill="#8b8c94" font-weight="bold">·</tspan><tspan fill="#d8d8dc" font-weight="bold"> secure-boot</tspan><tspan fill="#d8d8dc">  Secure Boot is off in the firmware (SedirOS supports it)</tspan></text>
+<text x="16" y="532"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> core-dumps</tspan><tspan fill="#d8d8dc">   disabled for login sessions (hard limit 0)</tspan></text>
+<text x="16" y="551"></text>
+<text x="16" y="570"><tspan fill="#7ccf9a" font-weight="bold">17 passed</tspan><tspan fill="#d8d8dc">, 0 warnings</tspan><tspan fill="#d8d8dc">, 0 failed</tspan></text>
+</g></svg>
