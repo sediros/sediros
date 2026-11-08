@@ -32,7 +32,7 @@ make lint       # bash -n, shellcheck (if installed), rustfmt, clippy, package v
 make help       # all targets
 ```
 
-Settings are in `config/sediros.conf` and can be overridden on the command line, e.g. `make build RELEASE=13.2`.
+Settings are in `config/sediros.conf` and can be overridden on the command line, e.g. `make build RELEASE=1.2`.
 
 | Target | Output |
 |---|---|
@@ -89,7 +89,7 @@ One build script produces two kinds of root file systems:
 | Admin password | locked | empty and expired (the installer sets it) |
 | sudo | passwordless | asks for the password |
 | Extra packages | `sediros-guest` | `sediros-live`, `sediros-install`, cryptsetup, GRUB EFI with `shim-signed`, dropbear-initramfs (disabled), ... |
-| Artifact name | `sediros-1.0-arm64.*` | `sediros-1.0-install-arm64.*` |
+| Artifact name | `sediros-1.1-arm64.*` | `sediros-1.1-install-arm64.*` |
 
 How a VM gets its key: the CLI keeps a key pair in `SEDIROS_HOME` (`~/.local/share/sediros/id_ed25519`) and adds `systemd.set_credential_binary=sediros.ssh.authorized_keys:<base64>` to the kernel command line; `sediros-guest` copies it into the admin user's `authorized_keys`. A public key is not secret, so the readable kernel command line is fine.
 
@@ -128,7 +128,7 @@ With the ISO, end to end:
 ```bash
 make iso
 SEDIROS_ISO_DISK=build/test-disk.qcow2 make iso-run       # install in the live session
-SEDIROS_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sediros-1.0-install-arm64.iso
+SEDIROS_ISO_DISK=build/test-disk.qcow2 scripts/run_iso.sh --no-iso build/sediros-1.1-install-arm64.iso
 ```
 
 ## Versions and releases
@@ -148,14 +148,14 @@ Releasing:
 1. Update `RELEASE` in `config/sediros.conf` and the `CHANGELOG.md` section `## [<release>]`; `make lint`.
 2. Commit and push, so the build id has no `-dirty` suffix.
 3. Optional dry run: run the `release` workflow manually (Actions → release → Run workflow). It builds everything and keeps the files as workflow artifacts, without creating a release.
-   To test the published flow (downloads, Homebrew, `sediros pull`) before the final release, tag a pre-release instead: `v13.2-rc1`. It is built the same way, published as a GitHub "Pre-release", and `sediros pull` uses it while no final release exists.
+   To test the published flow (downloads, Homebrew, `sediros pull`) before the final release, tag a pre-release instead: `v1.2-rc1`. It is built the same way, published as a GitHub "Pre-release", and `sediros pull` uses it while no final release exists.
    A pre-release may be tagged without waiting for CI: the `release` workflow runs the same tests (smoke, apt, Secure Boot install) on what it publishes, about 10 minutes instead of 20. If it fails, that rc number stays unused (tags are immutable) and the next one follows. For the final release, wait for a green CI on the commit first.
-4. `git tag -a v13.2 -m "SedirOS 13.2" && git push origin v13.2`. The `release` workflow checks that the tag matches `RELEASE` and the changelog, builds and smoke-tests the images (amd64, arm64), builds the CLI for macOS (arm64, x86_64) and Linux (musl, amd64, arm64), writes `SHA256SUMS`, attests the build provenance and creates a **draft** release with the changelog section as notes.
+4. `git tag -a v1.2 -m "SedirOS 1.2" && git push origin v1.2`. The `release` workflow checks that the tag matches `RELEASE` and the changelog, builds and smoke-tests the images (amd64, arm64), builds the CLI for macOS (arm64, x86_64) and Linux (musl, amd64, arm64), writes `SHA256SUMS`, attests the build provenance and creates a **draft** release with the changelog section as notes.
 5. Review the draft on GitHub (files, notes) and publish it. Publishing starts the `apt-repo` workflow, which puts the release's packages into the apt repository (see below) and points the download page at the new release.
 6. Update the Homebrew formula from the published release and commit it:
    ```bash
-   scripts/update_formula.sh v13.2
-   git add Formula/sediros.rb && git commit -m "Formula: sediros for v13.2" && git push
+   scripts/update_formula.sh v1.2
+   git add Formula/sediros.rb && git commit -m "Formula: sediros for v1.2" && git push
    ```
 
 ## apt repository

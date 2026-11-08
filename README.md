@@ -7,7 +7,7 @@
 
 SedirOS is a minimal, hardened Linux distribution. SedirOS 1 is based on Debian 13 (trixie). It is Debian underneath: the same packages, the same security updates, the same `apt`. On top of that it adds a set of security defaults, an installer with disk encryption, and `sediros`, a small CLI that boots SedirOS VMs in seconds.
 
-> **Status:** SedirOS 1.0 is the first release. Get it from the [download page](https://sediros.github.io/sediros/).
+> **Status:** SedirOS 1.1 is the current release. Get it from the [download page](https://sediros.github.io/sediros/).
 
 ## What you get
 
@@ -34,8 +34,8 @@ The two are independent: an installed system does not need the CLI, and the CLI 
 
 | Your machine | ISO |
 |---|---|
-| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sediros-1.0-install-amd64.iso` |
-| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sediros-1.0-install-arm64.iso` |
+| PC or server with Intel/AMD, or a VM on one (VirtualBox, VMware, Proxmox, Hyper-V, QEMU/KVM) | `sediros-1.1-install-amd64.iso` |
+| Mac with Apple Silicon (VM in UTM, Parallels, VMware Fusion), or an ARM server | `sediros-1.1-install-arm64.iso` |
 
 Every release is also mirrored on SourceForge: <https://sourceforge.net/projects/sediros/files/>. Use it when GitHub's downloads are slow or fail; check the file against `SHA256SUMS` either way.
 
@@ -48,8 +48,8 @@ Everything is published on the [GitHub releases page](https://github.com/sediros
 
 | File | What it is |
 |---|---|
-| `sediros-1.0-install-<arch>.iso` | live system and installer |
-| `sediros-1.0-<arch>.qcow2` + kernel files | VM image, downloaded by `sediros pull` |
+| `sediros-1.1-install-<arch>.iso` | live system and installer |
+| `sediros-1.1-<arch>.qcow2` + kernel files | VM image, downloaded by `sediros pull` |
 | `sediros-<version>-<platform>.tar.gz` | the `sediros` CLI for macOS and Linux |
 | `sediros-*.deb` | SedirOS's packages (also in the [apt repository](https://sediros.github.io/sediros/apt/)) |
 | `SHA256SUMS` | checksums of all files |
@@ -64,7 +64,7 @@ shasum -a 256 -c SHA256SUMS --ignore-missing      # macOS
 To also check that a file was built by this repository's release workflow (needs the GitHub CLI):
 
 ```bash
-gh attestation verify sediros-1.0-install-amd64.iso --repo sediros/sediros
+gh attestation verify sediros-1.1-install-amd64.iso --repo sediros/sediros
 ```
 
 </details>
@@ -88,13 +88,13 @@ gh attestation verify sediros-1.0-install-amd64.iso --repo sediros/sediros
 - **Secure Boot** can stay on: SedirOS boots with Debian's signed boot chain (shim signed by Microsoft, Debian-signed GRUB and kernel), which machines with Microsoft's UEFI keys accept. With Secure Boot on, the kernel runs in lockdown mode, and kernel modules that are not part of Debian (DKMS) need a key enrolled with `mokutil`.
 - At least 8 GiB of disk space; the whole disk is used and erased. Installation has been tested with 2 GiB of RAM.
 
-Tested environments for 1.0:
+Tested environments (1.0 and 1.1):
 
 | Environment | Architecture | Tested |
 |---|---|---|
 | QEMU/KVM with UEFI and Secure Boot enforced | amd64 | every CI run and release: live ISO, install, installed system |
 | QEMU with HVF on an Apple Silicon Mac (UEFI) | arm64 | install, LUKS unlock on the console and over SSH, `sediros-audit` |
-| UTM on an Apple Silicon Mac, Virtualize | arm64 | install from the ISO, LUKS prompt on the screen, updates through apt |
+| UTM on an Apple Silicon Mac, Virtualize | arm64 | install from the ISO, LUKS prompt on the screen, updates through apt, the daily audit |
 | UTM on an Apple Silicon Mac, Emulate | amd64 | install from the ISO, LUKS prompt on the screen |
 | Physical PCs and servers | amd64, arm64 | not yet: reports are welcome |
 
@@ -102,8 +102,8 @@ Tested environments for 1.0:
 
 Everything on the stick is erased.
 - Any system: a graphical tool such as [balenaEtcher](https://etcher.balena.io/).
-- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sediros-1.0-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
-- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sediros-1.0-install-amd64.iso of=/dev/rdiskN bs=4m`.
+- Linux: `lsblk` shows which `/dev/sdX` is the stick, then `sudo dd if=sediros-1.1-install-amd64.iso of=/dev/sdX bs=4M conv=fsync status=progress`.
+- macOS: `diskutil list` to find the stick (`/dev/diskN`), `diskutil unmountDisk /dev/diskN`, then `sudo dd if=sediros-1.1-install-amd64.iso of=/dev/rdiskN bs=4m`.
 - VPS: most panels have "mount ISO"; attach it and boot from it.
 
 ### The installer's questions
@@ -132,7 +132,7 @@ For a hypervisor such as UTM, VirtualBox, VMware, Proxmox or virt-manager (for t
 - **Remove the ISO after installing, while the VM is off**, otherwise the VM boots the live session again. A prompt of `sediros@sediros` with "live session" in the login banner means you are not in the installed system; the banner also warns when the disk already holds a SedirOS installation.
 
 UTM on a Mac, step by step:
-1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sediros-1.0-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
+1. **Create a New Virtual Machine** → **Virtualize** → **Linux**. Boot ISO Image: **Browse** to `sediros-1.1-install-arm64.iso`. 2 GiB of memory and a 16 GiB disk are plenty.
 2. Start the VM and install (`sudo sediros-install install`), then `sudo poweroff`.
 3. With the VM off: right-click it → **Edit** → under **Drives** select the **USB Drive** that holds the ISO → **Clear** → **Save**. (Ejecting it from the toolbar while the VM runs lasts only until the next start.)
 4. Start the VM: it asks for the disk encryption passphrase on the screen.
@@ -259,7 +259,7 @@ With Prometheus' node_exporter, the metrics `sediros_audit_check{check,status}` 
 cat /etc/sediros/build-info
 ```
 
-shows the release, the build id (for example `1.0`, `20261105.1523-2d85457`) and when the system was installed. Please include both when reporting a problem.
+shows the release, the build id (for example `1.1`, `20261105.1523-2d85457`) and when the system was installed. Please include both when reporting a problem.
 
 ## Trying SedirOS in a VM
 
@@ -280,7 +280,7 @@ brew install sediros
 *Linux* (any distribution; the binary is static). Pick the file for your machine: `x86_64-unknown-linux-musl` for amd64, `aarch64-unknown-linux-musl` for arm64.
 
 ```bash
-VERSION=0.6.3 RELEASE=1.0 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
+VERSION=0.7.0 RELEASE=1.1 TARGET=x86_64-unknown-linux-musl   # newest: see the download page
 URL=https://github.com/sediros/sediros/releases/download/v$RELEASE
 curl -LO $URL/sediros-$VERSION-$TARGET.tar.gz -LO $URL/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
@@ -350,7 +350,7 @@ Three layers, in order of importance:
 2. **A smaller attack surface.** The hardening turns off what servers do not need, so that bugs in that code cannot be reached, including bugs nobody has found yet. It does not fix bugs and does not replace updates.
 3. **Checking that it stays so.** `sediros-audit` runs every day and reports when a setting drifted, by e-mail, webhook or Prometheus.
 
-An example, CVE-2026-98432 (a remote use-after-free in the kernel's IPv4 TCP connection setup, rated critical): the fix is Debian's kernel 6.12.113 or later, which the 1.0 images ship and installed systems get through updates. Until a server reboots into it, SedirOS's hardening still blocks the network path to the bug: IPv4 TCP packets carrying IP options are dropped before they reach the TCP code (no normal internet traffic uses them), and the two other ways in, request-socket migration and Multipath TCP, are turned off.
+An example, CVE-2026-98432 (a remote use-after-free in the kernel's IPv4 TCP connection setup, rated critical): the fix is Debian's kernel 6.12.113 or later, which the SedirOS images ship since 1.0 and installed systems get through updates. Until a server reboots into it, SedirOS's hardening still blocks the network path to the bug: IPv4 TCP packets carrying IP options are dropped before they reach the TCP code (no normal internet traffic uses them), and the two other ways in, request-socket migration and Multipath TCP, are turned off.
 
 What SedirOS does not do: it does not patch the kernel or other Debian packages itself, it is not an intrusion detection system, and it cannot protect software you run with weak settings (open ports, default passwords). Report security problems in SedirOS as described in [SECURITY.md](SECURITY.md).
 
