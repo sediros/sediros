@@ -186,15 +186,46 @@ fn latest_tag(repo: &str) -> Result<String> {
     if out.status.success() {
         return tag_name(&String::from_utf8_lossy(&out.stdout));
     }
-    // No final release yet: the newest pre-release (drafts are never listed).
-    let out = api("releases?per_page=1")?;
-    let body = String::from_utf8_lossy(&out.stdout);
-    if !out.status.success() || !body.contains("\"tag_name\"") {
-        bail!("no published release found for {repo} (use --release)");
+    // No final release yet: the most recently published pre-release (drafts
+    // are never listed). GitHub orders the list by tag, not by date, so
+    // v13.1-rc13 would come before v1.0-rc1.
+    let out = api("releases?per_page=30")?;
+    let err = String::from_utf8_lossy(&out.stderr);
+    if err.contains("error: 403") || err.contains("error: 429") {
+        bail!(
+            "GitHub refused the request: its API allows 60 requests per hour without \
+             a login, per IP address. Try again later, or name the release: \
+             sediros pull --release <version> (see the download page)"
+        );
     }
-    let tag = tag_name(&body)?;
+    let body = String::from_utf8_lossy(&out.stdout);
+    let tag = match newest_published(&body) {
+        Some(tag) if out.status.success() => tag,
+        _ => bail!("no published release found for {repo} (use --release)"),
+    };
     println!("No final release yet, using pre-release {tag}");
     Ok(tag)
+}
+
+/// Tag of the release with the latest "published_at" in a GitHub release
+/// list. Each release object has "tag_name" before "published_at", and no
+/// other field of a release (assets included) is called either.
+fn newest_published(body: &str) -> Option<String> {
+    let quoted = |text: &str, key: &str| -> Option<String> {
+        let (_, rest) = text.split_once(&format!("\"{key}\""))?;
+        let rest = rest.trim_start().strip_prefix(':')?.trim_start();
+        let rest = rest.strip_prefix('"')?;
+        Some(rest[..rest.find('"')?].to_string())
+    };
+    body.split("\"tag_name\"")
+        .skip(1)
+        .filter_map(|release| {
+            let tag = quoted(&format!("\"tag_name\"{release}"), "tag_name")?;
+            let published = quoted(release, "published_at")?;
+            Some((published, tag))
+        })
+        .max()
+        .map(|(_, tag)| tag)
 }
 
 fn tag_name(body: &str) -> Result<String> {
@@ -241,7 +272,21 @@ fn sha256(file: &Path) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{expected_sum, release_order};
+    use super::{expected_sum, newest_published, release_order};
+
+    #[test]
+    fn newest_published_ignores_list_order() {
+        let body = r#"[
+          {"id": 1, "tag_name": "v13.1-rc13", "prerelease": true,
+           "published_at": "2026-11-08T02:57:18Z", "assets": [{"created_at": "2026-12-01T00:00:00Z"}]},
+          {"id": 2, "tag_name": "v1.0-rc1", "prerelease": true,
+           "published_at": "2026-11-08T08:55:40Z", "assets": []},
+          {"id": 3, "tag_name": "v13.1-rc12", "published_at": "2026-11-08T02:37:18Z"}
+        ]"#;
+        assert_eq!(newest_published(body).as_deref(), Some("v1.0-rc1"));
+        assert_eq!(newest_published("[]"), None);
+        assert_eq!(newest_published(r#"{"message": "Not Found"}"#), None);
+    }
 
     #[test]
     fn release_candidates_before_1_0_sort_first() {

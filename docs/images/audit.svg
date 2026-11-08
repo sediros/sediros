@@ -1,17 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="789" height="592" viewBox="0 0 789 592" role="img" aria-label="sediros-audit on an installed system">
-<rect width="789" height="592" rx="10" fill="#1e1f24"/>
-<path d="M0 10a10 10 0 0 1 10-10h769a10 10 0 0 1 10 10v20h-789z" fill="#2a2b31"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="806" height="592" viewBox="0 0 806 592" role="img" aria-label="sediros-audit on an installed system">
+<rect width="806" height="592" rx="10" fill="#1e1f24"/>
+<path d="M0 10a10 10 0 0 1 10-10h786a10 10 0 0 1 10 10v20h-806z" fill="#2a2b31"/>
 <circle cx="18" cy="15.0" r="6" fill="#ff5f57"/>
 <circle cx="38" cy="15.0" r="6" fill="#febc2e"/>
 <circle cx="58" cy="15.0" r="6" fill="#28c840"/>
-<text x="394.5" y="19.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#a1a1a6">sediros-audit on an installed system</text>
+<text x="403.0" y="19.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#a1a1a6">sediros-audit on an installed system</text>
 <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" xml:space="preserve">
 <text x="16" y="57"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sudo sediros-audit</tspan></text>
-<text x="16" y="76"><tspan fill="#d8d8dc">SedirOS audit: web1 (SedirOS 13.1 (trixie), build 20261108.0248-5c16327, installed),</tspan></text>
-<text x="16" y="95"><tspan fill="#d8d8dc">2026-11-08 07:45 UTC</tspan></text>
+<text x="16" y="76"><tspan fill="#d8d8dc">SedirOS audit: web1 (SedirOS 1.0 (based on Debian 13 trixie), build 20261108.0847-0d12d5c,</tspan></text>
+<text x="16" y="95"><tspan fill="#d8d8dc">installed), 2026-11-08 09:17 UTC</tspan></text>
 <text x="16" y="114"></text>
 <text x="16" y="133"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> packages</tspan><tspan fill="#d8d8dc">     unmodified: sediros-archive-keyring 0.1.0, sediros-audit 0.2.0,</tspan></text>
-<text x="16" y="152"><tspan fill="#d8d8dc">                sediros-base-files 13.1, sediros-boot-hardening 0.2.1, sediros-hardening</tspan></text>
+<text x="16" y="152"><tspan fill="#d8d8dc">                sediros-base-files 1:1.0, sediros-boot-hardening 0.2.1, sediros-hardening</tspan></text>
 <text x="16" y="171"><tspan fill="#d8d8dc">                0.5.4</tspan></text>
 <text x="16" y="190"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> services</tspan><tspan fill="#d8d8dc">     3 SedirOS units enabled</tspan></text>
 <text x="16" y="209"><tspan fill="#d8d8dc"> </tspan><tspan fill="#7ccf9a" font-weight="bold">✓</tspan><tspan fill="#d8d8dc" font-weight="bold"> sysctl</tspan><tspan fill="#d8d8dc">       63 kernel settings as configured</tspan></text>

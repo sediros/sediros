@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="815" height="820" viewBox="0 0 815 820" role="img" aria-label="sediros-install">
-<rect width="815" height="820" rx="10" fill="#1e1f24"/>
-<path d="M0 10a10 10 0 0 1 10-10h795a10 10 0 0 1 10 10v20h-815z" fill="#2a2b31"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="806" height="820" viewBox="0 0 806 820" role="img" aria-label="sediros-install">
+<rect width="806" height="820" rx="10" fill="#1e1f24"/>
+<path d="M0 10a10 10 0 0 1 10-10h786a10 10 0 0 1 10 10v20h-806z" fill="#2a2b31"/>
 <circle cx="18" cy="15.0" r="6" fill="#ff5f57"/>
 <circle cx="38" cy="15.0" r="6" fill="#febc2e"/>
 <circle cx="58" cy="15.0" r="6" fill="#28c840"/>
-<text x="407.5" y="19.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#a1a1a6">sediros-install</text>
+<text x="403.0" y="19.0" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#a1a1a6">sediros-install</text>
 <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" xml:space="preserve">
 <text x="16" y="57"><tspan fill="#9fd3b5" font-weight="bold">$ </tspan><tspan fill="#ffffff" font-weight="bold">sudo sediros-install install</tspan></text>
 <text x="16" y="76"><tspan fill="#d8d8dc">SedirOS installer. Nothing is written until you confirm at the end.</tspan></text>
@@ -35,7 +35,7 @@
 <text x="16" y="551"><tspan fill="#d8d8dc">Install plan:</tspan></text>
 <text x="16" y="570"><tspan fill="#d8d8dc">  disk      /dev/vda  16.0 GiB</tspan></text>
 <text x="16" y="589"><tspan fill="#d8d8dc">            1: 512 MiB ESP  2: 1 GiB /boot  3: rest, LUKS2 -&gt; ext4 /</tspan></text>
-<text x="16" y="608"><tspan fill="#d8d8dc">  source    /run/live/rootfs/filesystem.squashfs (SedirOS 13.1 build 20261108.0248-5c16327)</tspan></text>
+<text x="16" y="608"><tspan fill="#d8d8dc">  source    /run/live/rootfs/filesystem.squashfs (SedirOS 1.0 build 20261108.0847-0d12d5c)</tspan></text>
 <text x="16" y="627"><tspan fill="#d8d8dc">  hostname  web1</tspan></text>
 <text x="16" y="646"><tspan fill="#d8d8dc">  user      deploy (sudo)</tspan></text>
 <text x="16" y="665"><tspan fill="#d8d8dc">  password  set</tspan></text>
