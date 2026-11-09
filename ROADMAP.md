@@ -15,6 +15,7 @@ What is planned, by release. The details, and the discussion, are in the linked 
 ## 1.2
 
 - [ ] Maintenance window: reboot when an update needs it, off / ask / auto, safe with encrypted disks ([#9](https://github.com/sediros/sediros/issues/9))
+- [ ] Integrity check in `sediros-audit`: report changes to files that should not change, package files through `dpkg --verify` ([#10](https://github.com/sediros/sediros/issues/10))
 
 ## Later
 
