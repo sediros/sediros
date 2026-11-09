@@ -393,3 +393,5 @@ If `curl http://<address>` works from your computer but the browser does not ope
 ## License
 
 SedirOS's own code (build scripts, packages, `sediros-cli`, `sediros-install`) is licensed under the [Apache License 2.0](LICENSE), Copyright 2026 The SedirOS Authors (see [NOTICE](NOTICE)). The images and ISOs also contain Debian packages, each under its own license; see `/usr/share/doc/<package>/copyright` on a SedirOS system.
+
+SedirOS is not affiliated with or endorsed by the Debian project. Debian is a registered trademark of Software in the Public Interest, Inc.

@@ -153,6 +153,8 @@ sediros shell dev</pre>
 
 <h2>Updates</h2>
 <p>Installed systems update themselves: Debian's security updates from Debian, SedirOS's own packages from the <a href="apt/">SedirOS apt repository</a>.</p>
+
+<p class="muted"><small>SedirOS is not affiliated with or endorsed by the Debian project. Debian is a registered trademark of Software in the Public Interest, Inc.</small></p>
 </body>
 </html>
 EOF
