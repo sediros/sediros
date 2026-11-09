@@ -157,6 +157,7 @@ Releasing:
    scripts/update_formula.sh v1.2
    git add Formula/sediros.rb && git commit -m "Formula: sediros for v1.2" && git push
    ```
+7. Update the website, a separate repository ([sediros/sediros.github.io](https://github.com/sediros/sediros.github.io), published on every push to `main`): the release number and the ISO file names in `index.html` and `tr/index.html` (badge, buttons, the ISO table, `softwareVersion` and `datePublished` in the JSON-LD), and `lastmod` in `sitemap.xml`.
 
 ## apt repository
 

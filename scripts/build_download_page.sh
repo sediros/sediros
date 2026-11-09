@@ -85,7 +85,17 @@ cat > "$OUT" <<EOF
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Download SedirOS</title>
+<title>Download SedirOS ${version} – ISO for amd64 and arm64</title>
+<meta name="description" content="Download SedirOS ${version}, hardened Debian Linux for servers: installer ISOs for amd64 and arm64 with SHA-256 checksums and a SourceForge mirror.">
+<link rel="canonical" href="https://sediros.github.io/sediros/">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SedirOS">
+<meta property="og:title" content="Download SedirOS ${version}">
+<meta property="og:description" content="Installer ISOs for amd64 and arm64, with SHA-256 checksums.">
+<meta property="og:url" content="https://sediros.github.io/sediros/">
+<meta property="og:image" content="https://sediros.github.io/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root { color-scheme: light dark; --fg: #1d1d1f; --bg: #fff; --muted: #6e6e73; --code: #f2f2f4; --accent: #0a66c2; --warn: #fff4d6; }
   @media (prefers-color-scheme: dark) { :root { --fg: #f5f5f7; --bg: #111113; --muted: #a1a1a6; --code: #1e1e22; --accent: #4c9bf5; --warn: #3a3220; } }
@@ -105,6 +115,7 @@ cat > "$OUT" <<EOF
 </style>
 </head>
 <body>
+<p class="muted"><a href="https://sediros.github.io/">&larr; SedirOS website</a></p>
 <h1>Download SedirOS</h1>
 <p class="lead">SedirOS ${version} &middot; published ${date} &middot; <a href="${url}">release notes and all files</a></p>
 ${notice}
