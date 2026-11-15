@@ -4,7 +4,7 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 
 ## [Unreleased]
 
-### CLI (`sediros`)
+### CLI (`sediros` 0.8.0)
 - VMs are persistent by default, a development environment that stays until it is deleted by name; `sediros launch --ephemeral` makes a throwaway VM that `sediros stop` deletes. `sediros purge` without a name now deletes ephemeral VMs only (it used to delete every VM) ([#12](https://github.com/sediros/sediros/issues/12)).
 - New VMs get a 20 GiB disk, `--disk` for another size; it is sparse, so a fresh VM still takes a few MB on the host. `launch --disk` on a stopped VM grows its disk, and the CLI grows the root filesystem at the next start. Ephemeral VMs keep the image's 4 GiB.
 - `sediros list` shows each VM's mode and how much space its disk takes on the host.

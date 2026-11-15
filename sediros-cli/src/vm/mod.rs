@@ -270,7 +270,11 @@ pub fn list(paths: &Paths) -> Result<()> {
             "{:<20} {:<8} {:<10} {:<6} {:<5} {:<8} {:<6} {:<6} {:<18} {:<28} {}",
             vm.name,
             state,
-            if vm.ephemeral { "ephemeral" } else { "persistent" },
+            if vm.ephemeral {
+                "ephemeral"
+            } else {
+                "persistent"
+            },
             vm.arch,
             vm.cpus,
             format!("{}M", vm.memory_mib),

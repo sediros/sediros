@@ -174,7 +174,9 @@ fn json_u64(json: &str, key: &str) -> Option<u64> {
             '"' if depth == 1 && json[i..].starts_with(&needle) => {
                 let rest = json[i + needle.len()..].trim_start().strip_prefix(':')?;
                 let rest = rest.trim_start();
-                let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+                let end = rest
+                    .find(|c: char| !c.is_ascii_digit())
+                    .unwrap_or(rest.len());
                 return rest[..end].parse().ok();
             }
             '"' => in_str = true,
