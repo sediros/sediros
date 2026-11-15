@@ -2,6 +2,7 @@
 
 mod forward;
 mod image;
+mod kernel;
 mod network;
 mod process;
 mod qemu;
@@ -89,6 +90,7 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
                 forwards: Vec::new(),
                 ephemeral: args.ephemeral,
                 grow_root: false,
+                kernel: None,
             };
             (vm, image, true)
         }
@@ -198,6 +200,7 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
             if vm.grow_root {
                 grow_root_fs(paths, &mut vm)?;
             }
+            kernel_notice(paths, &vm);
             if !vm.forwards.is_empty() {
                 forward::open_firewall(paths, &vm);
                 forward::print_forwards(&vm);
@@ -210,6 +213,22 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
             print_serial_tail(&vm, 25);
             Err(err).context(format!("VM '{}' did not become reachable", vm.name))
         }
+    }
+}
+
+/// Tell when the VM has a newer kernel installed than the one it booted
+/// (an update installed it, or the VM was powered off from inside before
+/// `sediros stop` could take it).
+fn kernel_notice(paths: &Paths, vm: &VmState) {
+    let Ok(p) = kernel::probe(paths, vm) else {
+        return;
+    };
+    match p.newest {
+        Some(newest) if newest != p.booted && !vm.ephemeral => println!(
+            "Kernel {newest} is installed in the VM (running: {}). It is used after a restart:\n  sediros stop {} && sediros launch {}",
+            p.booted, vm.name, vm.name
+        ),
+        _ => {}
     }
 }
 
@@ -290,9 +309,19 @@ pub fn list(paths: &Paths) -> Result<()> {
 
 pub fn stop_cmd(paths: &Paths, args: &StopArgs) -> Result<()> {
     validate_vm_name(&args.name)?;
-    let vm = VmState::load(&paths.vm_dir(&args.name))
+    let mut vm = VmState::load(&paths.vm_dir(&args.name))
         .with_context(|| format!("VM '{}' not found", args.name))?;
     if vm.is_running() {
+        // Before powering off: take a kernel update installed in the VM, so
+        // the next launch boots it. Not with --force (the VM may hang) nor
+        // for an ephemeral VM, which is deleted.
+        if !args.force && !vm.ephemeral {
+            match kernel::sync(paths, &mut vm) {
+                Ok(Some(v)) => println!("Kernel {v} taken from the VM; the next launch boots it."),
+                Ok(None) => {}
+                Err(e) => eprintln!("warning: kernel not updated: {e:#}"),
+            }
+        }
         stop(&vm, Duration::from_secs(args.timeout), args.force)?;
         println!("Stopped '{}'.", vm.name);
     } else {

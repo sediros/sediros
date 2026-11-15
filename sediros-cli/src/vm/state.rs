@@ -59,6 +59,8 @@ pub struct VmState {
     pub ephemeral: bool,
     /// The disk grew: the root filesystem is grown at the next SSH contact.
     pub grow_root: bool,
+    /// Kernel taken from the VM (kernels/<version>/); None: the image's.
+    pub kernel: Option<String>,
 }
 
 impl VmState {
@@ -84,7 +86,7 @@ impl VmState {
 
     pub fn save(&self) -> Result<()> {
         let body = format!(
-            "name={}\narch={}\nimage_key={}\nssh_port={}\ncpus={}\nmemory_mib={}\ncreated={}\nforwards={}\nephemeral={}\ngrow_root={}\n",
+            "name={}\narch={}\nimage_key={}\nssh_port={}\ncpus={}\nmemory_mib={}\ncreated={}\nforwards={}\nephemeral={}\ngrow_root={}\nkernel={}\n",
             self.name,
             self.arch,
             self.image_key,
@@ -98,7 +100,8 @@ impl VmState {
                 .collect::<Vec<_>>()
                 .join(","),
             u8::from(self.ephemeral),
-            u8::from(self.grow_root)
+            u8::from(self.grow_root),
+            self.kernel.as_deref().unwrap_or("")
         );
         // Atomic replace: never leave a half-written state file behind.
         let tmp = self.dir.join(".vm.conf.tmp");
@@ -145,6 +148,10 @@ impl VmState {
             // Optional: VMs created before 0.8 are persistent.
             ephemeral: map.get("ephemeral") == Some(&"1"),
             grow_root: map.get("grow_root") == Some(&"1"),
+            kernel: map
+                .get("kernel")
+                .filter(|k| !k.is_empty())
+                .map(|k| k.to_string()),
         })
     }
 

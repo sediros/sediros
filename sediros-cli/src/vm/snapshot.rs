@@ -9,6 +9,7 @@ use std::process::Command;
 
 use anyhow::{bail, Context, Result};
 
+use super::kernel;
 use super::qemu::Platform;
 use super::state::VmState;
 use crate::cli::{RestoreArgs, SnapshotArgs};
@@ -27,6 +28,7 @@ pub fn snapshot_cmd(paths: &Paths, args: &SnapshotArgs) -> Result<()> {
                 run(&img, &["snapshot", "-d", snap], &disk)?;
             }
         }
+        kernel::snapshot_deleted(&vm, snap)?;
         println!("Deleted snapshot '{snap}' of '{}'.", vm.name);
         return Ok(());
     }
@@ -47,6 +49,7 @@ pub fn snapshot_cmd(paths: &Paths, args: &SnapshotArgs) -> Result<()> {
     for disk in disks(&vm) {
         run(&img, &["snapshot", "-c", snap], &disk)?;
     }
+    kernel::snapshot_taken(&vm, snap)?;
     println!(
         "Snapshot '{snap}' of '{}' taken. Back to it later with: sediros restore {} {snap}",
         vm.name, vm.name
@@ -55,7 +58,7 @@ pub fn snapshot_cmd(paths: &Paths, args: &SnapshotArgs) -> Result<()> {
 }
 
 pub fn restore_cmd(paths: &Paths, args: &RestoreArgs) -> Result<()> {
-    let vm = load(paths, &args.name)?;
+    let mut vm = load(paths, &args.name)?;
     let img = qemu_img(&vm)?;
     stopped(&vm, "restore a snapshot")?;
     require(&img, &vm, &args.snapshot)?;
@@ -75,6 +78,8 @@ pub fn restore_cmd(paths: &Paths, args: &RestoreArgs) -> Result<()> {
             run(&img, &["snapshot", "-a", &args.snapshot], &disk)?;
         }
     }
+    // The disk is back to the snapshot: boot the kernel that matches it.
+    kernel::snapshot_restored(&mut vm, &args.snapshot)?;
     println!(
         "Restored '{}' to '{}'. Start it with: sediros launch {}",
         vm.name, args.snapshot, vm.name

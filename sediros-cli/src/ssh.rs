@@ -87,6 +87,35 @@ pub fn run_in_vm(paths: &Paths, vm: &VmState, command: &str) -> Result<bool> {
     Ok(cmd.status().context("running ssh")?.success())
 }
 
+/// Run a command in a running VM and return its standard output, or None
+/// when it failed.
+pub fn capture_in_vm(paths: &Paths, vm: &VmState, command: &str) -> Result<Option<String>> {
+    let mut cmd = batch_ssh(paths, vm, command)?;
+    let out = cmd.output().context("running ssh")?;
+    Ok(out
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned()))
+}
+
+/// Run a command in a running VM with its standard output written to `out`.
+pub fn fetch_from_vm(paths: &Paths, vm: &VmState, command: &str, out: &Path) -> Result<bool> {
+    let file = std::fs::File::create(out).with_context(|| format!("creating {}", out.display()))?;
+    let mut cmd = batch_ssh(paths, vm, command)?;
+    cmd.stdout(file).stderr(std::process::Stdio::null());
+    Ok(cmd.status().context("running ssh")?.success())
+}
+
+fn batch_ssh(paths: &Paths, vm: &VmState, command: &str) -> Result<Command> {
+    let mut cmd = Command::new("ssh");
+    client_options(&mut cmd, paths, vm, None)?;
+    cmd.args(["-o", "BatchMode=yes", "-T"])
+        .arg(format!("{DEFAULT_USER}@127.0.0.1"))
+        .arg(command)
+        .stdin(std::process::Stdio::null());
+    Ok(cmd)
+}
+
 /// Guest user of SedirOS VM images.
 const DEFAULT_USER: &str = "sediros";
 

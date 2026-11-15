@@ -306,6 +306,7 @@ pub fn spawn(
         "host"
     };
 
+    let (kernel, initrd) = super::kernel::boot_files(vm, image);
     let mut cmd = Command::new(&platform.binary);
     cmd.arg("-name")
         .arg(format!("sediros-{}", vm.name))
@@ -322,10 +323,11 @@ pub fn spawn(
         .arg(format!("{}M", vm.memory_mib))
         .args(["-nodefaults", "-display", "none", "-monitor", "none"])
         // Direct kernel boot: no firmware/bootloader, fastest path to userspace.
+        // The kernel is the image's, or the newest one taken from the VM.
         .arg("-kernel")
-        .arg(qemu_path(&image.kernel())?)
+        .arg(qemu_path(&kernel)?)
         .arg("-initrd")
-        .arg(qemu_path(&image.initrd())?)
+        .arg(qemu_path(&initrd)?)
         .arg("-append")
         .arg(kernel_cmdline(platform, image, authorized_key))
         .arg("-drive")
