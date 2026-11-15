@@ -1,2 +1,4 @@
 /etc/sediros/audit.conf
+/etc/sediros/maintenance.conf
 /etc/apt/apt.conf.d/99-zz-sediros-integrity
+/etc/profile.d/sediros-z-maintenance.sh

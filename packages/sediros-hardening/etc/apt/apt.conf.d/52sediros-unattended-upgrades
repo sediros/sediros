@@ -17,6 +17,7 @@ Unattended-Upgrade::Origins-Pattern {
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
 
-// Kernel updates need a reboot; SedirOS only reports it (login notice).
-// Set to "true" (and Automatic-Reboot-Time) on unattended servers.
+// Kernel updates need a reboot. SedirOS reports it (login notice, daily
+// audit); to reboot in a maintenance window, with approval or without,
+// see /etc/sediros/maintenance.conf (sediros-maintenance) instead of this.
 Unattended-Upgrade::Automatic-Reboot "false";

@@ -14,7 +14,7 @@ What is planned, by release. The details, and the discussion, are in the linked 
 
 ## 1.2
 
-- [ ] Maintenance window: reboot when an update needs it, off / ask / auto, safe with encrypted disks ([#9](https://github.com/sediros/sediros/issues/9))
+- [x] Maintenance window: reboot when an update needs it, off / ask / auto, safe with encrypted disks ([#9](https://github.com/sediros/sediros/issues/9))
 - [x] Integrity check in `sediros-audit`: report changes to files that should not change, package files through `dpkg --verify` ([#10](https://github.com/sediros/sediros/issues/10))
 - [x] CLI VMs persistent by default, `--ephemeral` for throwaway ones, larger sparse disks ([#12](https://github.com/sediros/sediros/issues/12))
 - [x] Kernel updates installed in CLI VMs take effect ([#13](https://github.com/sediros/sediros/issues/13))

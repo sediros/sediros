@@ -302,6 +302,26 @@ else
     fail "integrity" "before: ${before:-?} / after a new file: $(grep ' integrity ' <<<"$changed") / accepted: ${accepted:-?}"
 fi
 
+# --- maintenance window: in the window with a reboot required, ask waits for approval and
+#     auto does not reboot while this SSH session is logged in -------------------------------
+mconf=/etc/sediros/maintenance.conf
+sudo cp "$mconf" /tmp/maintenance.conf.orig
+window="$(date '+%a %H:%M')"
+sudo touch /run/reboot-required
+printf 'MODE=ask\nWINDOW=%s\n' "$window" | sudo tee "$mconf" >/dev/null
+asked="$(sudo sediros-maintenance run 2>&1)"
+printf 'MODE=auto\nWINDOW=%s\n' "$window" | sudo tee "$mconf" >/dev/null
+busy="$(sudo sediros-maintenance run 2>&1)"
+status="$(sediros-maintenance status 2>&1)"
+sudo cp /tmp/maintenance.conf.orig "$mconf"
+sudo rm -f /run/reboot-required /var/lib/sediros/maintenance/notified
+if [[ "$asked" == *"waiting for approval"* && "$busy" == *"moved to the next window"* \
+      && "$status" == *"Reboot:   required"* ]]; then
+    pass "maintenance window: ask waits for approval, auto waits for logged-in users"
+else
+    fail "maintenance window" "ask: ${asked:-?} / auto: ${busy:-?}"
+fi
+
 echo
 if ((FAILS == 0)); then echo "guest checks: all passed"; else echo "guest checks: $FAILS failed"; fi
 exit $((FAILS > 0))

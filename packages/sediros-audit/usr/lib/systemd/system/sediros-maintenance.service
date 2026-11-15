@@ -1,0 +1,9 @@
+[Unit]
+Description=SedirOS maintenance window: reboot when an update needs it
+Documentation=https://github.com/sediros/sediros
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Does nothing unless MODE in /etc/sediros/maintenance.conf is ask or auto.
+ExecStart=/usr/bin/sediros-maintenance run

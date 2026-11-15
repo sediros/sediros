@@ -13,6 +13,9 @@ Description: Check that a SedirOS system's hardening is still in place
  the SedirOS apt repository, boot settings, disk encryption and Secure Boot.
  It reports what was changed and, where it can, which file changed it.
  .
+ sediros-maintenance reboots in a maintenance window when an update needs
+ it (off by default; /etc/sediros/maintenance.conf).
+ .
  The integrity check compares files that should not change (accounts, SSH
  keys and settings, sudo, PAM, cron, systemd units, boot files, apt sources
  and keys, /usr/local) with a reference, and package files with Debian's

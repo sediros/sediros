@@ -1,0 +1,13 @@
+[Unit]
+Description=SedirOS maintenance window check
+Documentation=https://github.com/sediros/sediros
+
+[Timer]
+# Every 15 minutes, so a one-hour window is seen whatever its minute;
+# shortly after boot, to report that a maintenance reboot is done.
+OnBootSec=3min
+OnCalendar=*:0/15
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

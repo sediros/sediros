@@ -203,11 +203,18 @@ With a GRUB password the default entry still boots unattended, but editing boot 
 
 ### Updates
 
-- Debian security updates and updates of SedirOS's own packages (`sediros-*`) are installed automatically every day. The system never reboots on its own; after a kernel update a "System restart required" notice appears at login. To allow automatic reboots on a server, put your settings in a file of your own, so package updates never have to ask about your changes:
+- Debian security updates and updates of SedirOS's own packages (`sediros-*`) are installed automatically every day. A new kernel (or libc, systemd, OpenSSL in running services) only takes effect after a reboot. By default the system never reboots on its own: a "System restart required" notice appears at login, and the daily audit reports how long the reboot has been pending.
+- **Maintenance window.** To reboot when an update needs it, at a time you choose, set `MODE` in `/etc/sediros/maintenance.conf`:
   ```bash
-  echo 'Unattended-Upgrade::Automatic-Reboot "true"; Unattended-Upgrade::Automatic-Reboot-Time "04:00";' \
-    | sudo tee /etc/apt/apt.conf.d/60local-reboot
+  MODE=ask            # off (default) | ask: after your approval | auto: without asking
+  WINDOW=Sun 04:00    # day(s) and time, one hour, server's local time; "Mon,Thu 03:30", "daily 04:00"
   ```
+  ```bash
+  sediros-maintenance status             # mode, next window, whether a reboot is pending
+  sudo sediros-maintenance approve       # MODE=ask: reboot in the next window
+  sudo sediros-maintenance skip          # not in the next window
+  ```
+  It reboots only when an update requires it, never while someone is logged in (it moves to the next window), and notifies before and after through the daily audit's channels (`MAILTO`, `WEBHOOK`). **Encrypted disks:** after a reboot the server waits for the disk passphrase. With SSH unlock (an installer question), unlock it from your machine with `sediros unlock <server>` during the window; without it, `ask` and `auto` refuse to reboot, since the server would sit unreachable at its passphrase prompt.
 - Other updates: `sudo apt update && sudo apt upgrade`, as on Debian.
 - SedirOS's packages come from the SedirOS apt repository (`https://sediros.github.io/sediros/apt`), set up by the `sediros-archive-keyring` package:
   - The source is bound to SedirOS's signing key (`Signed-By`): that key cannot sign anything else, and no other key can sign this repository.

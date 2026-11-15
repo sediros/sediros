@@ -774,22 +774,33 @@ fn updates() -> Finding {
             ));
         }
     }
-    if Path::new("/run/reboot-required").exists() {
+    if let Ok(md) = fs::metadata("/run/reboot-required") {
         let pkgs = read("/run/reboot-required.pkgs")
             .map(|t| squash(&t))
             .unwrap_or_default();
+        // How long it has been pending: fixes wait in the installed kernel.
+        let days = md
+            .modified()
+            .ok()
+            .and_then(|t| SystemTime::now().duration_since(t).ok())
+            .map(|d| d.as_secs() / 86400);
+        let since = match days {
+            Some(0) | None => String::new(),
+            Some(d) => format!(", pending {d} day(s)"),
+        };
         warn.push(
             format!(
-                "reboot required to finish updates {}",
+                "reboot required to finish updates{}{since}",
                 if pkgs.is_empty() {
                     String::new()
                 } else {
-                    format!("({pkgs})")
+                    format!(" ({pkgs})")
                 }
             )
             .trim()
             .to_string(),
         );
+        warn.push("a maintenance window can do it: sediros-maintenance status".into());
     }
     if !fail.is_empty() {
         return Finding::fail(ID, "automatic security updates not working")

@@ -3,9 +3,11 @@
 set -e
 if [ "$1" = configure ]; then
     deb-systemd-helper enable sediros-audit.timer >/dev/null || true
+    deb-systemd-helper enable sediros-maintenance.timer >/dev/null || true
     if [ -d /run/systemd/system ]; then
         systemctl daemon-reload >/dev/null 2>&1 || true
         systemctl start sediros-audit.timer >/dev/null 2>&1 || true
+        systemctl start sediros-maintenance.timer >/dev/null 2>&1 || true
         # Upgrade on a running system: take the first integrity reference
         # now. Not in an image build (chroot, no systemd running): there the
         # first daily run after the first boot takes it.

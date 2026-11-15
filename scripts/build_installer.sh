@@ -44,6 +44,11 @@ esac
 CRATE="${PROJECT_ROOT}/${NAME}"
 # Separate cargo target dirs; sediros-install keeps its existing one.
 if [[ "$NAME" == sediros-install ]]; then TARGET_DIR=build/cargo-installer; else TARGET_DIR="build/cargo-${NAME}"; fi
+# Further programs a crate builds (src/bin/), copied next to the main one.
+case "$NAME" in
+    sediros-audit) EXTRA_BINS="sediros-maintenance" ;;
+    *)             EXTRA_BINS="" ;;
+esac
 
 [[ -f "$CRATE/Cargo.lock" ]] || die "${NAME}/Cargo.lock missing (run: cargo generate-lockfile)"
 mkdir -p "$OUT_DIR"
@@ -54,9 +59,10 @@ if [[ "$(uname -s)" == Linux ]] && command -v cargo >/dev/null 2>&1 \
     log "Building ${NAME} natively ($arch)"
     CARGO_TARGET_DIR="$PROJECT_ROOT/$TARGET_DIR" \
         cargo build --release --locked --manifest-path "$CRATE/Cargo.toml"
-    install -m 0755 "$PROJECT_ROOT/$TARGET_DIR/release/${NAME}" \
-        "$OUT_DIR/${NAME}-$arch"
-    ok "build/bin/${NAME}-$arch"
+    for bin in "$NAME" $EXTRA_BINS; do
+        install -m 0755 "$PROJECT_ROOT/$TARGET_DIR/release/${bin}" "$OUT_DIR/${bin}-$arch"
+        ok "build/bin/${bin}-$arch"
+    done
     exit 0
 fi
 
@@ -65,7 +71,7 @@ log "Building ${NAME} in ${DOCKER_IMAGE}"
 docker run --rm --platform "$(docker_platform)" \
     -v "${PROJECT_ROOT}:/sediros" \
     -v sediros-cargo-registry:/root/.cargo/registry \
-    -e CARGO_TARGET_DIR="/sediros/$TARGET_DIR" -e NAME="$NAME" \
+    -e CARGO_TARGET_DIR="/sediros/$TARGET_DIR" -e NAME="$NAME" -e EXTRA_BINS="$EXTRA_BINS" \
     -w "/sediros/${NAME}" \
     "$DOCKER_IMAGE" bash -c '
         set -e
@@ -74,5 +80,7 @@ docker run --rm --platform "$(docker_platform)" \
             cargo rustc ca-certificates >/dev/null
         cargo build --release --locked
         arch="$(dpkg --print-architecture)"
-        install -m 0755 "$CARGO_TARGET_DIR/release/$NAME" "/sediros/build/bin/$NAME-$arch"
-        echo "  ✓ build/bin/$NAME-$arch"'
+        for bin in "$NAME" $EXTRA_BINS; do
+            install -m 0755 "$CARGO_TARGET_DIR/release/$bin" "/sediros/build/bin/$bin-$arch"
+            echo "  ✓ build/bin/$bin-$arch"
+        done'

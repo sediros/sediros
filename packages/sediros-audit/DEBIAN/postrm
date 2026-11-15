@@ -3,9 +3,11 @@
 set -e
 case "$1" in
     remove)
-        deb-systemd-helper disable sediros-audit.timer >/dev/null || true ;;
+        deb-systemd-helper disable sediros-audit.timer >/dev/null || true
+        deb-systemd-helper disable sediros-maintenance.timer >/dev/null || true ;;
     purge)
         deb-systemd-helper purge sediros-audit.timer >/dev/null || true
-        rm -rf /var/lib/sediros/audit ;;
+        deb-systemd-helper purge sediros-maintenance.timer >/dev/null || true
+        rm -rf /var/lib/sediros/audit /var/lib/sediros/maintenance ;;
 esac
 exit 0

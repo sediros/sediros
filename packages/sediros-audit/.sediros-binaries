@@ -1,2 +1,3 @@
 # <path in package>        <built file, relative to the project root>
 usr/sbin/sediros-audit      build/bin/sediros-audit-@SEDIROS_ARCH@
+usr/bin/sediros-maintenance  build/bin/sediros-maintenance-@SEDIROS_ARCH@

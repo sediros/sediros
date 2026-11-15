@@ -18,6 +18,16 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 - The first reference is taken when the package is upgraded on a running system, or by the first daily run of a new install.
 - `/etc/ld.so.preload` and changed package programs fail the check; other changes are warnings.
 
+### Maintenance window (`sediros-maintenance`, in `sediros-audit` 0.4.0)
+- Reboots when an update needs it (`/run/reboot-required`) in a window you choose, `WINDOW=Sun 04:00` in `/etc/sediros/maintenance.conf`. `MODE=off` (default) never reboots; `ask` reboots after `sudo sediros-maintenance approve`; `auto` without asking ([#9](https://github.com/sediros/sediros/issues/9)).
+- Never while someone is logged in; `sudo sediros-maintenance skip` skips one window; `sediros-maintenance status` shows what will happen.
+- Notifications before and after the reboot, and when it is not possible, through the daily audit's channels (`MAILTO`, `WEBHOOK`), once per window.
+- Encrypted root disks: `ask` and `auto` refuse unless SSH unlock is set up; with it, unlock with `sediros unlock` during the window.
+- The audit says how many days a required reboot has been pending, and the login notice what the window will do.
+
+### Hardening (`sediros-hardening` 0.5.7)
+- The unattended-upgrades settings point to the maintenance window instead of `Automatic-Reboot`.
+
 ### VM images
 - The root filesystem grows to the disk at boot (`x-systemd.growfs`), and `fstrim.timer` runs weekly, so space freed in a VM goes back to the host. Installed systems are unchanged.
 

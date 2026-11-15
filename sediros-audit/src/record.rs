@@ -122,7 +122,7 @@ pub fn write_atomic(path: &Path, text: &str, mode: u32) -> Result<(), String> {
     fs::rename(&tmp, path).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-fn conf() -> BTreeMap<String, String> {
+pub fn conf() -> BTreeMap<String, String> {
     sys::read(CONF)
         .map(|t| sys::parse_kv(&t))
         .unwrap_or_default()
@@ -144,7 +144,7 @@ fn json_str(s: &str) -> String {
     out
 }
 
-fn notify(conf: &BTreeMap<String, String>, subject: &str, body: &str) -> Vec<String> {
+pub fn notify(conf: &BTreeMap<String, String>, subject: &str, body: &str) -> Vec<String> {
     let mut errors = Vec::new();
     if let Some(to) = conf.get("MAILTO").filter(|v| !v.is_empty()) {
         if !sys::exists("sendmail") {
