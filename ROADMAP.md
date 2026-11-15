@@ -16,10 +16,12 @@ What is planned, by release. The details, and the discussion, are in the linked 
 
 - [ ] Maintenance window: reboot when an update needs it, off / ask / auto, safe with encrypted disks ([#9](https://github.com/sediros/sediros/issues/9))
 - [ ] Integrity check in `sediros-audit`: report changes to files that should not change, package files through `dpkg --verify` ([#10](https://github.com/sediros/sediros/issues/10))
+- [ ] CLI VMs persistent by default, `--ephemeral` for throwaway ones, larger sparse disks ([#12](https://github.com/sediros/sediros/issues/12))
 
 ## Later
 
 - [ ] Windows build of the `sediros` CLI, for `sediros unlock` and `sediros fleet` ([#8](https://github.com/sediros/sediros/issues/8))
+- [ ] CLI VMs boot their own kernel, so kernel updates take effect ([#13](https://github.com/sediros/sediros/issues/13))
 - [ ] Cloud images for VPS providers (Vultr, Hetzner), with `sediros-firstboot`
 - [ ] Static IP address for unlocking the disk over SSH
 
