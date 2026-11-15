@@ -21,6 +21,7 @@ What is planned, by release. The details, and the discussion, are in the linked 
 
 ## Later
 
+- [ ] Unattended unlock of encrypted disks with Clevis (Tang, TPM2), for the maintenance window ([#14](https://github.com/sediros/sediros/issues/14))
 - [ ] Windows build of the `sediros` CLI, for `sediros unlock` and `sediros fleet` ([#8](https://github.com/sediros/sediros/issues/8))
 - [ ] Cloud images for VPS providers (Vultr, Hetzner), with `sediros-firstboot`
 - [ ] Static IP address for unlocking the disk over SSH
