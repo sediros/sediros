@@ -2,21 +2,7 @@
 
 Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 = Debian 13) and is tagged `v<release>` in git; see "Versions and support" in the README. Package and tool versions are listed when they change.
 
-## [Unreleased]
-
-### CLI (`sediros` 0.8.0)
-- VMs are persistent by default, a development environment that stays until it is deleted by name; `sediros launch --ephemeral` makes a throwaway VM that `sediros stop` deletes. `sediros purge` without a name now deletes ephemeral VMs only (it used to delete every VM) ([#12](https://github.com/sediros/sediros/issues/12)).
-- New VMs get a 20 GiB disk, `--disk` for another size; it is sparse, so a fresh VM still takes a few MB on the host. `launch --disk` on a stopped VM grows its disk, and the CLI grows the root filesystem at the next start. Ephemeral VMs keep the image's 4 GiB.
-- `sediros list` shows each VM's mode and how much space its disk takes on the host.
-- Kernel updates installed in a VM take effect: `sediros stop` copies the newest kernel and initrd from the VM and the next launch boots them. VMs used to keep booting their image's kernel, whose modules unattended-upgrades could later remove from the VM. `launch` says when a newer kernel waits for a restart; restoring a snapshot boots the kernel it was taken with ([#13](https://github.com/sediros/sediros/issues/13)).
-- `sediros launch` on an existing VM keeps its vCPUs and memory: they were reset to 2 vCPUs and 1024 MiB unless `--cpus` / `--memory` were given again. Those options now change a VM's settings for good; a new VM still defaults to 2 vCPUs and 1024 MiB ([#11](https://github.com/sediros/sediros/issues/11)).
-
-### Integrity check (`sediros-audit` 0.4.0)
-- New `integrity` check: files that should not change (accounts, sudo, PAM, SSH settings and `authorized_keys`, cron, systemd units, login scripts, kernel modules and settings, boot files and initramfs, firewall, apt sources and keys, `/usr/local`, `/etc/sediros`) are compared with a reference: content, mode and owner. Every package's files are checked against Debian's checksums (`dpkg --verify`) in the daily run ([#10](https://github.com/sediros/sediros/issues/10)).
-- `sediros-audit integrity` lists every change; `sediros-audit integrity --accept` takes a new reference after changes made on purpose.
-- An apt hook takes a new reference after every package update and keeps the files the update changed, visible in `sediros-audit integrity`.
-- The first reference is taken when the package is upgraded on a running system, or by the first daily run of a new install.
-- `/etc/ld.so.preload` and changed package programs fail the check; other changes are warnings.
+## [1.2] - unreleased
 
 ### Maintenance window (`sediros-maintenance`, in `sediros-audit` 0.4.0)
 - Reboots when an update needs it (`/run/reboot-required`) in a window you choose, `WINDOW=Sun 04:00` in `/etc/sediros/maintenance.conf`. `MODE=off` (default) never reboots; `ask` reboots after `sudo sediros-maintenance approve`; `auto` without asking ([#9](https://github.com/sediros/sediros/issues/9)).
@@ -25,11 +11,25 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 - Encrypted root disks: `ask` and `auto` refuse unless SSH unlock is set up; with it, unlock with `sediros unlock` during the window.
 - The audit says how many days a required reboot has been pending, and the login notice what the window will do.
 
-### Hardening (`sediros-hardening` 0.5.7)
-- The unattended-upgrades settings point to the maintenance window instead of `Automatic-Reboot`.
+### Integrity check (`sediros-audit` 0.4.0)
+- New `integrity` check: files that should not change (accounts, sudo, PAM, SSH settings and `authorized_keys`, cron, systemd units, login scripts, kernel modules and settings, boot files and initramfs, firewall, apt sources and keys, `/usr/local`, `/etc/sediros`) are compared with a reference: content, mode and owner. Every package's files are checked against Debian's checksums (`dpkg --verify`) in the daily run ([#10](https://github.com/sediros/sediros/issues/10)).
+- `sediros-audit integrity` lists every change; `sediros-audit integrity --accept` takes a new reference after changes made on purpose.
+- An apt hook takes a new reference after every package update and keeps the files the update changed, visible in `sediros-audit integrity`.
+- The first reference is taken when the package is upgraded on a running system, or by the first daily run of a new install.
+- `/etc/ld.so.preload` and changed package programs fail the check; other changes are warnings.
+
+### CLI (`sediros` 0.8.0)
+- VMs are persistent by default, a development environment that stays until it is deleted by name; `sediros launch --ephemeral` makes a throwaway VM that `sediros stop` deletes. `sediros purge` without a name now deletes ephemeral VMs only (it used to delete every VM) ([#12](https://github.com/sediros/sediros/issues/12)).
+- New VMs get a 20 GiB disk, `--disk` for another size; it is sparse, so a fresh VM still takes a few MB on the host. `launch --disk` on a stopped VM grows its disk, and the CLI grows the root filesystem at the next start. Ephemeral VMs keep the image's 4 GiB.
+- `sediros list` shows each VM's mode and how much space its disk takes on the host.
+- Kernel updates installed in a VM take effect: `sediros stop` copies the newest kernel and initrd from the VM and the next launch boots them. VMs used to keep booting their image's kernel, whose modules unattended-upgrades could later remove from the VM. `launch` says when a newer kernel waits for a restart; restoring a snapshot boots the kernel it was taken with ([#13](https://github.com/sediros/sediros/issues/13)).
+- `sediros launch` on an existing VM keeps its vCPUs and memory: they were reset to 2 vCPUs and 1024 MiB unless `--cpus` / `--memory` were given again. Those options now change a VM's settings for good; a new VM still defaults to 2 vCPUs and 1024 MiB ([#11](https://github.com/sediros/sediros/issues/11)).
 
 ### VM images
 - The root filesystem grows to the disk at boot (`x-systemd.growfs`), and `fstrim.timer` runs weekly, so space freed in a VM goes back to the host. Installed systems are unchanged.
+
+### Hardening (`sediros-hardening` 0.5.7)
+- The unattended-upgrades settings point to the maintenance window instead of `Automatic-Reboot`.
 
 ## [1.1] - 2026-11-08
 
