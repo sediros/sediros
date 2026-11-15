@@ -23,6 +23,12 @@ cd "$PROJECT_ROOT"
 
 base="${SEDIROS_VERSION_BASE:-}"
 if [[ -z "$base" ]]; then
+    # A shallow clone (CI's default checkout) has no tags: the check would
+    # silently pass. Fail instead.
+    if [[ "$(git rev-parse --is-shallow-repository)" == true ]]; then
+        echo "versions: shallow clone, the release tags are missing (CI: actions/checkout with fetch-depth: 0)" >&2
+        exit 1
+    fi
     if ! base="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null)"; then
         echo "versions: no release tag (v*) yet, nothing published, skipped"
         exit 0

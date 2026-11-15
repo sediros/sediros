@@ -24,6 +24,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          # check_versions.sh compares with the last release tag: it needs
+          # the history and the tags, not just the last commit.
+          fetch-depth: 0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: sediros-cli
