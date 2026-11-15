@@ -22,9 +22,13 @@ use crate::paths::{create_private_dir, validate_vm_name, Paths};
 use image::BaseImage;
 use qemu::{Accel, Platform};
 
+/// vCPUs and memory (MiB) of a new VM when --cpus / --memory are not given.
+const DEFAULT_CPUS: u32 = 2;
+const DEFAULT_MEMORY_MIB: u32 = 1024;
+
 pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     validate_vm_name(&args.name)?;
-    if args.cpus == 0 || args.memory < 256 {
+    if args.cpus == Some(0) || args.memory.is_some_and(|m| m < 256) {
         bail!("need at least 1 vCPU and 256 MiB of memory");
     }
 
@@ -75,8 +79,8 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
                 arch: image.arch.clone(),
                 image_key: image.key.clone(),
                 ssh_port: 0,
-                cpus: args.cpus,
-                memory_mib: args.memory,
+                cpus: args.cpus.unwrap_or(DEFAULT_CPUS),
+                memory_mib: args.memory.unwrap_or(DEFAULT_MEMORY_MIB),
                 created: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
                 forwards: Vec::new(),
             };
@@ -90,8 +94,14 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
         None if !fresh && network::port_free(vm.ssh_port) => vm.ssh_port,
         None => network::pick_port(None, &taken)?,
     };
-    vm.cpus = args.cpus;
-    vm.memory_mib = args.memory;
+    // An existing VM keeps its CPUs and memory; --cpus/--memory change them
+    // and are saved for the next launch.
+    if let Some(cpus) = args.cpus {
+        vm.cpus = cpus;
+    }
+    if let Some(memory) = args.memory {
+        vm.memory_mib = memory;
+    }
     // The VM's own SSH port must not collide with one of its forwards.
     if vm.forwards.iter().any(|f| f.host == vm.ssh_port) {
         bail!("SSH port {} is also a port forward of this VM", vm.ssh_port);

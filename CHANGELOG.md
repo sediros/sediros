@@ -2,6 +2,11 @@
 
 Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 = Debian 13) and is tagged `v<release>` in git; see "Versions and support" in the README. Package and tool versions are listed when they change.
 
+## [Unreleased]
+
+### CLI (`sediros`)
+- `sediros launch` on an existing VM keeps its vCPUs and memory: they were reset to 2 vCPUs and 1024 MiB unless `--cpus` / `--memory` were given again. Those options now change a VM's settings for good; a new VM still defaults to 2 vCPUs and 1024 MiB ([#11](https://github.com/sediros/sediros/issues/11)).
+
 ## [1.1] - 2026-11-08
 
 ### Hardening (`sediros-hardening` 0.5.6)

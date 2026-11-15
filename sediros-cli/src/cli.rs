@@ -164,13 +164,13 @@ pub struct LaunchArgs {
     /// VM name ([a-z0-9-], max 32 chars)
     pub name: String,
 
-    /// Number of vCPUs
-    #[arg(long, default_value_t = 2)]
-    pub cpus: u32,
+    /// Number of vCPUs (new VM: 2; existing VM: kept unless given)
+    #[arg(long)]
+    pub cpus: Option<u32>,
 
-    /// Memory in MiB
-    #[arg(long, default_value_t = 1024)]
-    pub memory: u32,
+    /// Memory in MiB (new VM: 1024; existing VM: kept unless given)
+    #[arg(long)]
+    pub memory: Option<u32>,
 
     /// Host port forwarded to guest SSH (default: first free from 2222)
     #[arg(long)]
