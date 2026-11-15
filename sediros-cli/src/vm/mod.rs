@@ -18,13 +18,16 @@ pub use snapshot::{restore_cmd, snapshot_cmd};
 pub use state::{load_all, VmState};
 
 use crate::cli::{LaunchArgs, StopArgs};
-use crate::paths::{create_private_dir, validate_vm_name, Paths};
+use crate::paths::{create_private_dir, remove_dir_within, validate_vm_name, Paths};
 use image::BaseImage;
 use qemu::{Accel, Platform};
 
 /// vCPUs and memory (MiB) of a new VM when --cpus / --memory are not given.
 const DEFAULT_CPUS: u32 = 2;
 const DEFAULT_MEMORY_MIB: u32 = 1024;
+/// Virtual disk of a new persistent VM. Sparse: the host only stores what
+/// the VM writes. Ephemeral VMs keep the image's own size.
+const DEFAULT_DISK_BYTES: u64 = 20 << 30;
 
 pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     validate_vm_name(&args.name)?;
@@ -46,13 +49,14 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
                 vm.ssh_port
             );
         }
-        if args.image.is_some() || args.data_disk.is_some() {
+        if args.image.is_some() || args.data_disk.is_some() || args.ephemeral {
             bail!(
-                "VM '{}' already exists; --image/--data-disk only apply to new VMs (purge it first)",
+                "VM '{}' already exists; --image/--data-disk/--ephemeral only apply to new VMs (purge it first)",
                 vm.name
             );
         }
     }
+    let disk_size = args.disk.as_deref().map(qemu::parse_size).transpose()?;
 
     // Ports already assigned to *other* VMs stay reserved even while stopped.
     let taken: Vec<u16> = load_all(&paths.vms_dir())?
@@ -83,6 +87,8 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
                 memory_mib: args.memory.unwrap_or(DEFAULT_MEMORY_MIB),
                 created: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
                 forwards: Vec::new(),
+                ephemeral: args.ephemeral,
+                grow_root: false,
             };
             (vm, image, true)
         }
@@ -118,9 +124,44 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     }
 
     if fresh {
-        qemu::create_overlay(&platform, &image, &vm.overlay())?;
+        let base = qemu::virtual_size(&platform, &image.disk())?;
+        let want = disk_size.or((!vm.ephemeral).then_some(DEFAULT_DISK_BYTES));
+        let size = match want {
+            Some(w) if w < base => {
+                // Nothing of the new VM exists yet but its directory.
+                remove_dir_within(&paths.vms_dir(), &vm.dir)?;
+                bail!(
+                    "--disk {} is smaller than the image ({})",
+                    qemu::human_size(w),
+                    qemu::human_size(base)
+                )
+            }
+            Some(w) if w > base => Some(w),
+            _ => None,
+        };
+        qemu::create_overlay(&platform, &image, &vm.overlay(), size)?;
+        vm.grow_root = size.is_some();
         if let Some(size) = &args.data_disk {
             qemu::create_blank(&platform, &vm.data_disk(), size)?;
+        }
+    } else if let Some(want) = disk_size {
+        let have = qemu::virtual_size(&platform, &vm.overlay())?;
+        if want < have {
+            bail!(
+                "disks never shrink: '{}' already has {}",
+                vm.name,
+                qemu::human_size(have)
+            );
+        }
+        if want > have {
+            qemu::grow_disk(&platform, &vm.overlay(), want)?;
+            vm.grow_root = true;
+            println!(
+                "Disk of '{}' grown from {} to {}",
+                vm.name,
+                qemu::human_size(have),
+                qemu::human_size(want)
+            );
         }
     }
     vm.save()?;
@@ -154,6 +195,9 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
     match result {
         Ok(()) => {
             println!(" ready in {:.1}s", started.elapsed().as_secs_f64());
+            if vm.grow_root {
+                grow_root_fs(paths, &mut vm)?;
+            }
             if !vm.forwards.is_empty() {
                 forward::open_firewall(paths, &vm);
                 forward::print_forwards(&vm);
@@ -167,6 +211,23 @@ pub fn launch(paths: &Paths, args: &LaunchArgs) -> Result<()> {
             Err(err).context(format!("VM '{}' did not become reachable", vm.name))
         }
     }
+}
+
+/// Grow the root filesystem to the disk after the disk grew. Images since
+/// 1.2 do it themselves at boot (x-systemd.growfs), then this is a no-op;
+/// older images need it. Kept pending until it worked (e.g. --no-wait).
+fn grow_root_fs(paths: &Paths, vm: &mut VmState) -> Result<()> {
+    let cmd = r#"sudo -n resize2fs "$(findmnt -nvo SOURCE /)" >/dev/null 2>&1"#;
+    match crate::ssh::run_in_vm(paths, vm, cmd) {
+        Ok(true) => {
+            vm.grow_root = false;
+            vm.save()?;
+        }
+        _ => eprintln!(
+            "warning: could not grow the root filesystem; run in the VM:\n  sudo resize2fs \"$(findmnt -nvo SOURCE /)\""
+        ),
+    }
+    Ok(())
 }
 
 fn print_serial_tail(vm: &VmState, lines: usize) {
@@ -190,8 +251,8 @@ pub fn list(paths: &Paths) -> Result<()> {
         return Ok(());
     }
     println!(
-        "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} {:<28} FORWARDS",
-        "NAME", "STATE", "ARCH", "CPUS", "MEMORY", "SSH", "IMAGE", "BUILD"
+        "{:<20} {:<8} {:<10} {:<6} {:<5} {:<8} {:<6} {:<6} {:<18} {:<28} FORWARDS",
+        "NAME", "STATE", "MODE", "ARCH", "CPUS", "MEMORY", "DISK", "SSH", "IMAGE", "BUILD"
     );
     for vm in vms {
         let state = if vm.is_running() {
@@ -206,12 +267,14 @@ pub fn list(paths: &Paths) -> Result<()> {
             .collect::<Vec<_>>()
             .join(",");
         println!(
-            "{:<20} {:<8} {:<6} {:<5} {:<8} {:<6} {:<18} {:<28} {}",
+            "{:<20} {:<8} {:<10} {:<6} {:<5} {:<8} {:<6} {:<6} {:<18} {:<28} {}",
             vm.name,
             state,
+            if vm.ephemeral { "ephemeral" } else { "persistent" },
             vm.arch,
             vm.cpus,
             format!("{}M", vm.memory_mib),
+            disk_used(&vm),
             vm.ssh_port,
             vm.image_key,
             image::cached_build_id(paths, &vm.image_key),
@@ -225,14 +288,29 @@ pub fn stop_cmd(paths: &Paths, args: &StopArgs) -> Result<()> {
     validate_vm_name(&args.name)?;
     let vm = VmState::load(&paths.vm_dir(&args.name))
         .with_context(|| format!("VM '{}' not found", args.name))?;
-    if !vm.is_running() {
+    if vm.is_running() {
+        stop(&vm, Duration::from_secs(args.timeout), args.force)?;
+        println!("Stopped '{}'.", vm.name);
+    } else {
         vm.clear_runtime();
         println!("VM '{}' is not running.", vm.name);
-        return Ok(());
     }
-    stop(&vm, Duration::from_secs(args.timeout), args.force)?;
-    println!("Stopped '{}'.", vm.name);
+    if vm.ephemeral {
+        remove_dir_within(&paths.vms_dir(), &vm.dir)?;
+        println!("Deleted '{}' (ephemeral).", vm.name);
+    }
     Ok(())
+}
+
+/// Space the VM's disks take on this machine (not their virtual size).
+fn disk_used(vm: &VmState) -> String {
+    use std::os::unix::fs::MetadataExt;
+    let bytes: u64 = [vm.overlay(), vm.data_disk()]
+        .iter()
+        .filter_map(|p| fs::metadata(p).ok())
+        .map(|m| m.blocks() * 512)
+        .sum();
+    qemu::human_size(bytes)
 }
 
 /// Graceful power-down via QMP, escalating to SIGTERM/SIGKILL.

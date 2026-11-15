@@ -554,10 +554,12 @@ EOF
     fi
 
     # Root fs label is the contract with stage 2 (qcow2 builder: mkfs.ext4 -L sediros-root).
+    # x-systemd.growfs: a VM disk made larger than the image (sediros launch
+    # --disk) gets its filesystem grown at boot. Installed systems write their own fstab.
     # /tmp is not noexec on purpose: debconf/apt-extracttemplates execute from /tmp.
     write_file 0644 /etc/fstab <<'EOF'
 # <device>          <mount>    <type>  <options>                                    <dump> <pass>
-LABEL=sediros-root   /          ext4    defaults,noatime,errors=remount-ro           0      1
+LABEL=sediros-root   /          ext4    defaults,noatime,errors=remount-ro,x-systemd.growfs 0 1
 tmpfs               /tmp       tmpfs   defaults,nosuid,nodev,size=25%,mode=1777     0      0
 tmpfs               /dev/shm   tmpfs   defaults,nosuid,nodev,noexec                 0      0
 EOF
@@ -757,9 +759,17 @@ configure_services() {
     # Not needed in a minimal VM, or wasteful on RAM/CPU. apt-daily(-upgrade)
     # stay enabled: they drive unattended security upgrades.
     local unit
-    for unit in e2scrub_all.timer e2scrub_reap.service fstrim.timer; do
+    for unit in e2scrub_all.timer e2scrub_reap.service; do
         chroot_run systemctl disable "$unit" >/dev/null 2>&1 || true
     done
+    # VM disks are sparse on the host and QEMU passes discard through: the
+    # weekly trim gives space freed in the VM back to the host. Installed
+    # systems keep it off, as before.
+    if [[ "$PROFILE" == vm ]]; then
+        chroot_run systemctl enable fstrim.timer
+    else
+        chroot_run systemctl disable fstrim.timer >/dev/null 2>&1 || true
+    fi
 
     # Hardening: no Ctrl-Alt-Del reboot, no debug shell on tty9.
     chroot_run systemctl mask ctrl-alt-del.target debug-shell.service

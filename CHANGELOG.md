@@ -5,7 +5,13 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 ## [Unreleased]
 
 ### CLI (`sediros`)
+- VMs are persistent by default, a development environment that stays until it is deleted by name; `sediros launch --ephemeral` makes a throwaway VM that `sediros stop` deletes. `sediros purge` without a name now deletes ephemeral VMs only (it used to delete every VM) ([#12](https://github.com/sediros/sediros/issues/12)).
+- New VMs get a 20 GiB disk, `--disk` for another size; it is sparse, so a fresh VM still takes a few MB on the host. `launch --disk` on a stopped VM grows its disk, and the CLI grows the root filesystem at the next start. Ephemeral VMs keep the image's 4 GiB.
+- `sediros list` shows each VM's mode and how much space its disk takes on the host.
 - `sediros launch` on an existing VM keeps its vCPUs and memory: they were reset to 2 vCPUs and 1024 MiB unless `--cpus` / `--memory` were given again. Those options now change a VM's settings for good; a new VM still defaults to 2 vCPUs and 1024 MiB ([#11](https://github.com/sediros/sediros/issues/11)).
+
+### VM images
+- The root filesystem grows to the disk at boot (`x-systemd.growfs`), and `fstrim.timer` runs weekly, so space freed in a VM goes back to the host. Installed systems are unchanged.
 
 ## [1.1] - 2026-11-08
 

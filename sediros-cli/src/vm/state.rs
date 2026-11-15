@@ -55,6 +55,10 @@ pub struct VmState {
     pub created: u64,
     /// Host -> guest TCP forwards, applied at every launch.
     pub forwards: Vec<Forward>,
+    /// Deleted by `sediros stop` and by a `sediros purge` without a name.
+    pub ephemeral: bool,
+    /// The disk grew: the root filesystem is grown at the next SSH contact.
+    pub grow_root: bool,
 }
 
 impl VmState {
@@ -80,7 +84,7 @@ impl VmState {
 
     pub fn save(&self) -> Result<()> {
         let body = format!(
-            "name={}\narch={}\nimage_key={}\nssh_port={}\ncpus={}\nmemory_mib={}\ncreated={}\nforwards={}\n",
+            "name={}\narch={}\nimage_key={}\nssh_port={}\ncpus={}\nmemory_mib={}\ncreated={}\nforwards={}\nephemeral={}\ngrow_root={}\n",
             self.name,
             self.arch,
             self.image_key,
@@ -92,7 +96,9 @@ impl VmState {
                 .iter()
                 .map(|f| f.to_string())
                 .collect::<Vec<_>>()
-                .join(",")
+                .join(","),
+            u8::from(self.ephemeral),
+            u8::from(self.grow_root)
         );
         // Atomic replace: never leave a half-written state file behind.
         let tmp = self.dir.join(".vm.conf.tmp");
@@ -136,6 +142,9 @@ impl VmState {
                 .transpose()
                 .with_context(|| format!("{}: invalid 'forwards'", path.display()))?
                 .unwrap_or_default(),
+            // Optional: VMs created before 0.8 are persistent.
+            ephemeral: map.get("ephemeral") == Some(&"1"),
+            grow_root: map.get("grow_root") == Some(&"1"),
         })
     }
 

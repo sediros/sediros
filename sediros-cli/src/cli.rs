@@ -172,6 +172,17 @@ pub struct LaunchArgs {
     #[arg(long)]
     pub memory: Option<u32>,
 
+    /// Throwaway VM: deleted when it is stopped. Without it a VM is kept
+    /// until `sediros purge <name>`.
+    #[arg(long)]
+    pub ephemeral: bool,
+
+    /// Virtual disk size, e.g. 40G. New VM: 20G (with --ephemeral: the
+    /// image's 4G). Space is used on this machine only as the VM writes.
+    /// An existing VM's disk grows to it (never shrinks).
+    #[arg(long, value_name = "SIZE")]
+    pub disk: Option<String>,
+
     /// Host port forwarded to guest SSH (default: first free from 2222)
     #[arg(long)]
     pub port: Option<u16>,
@@ -294,7 +305,8 @@ pub struct StopArgs {
 
 #[derive(Args, Debug)]
 pub struct PurgeArgs {
-    /// Only purge this VM (default: all VMs)
+    /// The VM to delete. Without a name: ephemeral VMs only; persistent
+    /// VMs are only deleted by name.
     pub name: Option<String>,
 
     /// Also delete cached base images no longer used by any VM

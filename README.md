@@ -15,7 +15,7 @@ SedirOS is a minimal, hardened Linux distribution. SedirOS 1 is based on Debian 
 - **Checkable:** `sudo sediros-audit` tells you whether that hardening is still in place, and which file changed it if not.
 - **Encrypted installs:** the installer sets up full disk encryption (LUKS2) and can let you unlock the disk over SSH at boot, for servers you cannot reach physically.
 - **Plain Debian underneath:** SedirOS adds a few packages to Debian; it does not replace it. Your Debian knowledge, documentation and packages apply.
-- **Fast throwaway VMs:** `sediros launch` starts a SedirOS VM on macOS (Apple Silicon) or Linux in a few seconds.
+- **Fast VMs:** `sediros launch` starts a SedirOS VM on macOS (Apple Silicon) or Linux in a few seconds: a development environment that stays until you delete it, or a throwaway one with `--ephemeral`.
 
 ![sediros-audit on an installed SedirOS system: 17 checks passed](docs/images/audit.svg)
 
@@ -24,7 +24,7 @@ SedirOS is a minimal, hardened Linux distribution. SedirOS 1 is based on Debian 
 | I want to... | Use | Start here |
 |---|---|---|
 | run SedirOS as the operating system of a server, PC or cloud VM | the installer ISO | [Installing to disk](#installing-to-disk) |
-| try SedirOS, or get fast throwaway Linux VMs on my Mac or Linux machine | the `sediros` CLI | [Trying SedirOS in a VM](#trying-sediros-in-a-vm) |
+| try SedirOS, or get fast Linux VMs (development or throwaway) on my Mac or Linux machine | the `sediros` CLI | [Trying SedirOS in a VM](#trying-sediros-in-a-vm) |
 
 The two are independent: an installed system does not need the CLI, and the CLI never installs anything to disk.
 
@@ -312,6 +312,7 @@ Every file is checked against the release's `SHA256SUMS`.
 
 ```bash
 sediros launch dev          # start a VM (created on first use), ready in a few seconds
+sediros launch try --ephemeral          # a throwaway VM: deleted when it is stopped
 sediros shell dev           # SSH into it
 sediros shell dev -- uname -a
 sediros transfer ./app.tar.gz dev:      # copy into the VM's home (dev:/tmp for another dir)
@@ -319,15 +320,19 @@ sediros transfer dev:/var/log/syslog .  # and back; -r for directories
 sediros forward dev 8080:80             # http://localhost:8080 -> port 80 in the VM
 sediros snapshot dev before-nginx       # VM stopped: save its state (list: sediros snapshot dev)
 sediros restore dev before-nginx        # back to it; later changes are lost
-sediros list                # VMs, their state and build id
+sediros list                # VMs, their mode, disk use and build id
 sediros stop dev
+sediros launch dev --disk 40G           # VM stopped: grow its disk (default 20G)
 sediros purge dev           # delete the VM
 ```
 
-- Each VM runs on its own copy-on-write disk on top of the read-only image, so `purge` and a new `launch` give you a fresh system.
+- **VMs are persistent:** a VM keeps its disk, CPUs, memory and forwards across `stop` and `launch` until you delete it with `sediros purge <name>`. `sediros purge` without a name only deletes ephemeral VMs (and with `--images`, cached images no VM uses).
+- **Ephemeral VMs** (`launch --ephemeral`) are deleted by `sediros stop`: for trying something out, a package install, or CI.
+- **Disk:** each VM runs on its own copy-on-write disk on top of the read-only image. A new VM gets a 20 GiB disk (`--disk` for another size; ephemeral VMs get the image's 4 GiB), but this machine only stores what the VM writes: a fresh VM takes a few MB. `sediros list` shows the real use. Space freed in the VM is given back by a weekly trim (images since 1.2).
+- **Kernel:** VMs boot the kernel of the image they were made from, so kernel updates installed in a VM take effect only in a VM made from a newer image (`sediros pull`). Everything else updates in the VM as on any SedirOS system ([#13](https://github.com/sediros/sediros/issues/13)).
 - The VM's SSH port is reachable on `127.0.0.1` only. Images contain no SSH key: the CLI creates its own key pair in `~/.local/share/sediros/` and gives the public key to each VM when it starts.
 - `sediros forward` (or `launch --forward 8080:80`) makes a service in the VM reachable from this machine. The port is opened on `127.0.0.1` only, kept with the VM and restored at every launch, and the VM's firewall admits it from this machine only. `sediros forward dev` lists the forwards, `--remove 8080` removes one. Installed systems do not need this: they have their own address on your network; open the port with `sudo ufw allow 80/tcp`.
-- VMs have passwordless `sudo`; they are meant for testing and development, not for installing to disk.
+- VMs have passwordless `sudo` and are reachable from this machine only; they are meant for testing and development, not for installing to disk.
 - Everything (images, VMs, the key) lives in `~/.local/share/sediros/`; set `SEDIROS_HOME` to use another place.
 
 ## Versions and support

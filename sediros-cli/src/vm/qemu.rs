@@ -108,12 +108,120 @@ fn qemu_path(p: &Path) -> Result<String> {
     Ok(s.to_string())
 }
 
-pub fn create_overlay(platform: &Platform, base: &BaseImage, overlay: &Path) -> Result<()> {
+/// Copy-on-write disk on top of `base`; `size` in bytes when it is larger
+/// than the base image's.
+pub fn create_overlay(
+    platform: &Platform,
+    base: &BaseImage,
+    overlay: &Path,
+    size: Option<u64>,
+) -> Result<()> {
     let mut cmd = Command::new(platform.qemu_img());
     cmd.args(["create", "-q", "-f", "qcow2", "-F", "qcow2", "-b"])
         .arg(base.disk())
         .arg(overlay);
+    if let Some(size) = size {
+        cmd.arg(size.to_string());
+    }
     qemu_img(cmd)
+}
+
+/// Grow a stopped VM's disk to `size` bytes.
+pub fn grow_disk(platform: &Platform, disk: &Path, size: u64) -> Result<()> {
+    let mut cmd = Command::new(platform.qemu_img());
+    cmd.args(["resize", "-q", "-f", "qcow2"])
+        .arg(disk)
+        .arg(size.to_string());
+    qemu_img(cmd)
+}
+
+/// Virtual size of a disk image in bytes (works on a disk in use).
+pub fn virtual_size(platform: &Platform, disk: &Path) -> Result<u64> {
+    let out = Command::new(platform.qemu_img())
+        .args(["info", "-U", "--output=json"])
+        .arg(disk)
+        .output()
+        .context("running qemu-img")?;
+    if !out.status.success() {
+        bail!(
+            "qemu-img info failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        );
+    }
+    json_u64(&String::from_utf8_lossy(&out.stdout), "virtual-size")
+        .with_context(|| format!("no virtual size for {}", disk.display()))
+}
+
+/// `"key": <number>` at the top level of qemu-img's JSON. Nested objects
+/// come first (`children` describes the file holding the image, whose
+/// `virtual-size` is the file's length), so the depth matters.
+fn json_u64(json: &str, key: &str) -> Option<u64> {
+    let needle = format!("\"{key}\"");
+    let (mut depth, mut in_str, mut esc) = (0usize, false, false);
+    for (i, c) in json.char_indices() {
+        if in_str {
+            match c {
+                _ if esc => esc = false,
+                '\\' => esc = true,
+                '"' => in_str = false,
+                _ => {}
+            }
+            continue;
+        }
+        match c {
+            '{' | '[' => depth += 1,
+            '}' | ']' => depth = depth.saturating_sub(1),
+            '"' if depth == 1 && json[i..].starts_with(&needle) => {
+                let rest = json[i + needle.len()..].trim_start().strip_prefix(':')?;
+                let rest = rest.trim_start();
+                let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+                return rest[..end].parse().ok();
+            }
+            '"' => in_str = true,
+            _ => {}
+        }
+    }
+    None
+}
+
+/// "20G" -> bytes. Suffixes K, M, G, T (powers of 1024, as in qemu-img);
+/// a bare number is bytes.
+pub fn parse_size(s: &str) -> Result<u64> {
+    let t = s.trim();
+    let (num, mult) = match t.char_indices().last() {
+        Some((i, c)) if c.is_ascii_alphabetic() => {
+            let mult: u64 = match c.to_ascii_uppercase() {
+                'K' => 1 << 10,
+                'M' => 1 << 20,
+                'G' => 1 << 30,
+                'T' => 1 << 40,
+                _ => bail!("invalid disk size '{s}' (e.g. 20G)"),
+            };
+            (&t[..i], mult)
+        }
+        _ => (t, 1),
+    };
+    match num.parse::<u64>().ok().and_then(|n| n.checked_mul(mult)) {
+        Some(n) if n > 0 => Ok(n),
+        _ => bail!("invalid disk size '{s}' (e.g. 20G)"),
+    }
+}
+
+/// 21474836480 -> "20G", 1610612736 -> "1.5G", 314572800 -> "300M".
+pub fn human_size(bytes: u64) -> String {
+    const G: f64 = (1u64 << 30) as f64;
+    const M: f64 = (1u64 << 20) as f64;
+    let b = bytes as f64;
+    if b >= G {
+        let g = b / G;
+        if (g - g.round()).abs() < 0.05 {
+            format!("{}G", g.round())
+        } else {
+            format!("{g:.1}G")
+        }
+    } else {
+        format!("{}M", (b / M).round())
+    }
 }
 
 /// Empty, sparse qcow2 disk (size as understood by qemu-img, e.g. 16G).
@@ -132,7 +240,7 @@ fn qemu_img(mut cmd: Command) -> Result<()> {
     let out = cmd.output().context("running qemu-img")?;
     if !out.status.success() {
         bail!(
-            "qemu-img create failed: {}",
+            "qemu-img failed: {}",
             String::from_utf8_lossy(&out.stderr).trim()
         );
     }
@@ -365,6 +473,26 @@ fn qmp_reply(reader: &mut BufReader<UnixStream>, command: &str) -> Result<String
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn disk_sizes() {
+        use super::{human_size, json_u64, parse_size};
+        assert_eq!(parse_size("20G").unwrap(), 20 << 30);
+        assert_eq!(parse_size("512m").unwrap(), 512 << 20);
+        assert_eq!(parse_size("4096").unwrap(), 4096);
+        for bad in ["", "G", "0G", "20X", "-1G", "1.5G", "99999999999T"] {
+            assert!(parse_size(bad).is_err(), "{bad} accepted");
+        }
+        assert_eq!(human_size(20 << 30), "20G");
+        assert_eq!(human_size(3 << 29), "1.5G");
+        assert_eq!(human_size(300 << 20), "300M");
+        // Layout of qemu-img 11: the file node's info comes first.
+        let info = r#"{ "children": [ { "name": "file", "info": { "virtual-size": 15400960 } } ],
+            "backing-filename": "a \"virtual-size\": 7", "virtual-size": 4294967296,
+            "backing-image": { "virtual-size": 1 } }"#;
+        assert_eq!(json_u64(info, "virtual-size"), Some(4294967296));
+        assert_eq!(json_u64(r#"{ "actual-size": 5 }"#, "virtual-size"), None);
+    }
+
     use super::{base64, hmp_text};
 
     #[test]

@@ -1,4 +1,5 @@
 //! `sediros purge`: stop VMs, delete overlays/state and unused cached images.
+//! Without a name it deletes ephemeral VMs only.
 
 use std::collections::HashSet;
 use std::fs;
@@ -12,14 +13,26 @@ use crate::paths::{remove_dir_within, validate_vm_name, Paths};
 use crate::vm::{self, VmState};
 
 pub fn run(paths: &Paths, args: &PurgeArgs) -> Result<()> {
-    let targets: Vec<VmState> = match &args.name {
+    // Without a name only ephemeral VMs go: a persistent VM is someone's
+    // environment and is deleted by name only.
+    let (targets, kept): (Vec<VmState>, Vec<VmState>) = match &args.name {
         Some(name) => {
             validate_vm_name(name)?;
-            vec![VmState::load(&paths.vm_dir(name))
-                .with_context(|| format!("VM '{name}' not found"))?]
+            let vm = VmState::load(&paths.vm_dir(name))
+                .with_context(|| format!("VM '{name}' not found"))?;
+            (vec![vm], Vec::new())
         }
-        None => vm::load_all(&paths.vms_dir())?,
+        None => vm::load_all(&paths.vms_dir())?
+            .into_iter()
+            .partition(|vm| vm.ephemeral),
     };
+    if !kept.is_empty() {
+        let names: Vec<&str> = kept.iter().map(|vm| vm.name.as_str()).collect();
+        println!(
+            "Kept persistent VMs: {} (delete one with: sediros purge <name>)",
+            names.join(", ")
+        );
+    }
 
     if targets.is_empty() && !args.images {
         println!("Nothing to purge.");
