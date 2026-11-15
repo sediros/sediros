@@ -248,6 +248,26 @@ else fail "modprobe" "loadable: ${bad[*]}"; fi
 if [[ "$(ulimit -Hc)" == "0" ]]; then pass "core dumps: hard limit 0"
 else fail "core dumps" "hard limit $(ulimit -Hc)"; fi
 
+# --- memory footprint -------------------------------------------------------------
+# Idle footprint: the lowest of several samples, so that a short spike (a
+# timer that just fired) does not count. A single sample varied by ~20 MiB
+# between runs of the same image. Measured before the audit checks below:
+# their dpkg --verify runs touch every package file, and the kernel's
+# dentry/inode caches they leave count partly as used in MemAvailable
+# (+23 MiB after four runs).
+used_mb=""
+for _ in 1 2 3 4 5 6; do
+    m="$(awk '/^MemTotal/ {t=$2} /^MemAvailable/ {a=$2} END {printf "%d", (t-a)/1024}' /proc/meminfo)"
+    if [[ -z "$used_mb" ]] || ((m < used_mb)); then used_mb="$m"; fi
+    sleep 2
+done
+if ((used_mb <= MAX_RAM_MB)); then pass "memory: ${used_mb} MiB used at idle (limit ${MAX_RAM_MB})"
+else
+    fail "memory" "${used_mb} MiB used at idle, limit ${MAX_RAM_MB}"
+    # What used it, for the next look at a failure.
+    ps -eo rss=,comm= --sort=-rss | head -n 8 | awk '{printf "      %6d KiB  %s\n", $1, $2}'
+fi
+
 # --- the daily audit: timer on, a run keeps its result ------------------------------------
 # --record exits 1 when a check fails; the summary is written either way.
 sudo sediros-audit --record >/dev/null 2>&1
@@ -280,23 +300,6 @@ if [[ "$before" == *"✓ integrity"* && "$changed" == *"! integrity"* \
     pass "integrity: reference taken, new file reported, --accept takes it"
 else
     fail "integrity" "before: ${before:-?} / after a new file: $(grep ' integrity ' <<<"$changed") / accepted: ${accepted:-?}"
-fi
-
-# --- memory footprint -------------------------------------------------------------
-# Idle footprint: the lowest of several samples, so that a short spike (the
-# checks above, a timer that just fired) does not count. A single sample
-# varied by ~20 MiB between runs of the same image.
-used_mb=""
-for _ in 1 2 3 4 5 6; do
-    m="$(awk '/^MemTotal/ {t=$2} /^MemAvailable/ {a=$2} END {printf "%d", (t-a)/1024}' /proc/meminfo)"
-    if [[ -z "$used_mb" ]] || ((m < used_mb)); then used_mb="$m"; fi
-    sleep 2
-done
-if ((used_mb <= MAX_RAM_MB)); then pass "memory: ${used_mb} MiB used at idle (limit ${MAX_RAM_MB})"
-else
-    fail "memory" "${used_mb} MiB used at idle, limit ${MAX_RAM_MB}"
-    # What used it, for the next look at a failure.
-    ps -eo rss=,comm= --sort=-rss | head -n 8 | awk '{printf "      %6d KiB  %s\n", $1, $2}'
 fi
 
 echo
