@@ -240,6 +240,15 @@ WEBHOOK=https://ntfy.sh/your-private-topic   # plain text; WEBHOOK_FORMAT=slack 
 
 **Why settings drift.** Nothing in SedirOS changes them, but other things do: software you install (Docker publishes container ports past ufw and turns on IP forwarding; other packages add their own `/etc/sysctl.d` files or open ports), a Debian update that changes a default, a cloud provider's agent, or a temporary change someone forgot to undo. The audit only reports; it never reverts a change, since it may have been made on purpose.
 
+**Files that should not change.** The `integrity` check compares the files an attacker would change, or an admin would rather know about, with a reference taken when the system was set up: accounts and passwords, sudo, PAM, SSH settings and every user's `authorized_keys`, cron jobs, systemd units, login scripts, kernel modules and settings, boot files and the initramfs, the firewall, apt sources and their keys, programs in `/usr/local` and SedirOS's own settings. Content, mode and owner count. It also checks every installed package's files against Debian's checksums (`dpkg --verify`, in the daily run, as it takes a few seconds).
+
+```bash
+sudo sediros-audit integrity            # every changed file
+sudo sediros-audit integrity --accept   # after changes you made on purpose: the new reference
+```
+
+A package update changes some of these files (the initramfs, `grub.cfg`): after every apt run a new reference is taken and the update's changes are listed in `sediros-audit integrity`, so they are not reported as drift. Changes made with plain `dpkg -i` show up as changes. `/etc/ld.so.preload` (every program loads the libraries listed in it) and a changed program of a package are failures; any other change is a warning, since you may have made it. The check catches changes that went unnoticed, not an attacker who already has root and knows about it: such an attacker can rewrite the reference too. `sediros-audit integrity` prints the reference's own hash; noted somewhere else, it shows whether the reference itself was rewritten. For every file on the disk, Debian's `aide` package is the tool.
+
 **Many servers at once.** From your machine, `sediros fleet` shows the last daily result of every server in a file (one ssh destination per line: host, `user@host`, an ssh config alias or `ssh://user@host:port`):
 
 ```

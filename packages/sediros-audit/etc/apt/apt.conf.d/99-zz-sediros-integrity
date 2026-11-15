@@ -1,0 +1,5 @@
+// SedirOS: after every dpkg run, take a new integrity reference
+// (sediros-audit integrity) and keep the files the update changed, so a
+// package update is not reported as a change, but stays visible.
+// Named to run after 99-sediros-suid, which changes file modes.
+DPkg::Post-Invoke { "if [ -x /usr/sbin/sediros-audit ]; then /usr/sbin/sediros-audit integrity --after-dpkg >/dev/null 2>&1 || true; fi"; };

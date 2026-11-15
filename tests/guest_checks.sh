@@ -265,6 +265,23 @@ else
     while IFS= read -r line; do printf '      %s\n' "$line"; done <<<"$audit"
 fi
 
+# --- integrity: the daily run took a reference; a new file in a watched place is reported,
+#     --accept takes it into the reference -----------------------------------------------
+probe=/etc/profile.d/zz-sediros-integrity-test.sh
+before="$(sudo sediros-audit integrity 2>&1 | grep ' integrity ')"
+echo '# integrity test' | sudo tee "$probe" >/dev/null
+changed="$(sudo sediros-audit integrity 2>&1)"
+sudo sediros-audit integrity --accept >/dev/null 2>&1
+accepted="$(sudo sediros-audit integrity 2>&1 | grep ' integrity ')"
+sudo rm -f "$probe"
+sudo sediros-audit integrity --accept >/dev/null 2>&1
+if [[ "$before" == *"✓ integrity"* && "$changed" == *"! integrity"* \
+      && "$changed" == *"$probe (new)"* && "$accepted" == *"✓ integrity"* ]]; then
+    pass "integrity: reference taken, new file reported, --accept takes it"
+else
+    fail "integrity" "before: ${before:-?} / after a new file: $(grep ' integrity ' <<<"$changed") / accepted: ${accepted:-?}"
+fi
+
 # --- memory footprint -------------------------------------------------------------
 # Idle footprint: the lowest of several samples, so that a short spike (the
 # checks above, a timer that just fired) does not count. A single sample

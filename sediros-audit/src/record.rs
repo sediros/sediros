@@ -115,7 +115,7 @@ fn restrict(path: &Path, mode: u32) {
 }
 
 /// Writes through a temporary file, so readers never see half a file.
-fn write_atomic(path: &Path, text: &str, mode: u32) -> Result<(), String> {
+pub fn write_atomic(path: &Path, text: &str, mode: u32) -> Result<(), String> {
     let tmp = path.with_extension("tmp");
     fs::write(&tmp, text).map_err(|e| format!("{}: {e}", tmp.display()))?;
     restrict(&tmp, mode);

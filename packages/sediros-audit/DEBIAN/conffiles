@@ -1,1 +1,2 @@
 /etc/sediros/audit.conf
+/etc/apt/apt.conf.d/99-zz-sediros-integrity

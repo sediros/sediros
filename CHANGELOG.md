@@ -11,6 +11,13 @@ Notable changes per SedirOS release. A release is `<major>.<minor>` (SedirOS 1 =
 - Kernel updates installed in a VM take effect: `sediros stop` copies the newest kernel and initrd from the VM and the next launch boots them. VMs used to keep booting their image's kernel, whose modules unattended-upgrades could later remove from the VM. `launch` says when a newer kernel waits for a restart; restoring a snapshot boots the kernel it was taken with ([#13](https://github.com/sediros/sediros/issues/13)).
 - `sediros launch` on an existing VM keeps its vCPUs and memory: they were reset to 2 vCPUs and 1024 MiB unless `--cpus` / `--memory` were given again. Those options now change a VM's settings for good; a new VM still defaults to 2 vCPUs and 1024 MiB ([#11](https://github.com/sediros/sediros/issues/11)).
 
+### Integrity check (`sediros-audit` 0.4.0)
+- New `integrity` check: files that should not change (accounts, sudo, PAM, SSH settings and `authorized_keys`, cron, systemd units, login scripts, kernel modules and settings, boot files and initramfs, firewall, apt sources and keys, `/usr/local`, `/etc/sediros`) are compared with a reference: content, mode and owner. Every package's files are checked against Debian's checksums (`dpkg --verify`) in the daily run ([#10](https://github.com/sediros/sediros/issues/10)).
+- `sediros-audit integrity` lists every change; `sediros-audit integrity --accept` takes a new reference after changes made on purpose.
+- An apt hook takes a new reference after every package update and keeps the files the update changed, visible in `sediros-audit integrity`.
+- The first reference is taken when the package is upgraded on a running system, or by the first daily run of a new install.
+- `/etc/ld.so.preload` and changed package programs fail the check; other changes are warnings.
+
 ### VM images
 - The root filesystem grows to the disk at boot (`x-systemd.growfs`), and `fstrim.timer` runs weekly, so space freed in a VM goes back to the host. Installed systems are unchanged.
 

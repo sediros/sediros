@@ -4,6 +4,7 @@
 //! 2 the audit could not run.
 
 mod checks;
+mod integrity;
 mod record;
 mod report;
 mod sys;
@@ -14,6 +15,7 @@ use report::{Header, Status};
 
 const USAGE: &str = "\
 Usage: sediros-audit [--json] [--quiet] [--record]
+       sediros-audit integrity [--accept] [--json]
 
 Checks that this SedirOS system's hardening is still in place: kernel
 settings, SSH, firewall, AppArmor, setuid programs, accounts, sudo, PAM,
@@ -25,6 +27,14 @@ Expected values come from the installed SedirOS packages.
   --record  the daily run (sediros-audit.timer): keep the result in
             /var/lib/sediros/audit, write Prometheus metrics, report when
             the hardening got worse (/etc/sediros/audit.conf)
+
+  integrity           only the integrity check, with every changed file:
+                      watched files (accounts, SSH keys and settings, sudo,
+                      PAM, cron, systemd units, boot, apt sources and keys,
+                      /usr/local) against a reference, and package files
+                      against Debian's checksums (dpkg --verify)
+  integrity --accept  take the current state as the new reference, after
+                      changes you made on purpose
   -h, --help    this help
   -V, --version version
 
@@ -35,11 +45,18 @@ fn main() -> ExitCode {
     let mut json = false;
     let mut quiet = false;
     let mut record = false;
+    let mut only_integrity = false;
+    let mut accept = false;
+    let mut after_dpkg = false;
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
             "--json" => json = true,
             "-q" | "--quiet" => quiet = true,
             "--record" => record = true,
+            "integrity" => only_integrity = true,
+            "--accept" => accept = true,
+            // The apt hook (99-zz-sediros-integrity), not for people.
+            "--after-dpkg" => after_dpkg = true,
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return ExitCode::SUCCESS;
@@ -60,9 +77,41 @@ fn main() -> ExitCode {
         );
         return ExitCode::from(2);
     }
+    if (accept && !only_integrity) || (only_integrity && record) {
+        eprintln!("sediros-audit: --accept goes with integrity, --record without it\n\n{USAGE}");
+        return ExitCode::from(2);
+    }
+    if after_dpkg {
+        integrity::after_dpkg();
+        return ExitCode::SUCCESS;
+    }
+    if accept {
+        return match integrity::accept() {
+            Ok(lines) => {
+                for l in lines {
+                    println!("{l}");
+                }
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("sediros-audit: {e}");
+                ExitCode::from(2)
+            }
+        };
+    }
 
     let ctx = sys::Ctx::load();
-    let findings = checks::all(&ctx);
+    let findings = if only_integrity {
+        vec![integrity::check(integrity::Mode::Single)]
+    } else {
+        let mut f = checks::all(&ctx);
+        f.push(integrity::check(if record {
+            integrity::Mode::Record
+        } else {
+            integrity::Mode::Full
+        }));
+        f
+    };
     let os = sys::read("/etc/os-release")
         .map(|t| sys::parse_kv(&t))
         .unwrap_or_default();

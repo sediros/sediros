@@ -1,5 +1,5 @@
 Package: sediros-audit
-Version: 0.3.0
+Version: 0.4.0
 Architecture: @SEDIROS_ARCH@
 Maintainer: The SedirOS Authors <ahmetatakan.tech@gmail.com>
 Section: admin
@@ -12,6 +12,11 @@ Description: Check that a SedirOS system's hardening is still in place
  setuid programs, accounts, sudo, PAM, kernel modules, automatic updates,
  the SedirOS apt repository, boot settings, disk encryption and Secure Boot.
  It reports what was changed and, where it can, which file changed it.
+ .
+ The integrity check compares files that should not change (accounts, SSH
+ keys and settings, sudo, PAM, cron, systemd units, boot files, apt sources
+ and keys, /usr/local) with a reference, and package files with Debian's
+ checksums (dpkg --verify).
  .
  Run: sudo sediros-audit   (--json for tools, --quiet for problems only)
  .

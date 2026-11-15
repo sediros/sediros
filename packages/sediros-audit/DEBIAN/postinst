@@ -6,6 +6,12 @@ if [ "$1" = configure ]; then
     if [ -d /run/systemd/system ]; then
         systemctl daemon-reload >/dev/null 2>&1 || true
         systemctl start sediros-audit.timer >/dev/null 2>&1 || true
+        # Upgrade on a running system: take the first integrity reference
+        # now. Not in an image build (chroot, no systemd running): there the
+        # first daily run after the first boot takes it.
+        if [ ! -e /var/lib/sediros/audit/integrity.ref ]; then
+            /usr/sbin/sediros-audit integrity --accept >/dev/null 2>&1 || true
+        fi
     fi
 fi
 exit 0
